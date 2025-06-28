@@ -9,6 +9,7 @@
 		ServerConfig,
 		SonarrSettings,
 		DropDownItem,
+		MovieClubSettings,
 	} from "@/types";
 	import axios from "axios";
 	import SonarrModal from "./modals/SonarrModal.svelte";
@@ -44,6 +45,11 @@
 	let plexHostDisabled = $state(false);
 	let countryDisabled = $state(false);
 	let useEmbyDisabled = $state(false);
+	// Movie Club disabled vars
+	let movieClubEnabledDisabled = $state(false);
+	let movieClubNominationsDisabled = $state(false);
+	let movieClubVotesDisabled = $state(false);
+	let movieClubDurationDisabled = $state(false);
 
 	async function getServerConfig() {
 		serverConfig = (await axios.get(`/server/config`)).data as ServerConfig;
@@ -96,6 +102,21 @@
 
 	async function getServerStats() {
 		return (await axios.get("/server/stats")).data as ServerStats;
+	}
+
+	function updateMovieClubConfig<K extends keyof MovieClubSettings>(
+		field: K,
+		value: MovieClubSettings[K],
+		done?: () => void,
+	) {
+		if (!serverConfig) return;
+
+		const updatedSettings = {
+			...serverConfig.MOVIE_CLUB,
+			[field]: value,
+		};
+
+		updateServerConfig("MOVIE_CLUB", updatedSettings, done);
 	}
 </script>
 
@@ -292,6 +313,92 @@
 						<TrustedHeaderAuthModal onClose={() => (headerSSOModalOpen = false)}
 						></TrustedHeaderAuthModal>
 					{/if}
+
+					<h3>Movie Club</h3>
+					<Setting
+						title="Enable Movie Club"
+						desc="Allow users to participate in movie club cycles for group movie selection. After enabling, visit the Movie Club page to create your first cycle."
+						row
+					>
+						<Checkbox
+							name="MOVIE_CLUB_ENABLED"
+							disabled={movieClubEnabledDisabled}
+							value={serverConfig.MOVIE_CLUB.enabled}
+							toggled={(on) => {
+								movieClubEnabledDisabled = true;
+								updateMovieClubConfig("enabled", on, () => {
+									movieClubEnabledDisabled = false;
+								});
+							}}
+						/>
+					</Setting>
+					<Setting
+						title="Nominations Per User"
+						desc="Number of movies each user can nominate per cycle."
+					>
+						<input
+							type="number"
+							min="1"
+							max="10"
+							bind:value={serverConfig.MOVIE_CLUB.nominationsPerUser}
+							onblur={() => {
+								movieClubNominationsDisabled = true;
+								updateMovieClubConfig(
+									"nominationsPerUser",
+									serverConfig!.MOVIE_CLUB.nominationsPerUser,
+									() => {
+										movieClubNominationsDisabled = false;
+									},
+								);
+							}}
+							disabled={movieClubNominationsDisabled}
+						/>
+					</Setting>
+					<Setting
+						title="Votes Per User"
+						desc="Number of votes each user can cast per cycle."
+					>
+						<input
+							type="number"
+							min="1"
+							max="10"
+							bind:value={serverConfig.MOVIE_CLUB.votesPerUser}
+							onblur={() => {
+								movieClubVotesDisabled = true;
+								updateMovieClubConfig(
+									"votesPerUser",
+									serverConfig!.MOVIE_CLUB.votesPerUser,
+									() => {
+										movieClubVotesDisabled = false;
+									},
+								);
+							}}
+							disabled={movieClubVotesDisabled}
+						/>
+					</Setting>
+					<Setting
+						title="Phase Duration (Days)"
+						desc="How long each phase (nomination, voting, watching) lasts in days."
+					>
+						<input
+							type="number"
+							min="1"
+							max="30"
+							bind:value={serverConfig.MOVIE_CLUB.phaseDurationDays}
+							onblur={() => {
+								movieClubDurationDisabled = true;
+								updateMovieClubConfig(
+									"phaseDurationDays",
+									serverConfig!.MOVIE_CLUB.phaseDurationDays,
+									() => {
+										movieClubDurationDisabled = false;
+									},
+								);
+							}}
+							disabled={movieClubDurationDisabled}
+						/>
+					</Setting>
+
 					<div>
 						<h3>Services</h3>
 						<h5 class="norm">

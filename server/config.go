@@ -126,6 +126,8 @@ func (c *ServerConfig) Get(s string) (ServerConfigGetByName, error) {
 		return ServerConfigGetByName{Value: c.HEADER_AUTH}, nil
 	case "DEBUG":
 		return ServerConfigGetByName{Value: c.DEBUG}, nil
+	case "MOVIE_CLUB":
+		return ServerConfigGetByName{Value: c.MOVIE_CLUB}, nil
 	}
 	return ServerConfigGetByName{}, errors.New("invalid setting")
 }
@@ -206,6 +208,8 @@ func updateConfig(k string, v any) error {
 		setLoggingLevel()
 	} else if k == "DEFAULT_COUNTRY" {
 		Config.DEFAULT_COUNTRY = v.(string)
+	} else if k == "MOVIE_CLUB" {
+		Config.MOVIE_CLUB = v.(MovieClubSettings)
 	} else {
 		return errors.New("invalid setting")
 	}
