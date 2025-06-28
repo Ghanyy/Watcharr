@@ -12,6 +12,10 @@ import {
 	type Follow,
 	type PlayedAddRequest,
 	type ActivityUpdateRequest,
+	type MovieClubCycleResponse,
+	type MovieClubNominationRequest,
+	type MovieClubVoteRequest,
+	type MovieClubVoteCount,
 } from "@/types";
 import axios from "axios";
 import { notify, unNotify } from "./notify";
@@ -361,3 +365,102 @@ export async function unfollowUser(id: number) {
 export const noAuthAxios = axios.create({
 	baseURL: baseURL,
 });
+
+// Movie Club API Functions
+
+/**
+ * Get current movie club cycle and user data
+ */
+export async function getMovieClubCurrent(): Promise<MovieClubCycleResponse | null> {
+	try {
+		const response = await axios.get("/movie-club/current");
+		return response.data;
+	} catch (err: any) {
+		if (err.response?.status === 404) {
+			return null; // No active cycle or movie club disabled
+		}
+		console.error("getMovieClubCurrent failed!", err);
+		throw err;
+	}
+}
+
+/**
+ * Nominate a movie for the current cycle
+ */
+export async function nominateMovie(request: MovieClubNominationRequest): Promise<boolean> {
+	const nid = notify({ text: "Nominating movie...", type: "loading" });
+	try {
+		await axios.post("/movie-club/nominate", request);
+		notify({ id: nid, text: "Movie nominated!", type: "success" });
+		return true;
+	} catch (err: any) {
+		console.error("nominateMovie failed!", err);
+		const message = err.response?.data?.error || "Failed to nominate movie";
+		notify({ id: nid, text: message, type: "error" });
+		return false;
+	}
+}
+
+/**
+ * Remove a nomination
+ */
+export async function removeNomination(nominationId: number): Promise<boolean> {
+	const nid = notify({ text: "Removing nomination...", type: "loading" });
+	try {
+		await axios.delete(`/movie-club/nominate/${nominationId}`);
+		notify({ id: nid, text: "Nomination removed!", type: "success" });
+		return true;
+	} catch (err: any) {
+		console.error("removeNomination failed!", err);
+		const message = err.response?.data?.error || "Failed to remove nomination";
+		notify({ id: nid, text: message, type: "error" });
+		return false;
+	}
+}
+
+/**
+ * Cast votes for nominated movies
+ */
+export async function voteForMovies(request: MovieClubVoteRequest): Promise<boolean> {
+	const nid = notify({ text: "Casting votes...", type: "loading" });
+	try {
+		await axios.post("/movie-club/vote", request);
+		notify({ id: nid, text: "Votes cast!", type: "success" });
+		return true;
+	} catch (err: any) {
+		console.error("voteForMovies failed!", err);
+		const message = err.response?.data?.error || "Failed to cast votes";
+		notify({ id: nid, text: message, type: "error" });
+		return false;
+	}
+}
+
+/**
+ * Clear all votes for the current cycle
+ */
+export async function clearVotes(): Promise<boolean> {
+	const nid = notify({ text: "Clearing votes...", type: "loading" });
+	try {
+		await axios.delete("/movie-club/vote");
+		notify({ id: nid, text: "Votes cleared!", type: "success" });
+		return true;
+	} catch (err: any) {
+		console.error("clearVotes failed!", err);
+		const message = err.response?.data?.error || "Failed to clear votes";
+		notify({ id: nid, text: message, type: "error" });
+		return false;
+	}
+}
+
+/**
+ * Get voting results for the current cycle
+ */
+export async function getMovieClubResults(): Promise<MovieClubVoteCount[]> {
+	try {
+		const response = await axios.get("/movie-club/results");
+		return response.data;
+	} catch (err: any) {
+		console.error("getMovieClubResults failed!", err);
+		throw err;
+	}
+}

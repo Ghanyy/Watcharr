@@ -83,6 +83,9 @@ func main() {
 		&Game{},
 		&ArrRequest{},
 		&Tag{},
+		&MovieClubCycle{},
+		&MovieClubNomination{},
+		&MovieClubVote{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto migrate database:", err)
@@ -159,6 +162,7 @@ func main() {
 	br.addJobRoutes()
 	br.addTaskRoutes()
 	br.addTagRoutes()
+	br.addMovieClubRoutes()
 	br.rg.Static("/img", path.Join(DataPath, "img"))
 
 	go setupTasks(db)

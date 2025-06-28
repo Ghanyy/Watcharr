@@ -70,6 +70,12 @@ func setupTasks(db *gorm.DB) {
 			},
 			dd: 24 * time.Hour,
 		},
+		"Movie Club Transition": {
+			f: func() {
+				checkMovieClubTransition(db)
+			},
+			dd: 10 * time.Minute,
+		},
 	}
 
 	// Add all jobs to scheduler.

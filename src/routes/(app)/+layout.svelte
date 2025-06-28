@@ -333,6 +333,13 @@
 				<Icon i="compass" wh={26} />
 			</button>
 			<button
+				class="plain other movie-club"
+				onclick={() => goto("/movie-club")}
+				use:tooltip={{ text: "Movie Club", pos: "bot" }}
+			>
+				<Icon i="film" wh={26} />
+			</button>
+			<button
 				class="plain other following"
 				onclick={() => {
 					closeAllSubMenus("following");

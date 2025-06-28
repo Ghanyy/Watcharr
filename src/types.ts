@@ -1298,3 +1298,83 @@ export interface TagAddRequest {
 	color: string;
 	bgColor: string;
 }
+
+// Movie Club Types
+
+export type MovieClubPhase = "nomination" | "voting" | "watching";
+
+export interface MovieClubCycle extends dbModel {
+	name: string;
+	description: string;
+	phase: MovieClubPhase;
+	phaseStartDate: string;
+	phaseEndDate: string;
+	nominationEndDate: string;
+	votingEndDate: string;
+	watchingEndDate: string;
+	winnerContentId?: number;
+	winnerContent?: Content;
+	active: boolean;
+	nominations?: MovieClubNomination[];
+	votes?: MovieClubVote[];
+}
+
+export interface MovieClubNomination extends dbModel {
+	cycleId: number;
+	cycle?: MovieClubCycle;
+	userId: number;
+	user?: PublicUser;
+	contentId: number;
+	content?: Content;
+	reason: string;
+}
+
+export interface MovieClubVote extends dbModel {
+	cycleId: number;
+	cycle?: MovieClubCycle;
+	userId: number;
+	user?: PublicUser;
+	contentId: number;
+	content?: Content;
+	priority: number;
+}
+
+export interface MovieClubSettings {
+	nominationsPerUser: number;
+	votesPerUser: number;
+	phaseDurationDays: number;
+	enabled: boolean;
+}
+
+export interface MovieClubVoteCount {
+	contentId: number;
+	content: Content;
+	totalVotes: number;
+	firstChoice: number;
+	secondChoice: number;
+	thirdChoice: number;
+	weightedScore: number;
+}
+
+export interface MovieClubCycleResponse {
+	cycle: MovieClubCycle;
+	userNominations: MovieClubNomination[];
+	userVotes: MovieClubVote[];
+	voteResults?: MovieClubVoteCount[];
+	canNominate: boolean;
+	canVote: boolean;
+}
+
+export interface MovieClubNominationRequest {
+	contentId: number;
+	reason?: string;
+}
+
+export interface MovieClubVoteRequest {
+	votes: MovieClubVoteItem[];
+}
+
+export interface MovieClubVoteItem {
+	contentId: number;
+	priority: number;
+}

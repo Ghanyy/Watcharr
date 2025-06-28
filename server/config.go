@@ -70,6 +70,9 @@ type ServerConfig struct {
 	// of failure.
 	// Set to `true` to enable.
 	DEBUG bool `json:",omitempty"`
+
+	// Optional: Movie club configuration settings.
+	MOVIE_CLUB MovieClubSettings `json:",omitempty"`
 }
 
 // ServerConfig, but with JWT_SECRET removed from json.
@@ -94,6 +97,7 @@ func (c *ServerConfig) GetSafe() ServerConfig {
 			ClientID:     c.TWITCH.ClientID,
 			ClientSecret: c.TWITCH.ClientSecret,
 		}, // Dont act safe, this contains twitch secrets, needed for config
+		MOVIE_CLUB: c.MOVIE_CLUB,
 	}
 }
 
@@ -173,6 +177,7 @@ func generateConfig() error {
 		// Other defaults..
 		DEFAULT_COUNTRY: "US",
 		SIGNUP_ENABLED:  true,
+		MOVIE_CLUB:      InitializeMovieClubSettings(),
 	}
 	barej, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
