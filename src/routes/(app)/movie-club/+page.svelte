@@ -27,7 +27,8 @@
 		} catch (err: any) {
 			if (err.response?.status === 404) {
 				const errorMessage = err.response?.data?.error || "";
-				if (errorMessage.includes("not enabled")) {
+				console.log("Movie club 404 error message:", errorMessage);
+				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
 					movieClubDisabled = true;
 				} else {
 					cycleData = null; // No active cycle
@@ -49,7 +50,8 @@
 		} catch (err: any) {
 			if (err.response?.status === 404) {
 				const errorMessage = err.response?.data?.error || "";
-				if (errorMessage.includes("not enabled")) {
+				console.log("Movie club 404 error message:", errorMessage);
+				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
 					movieClubDisabled = true;
 				} else {
 					cycleData = null; // No active cycle
