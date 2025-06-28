@@ -30,22 +30,20 @@
 		}
 	});
 
-	function refreshData() {
+	async function refreshData() {
 		loading = true;
 		error = null;
-		onMount(async () => {
-			try {
-				cycleData = await getMovieClubCurrent();
-			} catch (err: any) {
-				if (err.response?.status === 404) {
-					cycleData = null; // No active cycle
-				} else {
-					error = err.response?.data?.error || "Failed to load movie club data";
-				}
-			} finally {
-				loading = false;
+		try {
+			cycleData = await getMovieClubCurrent();
+		} catch (err: any) {
+			if (err.response?.status === 404) {
+				cycleData = null; // No active cycle
+			} else {
+				error = err.response?.data?.error || "Failed to load movie club data";
 			}
-		})();
+		} finally {
+			loading = false;
+		}
 	}
 </script>
 

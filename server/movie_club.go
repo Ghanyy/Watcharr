@@ -149,15 +149,23 @@ func (c *MovieClubCycle) GetNextPhase() MovieClubPhase {
 
 // GetActiveMovieClubCycle returns the currently active movie club cycle
 func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
+	slog.Debug("GetActiveMovieClubCycle: Looking for active cycle")
+	
 	var cycle MovieClubCycle
 	result := db.Where("active = ?", true).
 		Preload("WinnerContent").
 		First(&cycle)
 	
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			slog.Debug("GetActiveMovieClubCycle: No active cycle found")
+		} else {
+			slog.Error("GetActiveMovieClubCycle: Database error", "error", result.Error)
+		}
 		return nil, result.Error
 	}
 	
+	slog.Debug("GetActiveMovieClubCycle: Found active cycle", "cycleId", cycle.ID, "phase", cycle.Phase, "active", cycle.Active)
 	return &cycle, nil
 }
 
@@ -364,12 +372,11 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	movieClub.GET("/results", b.getMovieClubResults)
 	
 	// Admin endpoints
-	admin := movieClub.Use(AdminRequired())
-	admin.POST("/cycle", b.createMovieClubCycle)
-	admin.PUT("/cycle/:id", b.updateMovieClubCycle)
-	admin.DELETE("/cycle/:id", b.deleteMovieClubCycle)
-	admin.POST("/cycle/:id/transition", b.transitionCyclePhase)
-	admin.GET("/cycles", b.getAllMovieClubCycles)
+	movieClub.POST("/cycle", AdminRequired(), b.createMovieClubCycle)
+	movieClub.PUT("/cycle/:id", AdminRequired(), b.updateMovieClubCycle)
+	movieClub.DELETE("/cycle/:id", AdminRequired(), b.deleteMovieClubCycle)
+	movieClub.POST("/cycle/:id/transition", AdminRequired(), b.transitionCyclePhase)
+	movieClub.GET("/cycles", AdminRequired(), b.getAllMovieClubCycles)
 }
 
 // getCurrentMovieClubCycle returns the current active cycle with user-specific data
@@ -386,6 +393,7 @@ func (b *BaseRouter) getCurrentMovieClubCycle(c *gin.Context) {
 	cycle, err := GetActiveMovieClubCycle(b.db)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			slog.Debug("No active movie club cycle found")
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
 			return
 		}
@@ -393,6 +401,8 @@ func (b *BaseRouter) getCurrentMovieClubCycle(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get cycle"})
 		return
 	}
+	
+	slog.Debug("Found active movie club cycle", "cycleId", cycle.ID, "phase", cycle.Phase)
 	
 	// Get user nominations
 	userNominations, err := GetUserNominationsForCycle(b.db, cycle.ID, userID)
@@ -724,8 +734,26 @@ func (b *BaseRouter) createMovieClubCycle(c *gin.Context) {
 		return
 	}
 	
+	// Use a transaction to ensure consistency
+	tx := b.db.Begin()
+	if tx.Error != nil {
+		slog.Error("Failed to begin transaction", "error", tx.Error)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create cycle"})
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	
 	// Deactivate any existing active cycle
-	b.db.Model(&MovieClubCycle{}).Where("active = ?", true).Update("active", false)
+	if err := tx.Model(&MovieClubCycle{}).Where("active = ?", true).Update("active", false).Error; err != nil {
+		tx.Rollback()
+		slog.Error("Failed to deactivate existing cycles", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create cycle"})
+		return
+	}
 	
 	// Set up new cycle
 	now := time.Now()
@@ -739,10 +767,28 @@ func (b *BaseRouter) createMovieClubCycle(c *gin.Context) {
 	cycle.WatchingEndDate = now.Add(3 * phaseDuration)
 	cycle.Active = true
 	
-	if err := b.db.Create(&cycle).Error; err != nil {
+	if err := tx.Create(&cycle).Error; err != nil {
+		tx.Rollback()
 		slog.Error("Failed to create movie club cycle", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create cycle"})
 		return
+	}
+	
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		slog.Error("Failed to commit transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create cycle"})
+		return
+	}
+	
+	slog.Info("Successfully created movie club cycle", "cycleId", cycle.ID, "active", cycle.Active, "phase", cycle.Phase)
+	
+	// Verify the cycle was created and can be retrieved
+	var verifyResult MovieClubCycle
+	if err := b.db.Where("active = ?", true).First(&verifyResult).Error; err != nil {
+		slog.Error("Verification failed: newly created cycle not found", "error", err, "cycleId", cycle.ID)
+	} else {
+		slog.Debug("Verification successful: cycle found", "cycleId", verifyResult.ID, "active", verifyResult.Active)
 	}
 	
 	c.JSON(http.StatusCreated, cycle)

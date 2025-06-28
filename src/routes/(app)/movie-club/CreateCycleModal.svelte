@@ -20,13 +20,17 @@
 		const nid = notify({ text: "Creating cycle...", type: "loading" });
 
 		try {
-			await axios.post("/movie-club/cycle", {
+			const response = await axios.post("/movie-club/cycle", {
 				name: name.trim(),
 				description: description.trim()
 			});
 
 			notify({ id: nid, text: "Cycle created successfully!", type: "success" });
-			dispatch("cycleCreated");
+			
+			// Small delay to ensure database consistency
+			setTimeout(() => {
+				dispatch("cycleCreated");
+			}, 100);
 		} catch (err: any) {
 			console.error("Failed to create cycle:", err);
 			const message = err.response?.data?.error || "Failed to create cycle";
@@ -231,12 +235,13 @@
 		}
 
 		.cancel-btn {
-			background: none;
+			background: var(--background);
 			border: 1px solid var(--border);
 			color: var(--text);
 
 			&:hover:not(:disabled) {
 				background: var(--background-secondary);
+				color: var(--text);
 			}
 		}
 
