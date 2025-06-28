@@ -37,7 +37,7 @@
 		try {
 			const response = await axios.get(`/content/search/movie`, {
 				params: {
-					query: query
+					q: query
 				}
 			});
 			searchResults = response.data.results || [];
