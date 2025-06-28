@@ -1,0 +1,8 @@
+{
+  "MOVIE_CLUB": {
+    "enabled": true,
+    "nominationsPerUser": 2,
+    "votesPerUser": 3,
+    "phaseDurationDays": 0.01
+  }
+}

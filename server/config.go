@@ -209,7 +209,23 @@ func updateConfig(k string, v any) error {
 	} else if k == "DEFAULT_COUNTRY" {
 		Config.DEFAULT_COUNTRY = v.(string)
 	} else if k == "MOVIE_CLUB" {
-		Config.MOVIE_CLUB = v.(MovieClubSettings)
+		// Handle MovieClubSettings conversion from map[string]interface{}
+		if settingsMap, ok := v.(map[string]interface{}); ok {
+			// Convert map to JSON and then unmarshal to MovieClubSettings
+			settingsJSON, err := json.Marshal(settingsMap)
+			if err != nil {
+				return errors.New("failed to marshal movie club settings")
+			}
+			
+			var settings MovieClubSettings
+			if err := json.Unmarshal(settingsJSON, &settings); err != nil {
+				return errors.New("failed to unmarshal movie club settings")
+			}
+			
+			Config.MOVIE_CLUB = settings
+		} else {
+			return errors.New("invalid movie club settings format")
+		}
 	} else {
 		return errors.New("invalid setting")
 	}
