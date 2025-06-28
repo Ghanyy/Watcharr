@@ -114,7 +114,7 @@
 					{#each searchResults as movie}
 						<div class="movie-result" on:click={() => selectMovie(movie)}>
 							<div class="poster-small">
-								<Poster content={movie} showRating={false} />
+								<Poster media={movie} showRating={false} />
 							</div>
 							<div class="movie-info">
 								<h4>{movie.title}</h4>
@@ -151,7 +151,7 @@
 
 			<div class="selected-movie">
 				<div class="poster-large">
-					<Poster content={selectedMovie} showRating={false} />
+					<Poster media={selectedMovie} showRating={false} />
 				</div>
 				<div class="movie-details">
 					<h4>{selectedMovie.title}</h4>
