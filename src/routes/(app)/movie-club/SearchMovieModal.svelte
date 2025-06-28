@@ -35,10 +35,9 @@
 
 		searching = true;
 		try {
-			const response = await axios.get(`/content/search`, {
+			const response = await axios.get(`/content/search/movie`, {
 				params: {
-					query: query,
-					type: "movie"
+					query: query
 				}
 			});
 			searchResults = response.data.results || [];
@@ -197,6 +196,8 @@
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+		background: var(--background);
+		border-radius: 12px;
 	}
 
 	.modal-header {
@@ -208,6 +209,7 @@
 
 		h3 {
 			margin: 0;
+			color: var(--text);
 		}
 
 		.close-btn {
@@ -216,9 +218,12 @@
 			padding: 0.5rem;
 			cursor: pointer;
 			color: var(--text-muted);
+			border-radius: 4px;
+			transition: all 0.2s ease;
 
 			&:hover {
 				color: var(--text);
+				background: var(--background-secondary);
 			}
 		}
 	}
@@ -250,10 +255,16 @@
 			border-radius: 6px;
 			font-size: 1rem;
 			background: var(--background);
+			color: var(--text);
+			font-family: inherit;
 
 			&:focus {
 				outline: none;
 				border-color: var(--primary);
+			}
+
+			&::placeholder {
+				color: var(--text-muted);
 			}
 		}
 	}
@@ -307,6 +318,7 @@
 				margin: 0 0 0.25rem 0;
 				font-size: 1rem;
 				line-height: 1.2;
+				color: var(--text);
 			}
 
 			.release-year {
@@ -337,7 +349,7 @@
 	}
 
 	.back-btn {
-		background: none;
+		background: var(--background);
 		border: 1px solid var(--border);
 		padding: 0.5rem 1rem;
 		border-radius: 4px;
@@ -346,6 +358,10 @@
 		align-items: center;
 		gap: 0.5rem;
 		align-self: flex-start;
+		color: var(--text);
+		font-family: inherit;
+		font-size: 0.9rem;
+		transition: all 0.2s ease;
 
 		&:hover {
 			background: var(--background-secondary);
@@ -372,6 +388,7 @@
 			h4 {
 				margin: 0 0 0.5rem 0;
 				font-size: 1.25rem;
+				color: var(--text);
 			}
 
 			.release-year {
@@ -393,6 +410,7 @@
 			display: block;
 			margin-bottom: 0.5rem;
 			font-weight: 500;
+			color: var(--text);
 		}
 
 		textarea {
@@ -404,11 +422,16 @@
 			font-family: inherit;
 			font-size: 0.9rem;
 			background: var(--background);
+			color: var(--text);
 			resize: vertical;
 
 			&:focus {
 				outline: none;
 				border-color: var(--primary);
+			}
+
+			&::placeholder {
+				color: var(--text-muted);
 			}
 		}
 
@@ -433,10 +456,12 @@
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
+			font-family: inherit;
+			transition: all 0.2s ease;
 		}
 
 		.cancel-btn {
-			background: none;
+			background: var(--background);
 			border: 1px solid var(--border);
 			color: var(--text);
 

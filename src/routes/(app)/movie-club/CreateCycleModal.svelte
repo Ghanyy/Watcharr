@@ -182,6 +182,10 @@
 				opacity: 0.6;
 				cursor: not-allowed;
 			}
+
+			&::placeholder {
+				color: var(--text-muted);
+			}
 		}
 
 		textarea {
@@ -225,6 +229,7 @@
 			padding: 0.75rem 1.5rem;
 			border-radius: 6px;
 			font-size: 1rem;
+			font-family: inherit;
 			cursor: pointer;
 			transition: all 0.2s ease;
 

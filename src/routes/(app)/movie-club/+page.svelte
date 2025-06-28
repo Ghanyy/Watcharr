@@ -27,14 +27,9 @@
 		} catch (err: any) {
 			if (err.response?.status === 404) {
 				const errorMessage = err.response?.data?.error || "";
-				console.log("Movie club 404 error message:", errorMessage);
-				console.log("Error message type:", typeof errorMessage);
-				console.log("Contains 'not enabled':", errorMessage.toLowerCase().includes("not enabled"));
 				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
-					console.log("Setting movieClubDisabled to true");
 					movieClubDisabled = true;
 				} else {
-					console.log("Setting cycleData to null (no active cycle)");
 					cycleData = null; // No active cycle
 				}
 			} else {
@@ -54,14 +49,9 @@
 		} catch (err: any) {
 			if (err.response?.status === 404) {
 				const errorMessage = err.response?.data?.error || "";
-				console.log("Movie club 404 error message:", errorMessage);
-				console.log("Error message type:", typeof errorMessage);
-				console.log("Contains 'not enabled':", errorMessage.toLowerCase().includes("not enabled"));
 				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
-					console.log("Setting movieClubDisabled to true");
 					movieClubDisabled = true;
 				} else {
-					console.log("Setting cycleData to null (no active cycle)");
 					cycleData = null; // No active cycle
 				}
 			} else {
@@ -102,13 +92,6 @@
 		<h1>🎬 Movie Club</h1>
 		<p>Nominate movies, vote for your favorites, and discover what to watch together!</p>
 	</header>
-
-	<!-- Debug info -->
-	{#if typeof window !== 'undefined'}
-		<div style="background: #f0f0f0; padding: 10px; margin: 10px; font-family: monospace; font-size: 12px;">
-			Debug: loading={loading}, error={error}, movieClubDisabled={movieClubDisabled}, cycleData={cycleData ? 'exists' : 'null'}
-		</div>
-	{/if}
 
 	{#if loading}
 		<div class="loading">
