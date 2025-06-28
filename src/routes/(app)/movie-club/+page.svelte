@@ -10,20 +10,28 @@
 	import Modal from "@/lib/Modal.svelte";
 	import axios from "axios";
 	import { notify } from "@/lib/util/notify";
+	import { userHasPermission } from "@/lib/util/helpers";
+	import { UserPermission } from "@/types";
 
 	let cycleData: MovieClubCycleResponse | null = null;
 	let loading = true;
 	let error: string | null = null;
 	let showCreateModal = false;
+	let movieClubDisabled = false;
 
-	$: isAdmin = (store.userInfo?.permissions || 0) & 2; // PERM_ADMIN = 2
+	$: isAdmin = store.userInfo && userHasPermission(store.userInfo.permissions, UserPermission.PERM_ADMIN);
 
 	onMount(async () => {
 		try {
 			cycleData = await getMovieClubCurrent();
 		} catch (err: any) {
 			if (err.response?.status === 404) {
-				cycleData = null; // No active cycle
+				const errorMessage = err.response?.data?.error || "";
+				if (errorMessage.includes("not enabled")) {
+					movieClubDisabled = true;
+				} else {
+					cycleData = null; // No active cycle
+				}
 			} else {
 				error = err.response?.data?.error || "Failed to load movie club data";
 			}
@@ -35,11 +43,17 @@
 	async function refreshData() {
 		loading = true;
 		error = null;
+		movieClubDisabled = false;
 		try {
 			cycleData = await getMovieClubCurrent();
 		} catch (err: any) {
 			if (err.response?.status === 404) {
-				cycleData = null; // No active cycle
+				const errorMessage = err.response?.data?.error || "";
+				if (errorMessage.includes("not enabled")) {
+					movieClubDisabled = true;
+				} else {
+					cycleData = null; // No active cycle
+				}
 			} else {
 				error = err.response?.data?.error || "Failed to load movie club data";
 			}
@@ -87,6 +101,16 @@
 	{:else if error}
 		<Error error={error} />
 		<button on:click={refreshData} class="refresh-btn">Try Again</button>
+	{:else if movieClubDisabled}
+		<div class="disabled">
+			<h2>Movie Club Disabled</h2>
+			<p>The movie club feature is currently disabled.</p>
+			{#if isAdmin}
+				<p>You can enable it in the server settings.</p>
+			{:else}
+				<p>Ask an admin to enable it in the server settings.</p>
+			{/if}
+		</div>
 	{:else if !cycleData}
 		<div class="no-cycle">
 			<h2>No Active Movie Club</h2>
@@ -163,7 +187,7 @@
 		}
 	}
 
-	.no-cycle {
+	.no-cycle, .disabled {
 		text-align: center;
 		margin: 3rem 0;
 		padding: 2rem;
@@ -178,6 +202,15 @@
 		p {
 			color: var(--text-muted);
 			margin-bottom: 0.5rem;
+		}
+	}
+
+	.disabled {
+		border-color: var(--danger, #dc3545);
+		background: var(--danger-background, rgba(220, 53, 69, 0.1));
+
+		h2 {
+			color: var(--danger, #dc3545);
 		}
 	}
 
