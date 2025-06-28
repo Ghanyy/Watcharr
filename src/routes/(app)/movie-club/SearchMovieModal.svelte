@@ -40,7 +40,13 @@
 					q: query
 				}
 			});
-			searchResults = response.data.results || [];
+			// Map TMDB response to our Content interface
+			const results = response.data.results || [];
+			searchResults = results.map((movie: any) => ({
+				...movie,
+				tmdbId: movie.id, // Ensure tmdbId is set from TMDB's id field
+				type: "movie" as const
+			}));
 		} catch (err) {
 			console.error("Search failed:", err);
 			searchResults = [];
@@ -114,7 +120,7 @@
 					{#each searchResults as movie}
 						<div class="movie-result" on:click={() => selectMovie(movie)}>
 							<div class="poster-small">
-								<Poster media={movie} showRating={false} />
+								<Poster media={movie} showRating={false} disableInteraction={true} />
 							</div>
 							<div class="movie-info">
 								<h4>{movie.title}</h4>
@@ -151,7 +157,7 @@
 
 			<div class="selected-movie">
 				<div class="poster-large">
-					<Poster media={selectedMovie} showRating={false} />
+					<Poster media={selectedMovie} showRating={false} disableInteraction={true} />
 				</div>
 				<div class="movie-details">
 					<h4>{selectedMovie.title}</h4>
@@ -293,21 +299,25 @@
 
 	.movie-result {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 1rem;
-		padding: 0.75rem;
-		border-radius: 6px;
+		padding: 1rem;
+		border-radius: 8px;
 		cursor: pointer;
 		transition: background-color 0.2s ease;
+		border: 1px solid transparent;
 
 		&:hover {
 			background: var(--background-secondary);
+			border-color: var(--border);
 		}
 
 		.poster-small {
-			width: 50px;
-			height: 75px;
+			width: 60px;
+			height: 90px;
 			flex-shrink: 0;
+			border-radius: 4px;
+			overflow: hidden;
 		}
 
 		.movie-info {
@@ -331,7 +341,11 @@
 				margin: 0;
 				color: var(--text-muted);
 				font-size: 0.85rem;
-				line-height: 1.3;
+				line-height: 1.4;
+				display: -webkit-box;
+				-webkit-line-clamp: 3;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
 			}
 		}
 
