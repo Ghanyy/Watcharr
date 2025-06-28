@@ -160,7 +160,7 @@
 					{/if}
 
 					<div class="poster-container">
-						<Poster content={nomination.content} showRating={false} />
+						<Poster media={nomination.content} showRating={false} disableInteraction={true} />
 						{#if isSelected}
 							<div class="selected-overlay">
 								<Icon icon="check" />

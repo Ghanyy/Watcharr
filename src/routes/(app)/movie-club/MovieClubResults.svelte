@@ -35,7 +35,7 @@
 				
 				<div class="winner-card">
 					<div class="winner-poster">
-						<Poster content={winner.content} showRating={false} />
+						<Poster media={winner.content} showRating={false} disableInteraction={true} />
 						<div class="winner-overlay">
 							<Icon icon="play" />
 						</div>
@@ -90,7 +90,7 @@
 						
 						<div class="movie">
 							<div class="movie-poster">
-								<Poster content={result.content} showRating={false} />
+								<Poster media={result.content} showRating={false} disableInteraction={true} />
 							</div>
 							<div class="movie-info">
 								<h5>{result.content.title}</h5>

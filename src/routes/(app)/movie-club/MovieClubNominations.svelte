@@ -80,7 +80,7 @@
 				{#each userNominations as nomination}
 					<div class="nomination-card">
 						<div class="poster-container">
-							<Poster content={nomination.content} showRating={false} />
+							<Poster media={nomination.content} showRating={false} disableInteraction={true} />
 						</div>
 						<div class="nomination-details">
 							<h5>{nomination.content?.title}</h5>
@@ -117,7 +117,7 @@
 				{#each cycleData.cycle.nominations as nomination}
 					<div class="nomination-card">
 						<div class="poster-container">
-							<Poster content={nomination.content} showRating={false} />
+							<Poster media={nomination.content} showRating={false} disableInteraction={true} />
 						</div>
 						<div class="nomination-details">
 							<h5>{nomination.content?.title}</h5>
