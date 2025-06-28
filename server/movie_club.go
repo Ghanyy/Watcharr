@@ -33,21 +33,21 @@ type MovieClubCycle struct {
 	VotingEndDate     time.Time       `json:"votingEndDate"`
 	WatchingEndDate   time.Time       `json:"watchingEndDate"`
 	WinnerContentID   *int            `json:"winnerContentId,omitempty"`
-	WinnerContent     *Content        `json:"winnerContent,omitempty" gorm:"foreignKey:WinnerContentID"`
+	WinnerContent     *Content        `json:"winnerContent,omitempty" gorm:"foreignKey:WinnerContentID;references:ID"`
 	Active            bool            `json:"active"`
-	Nominations       []MovieClubNomination `json:"nominations,omitempty"`
-	Votes             []MovieClubVote `json:"votes,omitempty"`
+	Nominations       []MovieClubNomination `json:"nominations,omitempty" gorm:"foreignKey:CycleID"`
+	Votes             []MovieClubVote `json:"votes,omitempty" gorm:"foreignKey:CycleID"`
 }
 
 // MovieClubNomination represents a user's nomination for a movie
 type MovieClubNomination struct {
 	GormModel
 	CycleID     uint     `json:"cycleId" gorm:"index"`
-	Cycle       MovieClubCycle `json:"cycle,omitempty"`
+	Cycle       MovieClubCycle `json:"cycle,omitempty" gorm:"foreignKey:CycleID"`
 	UserID      uint     `json:"userId" gorm:"index"`
-	User        User     `json:"user,omitempty"`
+	User        User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	ContentID   int      `json:"contentId" gorm:"index"`
-	Content     Content  `json:"content,omitempty"`
+	Content     Content  `json:"content,omitempty" gorm:"foreignKey:ContentID;references:ID"`
 	Reason      string   `json:"reason" gorm:"type:text"`
 }
 
@@ -55,11 +55,11 @@ type MovieClubNomination struct {
 type MovieClubVote struct {
 	GormModel
 	CycleID     uint     `json:"cycleId" gorm:"index"`
-	Cycle       MovieClubCycle `json:"cycle,omitempty"`
+	Cycle       MovieClubCycle `json:"cycle,omitempty" gorm:"foreignKey:CycleID"`
 	UserID      uint     `json:"userId" gorm:"index"`
-	User        User     `json:"user,omitempty"`
+	User        User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	ContentID   int      `json:"contentId" gorm:"index"`
-	Content     Content  `json:"content,omitempty"`
+	Content     Content  `json:"content,omitempty" gorm:"foreignKey:ContentID;references:ID"`
 	Priority    int      `json:"priority"` // 1 = first choice, 2 = second choice, etc.
 }
 
