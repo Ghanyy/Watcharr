@@ -8,6 +8,8 @@
 	import { store } from "@/store.svelte";
 	import CreateCycleModal from "./CreateCycleModal.svelte";
 	import Modal from "@/lib/Modal.svelte";
+	import axios from "axios";
+	import { notify } from "@/lib/util/notify";
 
 	let cycleData: MovieClubCycleResponse | null = null;
 	let loading = true;
@@ -45,6 +47,26 @@
 			loading = false;
 		}
 	}
+
+	async function deleteCycle() {
+		if (!cycleData?.cycle?.id) return;
+		
+		if (!confirm("Are you sure you want to delete this movie club cycle? This will remove all nominations and votes.")) {
+			return;
+		}
+
+		const nid = notify({ text: "Deleting cycle...", type: "loading" });
+		
+		try {
+			await axios.delete(`/movie-club/cycle/${cycleData.cycle.id}`);
+			notify({ id: nid, text: "Cycle deleted successfully!", type: "success" });
+			await refreshData(); // Refresh to show no active cycle
+		} catch (err: any) {
+			console.error("Failed to delete cycle:", err);
+			const message = err.response?.data?.error || "Failed to delete cycle";
+			notify({ id: nid, text: message, type: "error" });
+		}
+	}
 </script>
 
 <svelte:head>
@@ -79,6 +101,17 @@
 			{/if}
 		</div>
 	{:else}
+		{#if isAdmin}
+			<div class="admin-controls">
+				<button 
+					class="delete-cycle-btn" 
+					on:click={deleteCycle}
+					disabled={loading}
+				>
+					Delete Current Cycle
+				</button>
+			</div>
+		{/if}
 		<MovieClubDashboard {cycleData} on:refresh={refreshData} />
 	{/if}
 </div>
@@ -160,6 +193,36 @@
 
 		&:hover {
 			background: var(--primary-dark);
+		}
+	}
+
+	.admin-controls {
+		display: flex;
+		justify-content: flex-end;
+		margin-bottom: 1rem;
+		padding: 1rem;
+		background: var(--background-secondary);
+		border-radius: 8px;
+		border-left: 3px solid var(--primary);
+	}
+
+	.delete-cycle-btn {
+		background: var(--danger, #dc3545);
+		color: white;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 6px;
+		cursor: pointer;
+		font-size: 0.9rem;
+		transition: all 0.2s ease;
+
+		&:hover:not(:disabled) {
+			background: var(--danger-dark, #c82333);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
 		}
 	}
 </style>

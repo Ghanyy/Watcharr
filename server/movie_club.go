@@ -837,26 +837,47 @@ func (b *BaseRouter) deleteMovieClubCycle(c *gin.Context) {
 	
 	// Delete cycle and all related data
 	tx := b.db.Begin()
+	if tx.Error != nil {
+		slog.Error("Failed to begin transaction", "error", tx.Error)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	
+	slog.Info("Deleting movie club cycle", "cycleId", cycleID)
 	
 	if err := tx.Where("cycle_id = ?", cycleID).Delete(&MovieClubVote{}).Error; err != nil {
 		tx.Rollback()
+		slog.Error("Failed to delete votes", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete votes"})
 		return
 	}
 	
 	if err := tx.Where("cycle_id = ?", cycleID).Delete(&MovieClubNomination{}).Error; err != nil {
 		tx.Rollback()
+		slog.Error("Failed to delete nominations", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete nominations"})
 		return
 	}
 	
 	if err := tx.Delete(&MovieClubCycle{}, cycleID).Error; err != nil {
 		tx.Rollback()
+		slog.Error("Failed to delete cycle", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
 		return
 	}
 	
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		slog.Error("Failed to commit transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
+		return
+	}
+	
+	slog.Info("Successfully deleted movie club cycle", "cycleId", cycleID)
 	c.JSON(http.StatusOK, gin.H{"message": "Cycle deleted"})
 }
 
