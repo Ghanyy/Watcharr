@@ -5,16 +5,26 @@
 	import Spinner from "@/lib/Spinner.svelte";
 	import MovieClubDashboard from "./MovieClubDashboard.svelte";
 	import Error from "@/lib/Error.svelte";
+	import { store } from "@/store.svelte";
+	import CreateCycleModal from "./CreateCycleModal.svelte";
+	import Modal from "@/lib/Modal.svelte";
 
 	let cycleData: MovieClubCycleResponse | null = null;
 	let loading = true;
 	let error: string | null = null;
+	let showCreateModal = false;
+
+	$: isAdmin = (store.userInfo?.permissions || 0) & 2; // PERM_ADMIN = 2
 
 	onMount(async () => {
 		try {
 			cycleData = await getMovieClubCurrent();
 		} catch (err: any) {
-			error = err.response?.data?.error || "Failed to load movie club data";
+			if (err.response?.status === 404) {
+				cycleData = null; // No active cycle
+			} else {
+				error = err.response?.data?.error || "Failed to load movie club data";
+			}
 		} finally {
 			loading = false;
 		}
@@ -27,7 +37,11 @@
 			try {
 				cycleData = await getMovieClubCurrent();
 			} catch (err: any) {
-				error = err.response?.data?.error || "Failed to load movie club data";
+				if (err.response?.status === 404) {
+					cycleData = null; // No active cycle
+				} else {
+					error = err.response?.data?.error || "Failed to load movie club data";
+				}
 			} finally {
 				loading = false;
 			}
@@ -56,13 +70,32 @@
 	{:else if !cycleData}
 		<div class="no-cycle">
 			<h2>No Active Movie Club</h2>
-			<p>Movie club is either disabled or there's no active cycle running.</p>
-			<p>Check back later or ask an admin to start a new cycle!</p>
+			<p>There's no active movie club cycle running.</p>
+			{#if isAdmin}
+				<p>As an admin, you can create a new cycle to get started!</p>
+				<button class="create-cycle-btn" on:click={() => showCreateModal = true}>
+					Create New Cycle
+				</button>
+			{:else}
+				<p>Ask an admin to start a new cycle!</p>
+			{/if}
 		</div>
 	{:else}
 		<MovieClubDashboard {cycleData} on:refresh={refreshData} />
 	{/if}
 </div>
+
+{#if showCreateModal}
+	<Modal on:close={() => showCreateModal = false}>
+		<CreateCycleModal 
+			on:cycleCreated={() => {
+				showCreateModal = false;
+				refreshData();
+			}}
+			on:close={() => showCreateModal = false}
+		/>
+	</Modal>
+{/if}
 
 <style lang="scss">
 	.movie-club-page {
@@ -117,7 +150,7 @@
 		}
 	}
 
-	.refresh-btn {
+	.refresh-btn, .create-cycle-btn {
 		background: var(--primary);
 		color: white;
 		border: none;
@@ -125,6 +158,7 @@
 		border-radius: 6px;
 		cursor: pointer;
 		margin-top: 1rem;
+		font-size: 1rem;
 
 		&:hover {
 			background: var(--primary-dark);
