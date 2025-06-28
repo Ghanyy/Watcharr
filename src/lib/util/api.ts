@@ -377,7 +377,12 @@ export async function getMovieClubCurrent(): Promise<MovieClubCycleResponse | nu
 		return response.data;
 	} catch (err: any) {
 		if (err.response?.status === 404) {
-			return null; // No active cycle or movie club disabled
+			const errorMessage = err.response?.data?.error || "";
+			if (errorMessage.toLowerCase().includes("not enabled")) {
+				// Movie club is disabled - let the caller handle this
+				throw err;
+			}
+			return null; // No active cycle
 		}
 		console.error("getMovieClubCurrent failed!", err);
 		throw err;
