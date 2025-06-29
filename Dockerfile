@@ -2,6 +2,7 @@
 # Backend
 #
 FROM golang:1.24-alpine AS server
+LABEL org.opencontainers.image.source=https://github.com/Ghanyy/Watcharr
 
 WORKDIR /server
 COPY server/*.go server/go.* ./

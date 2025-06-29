@@ -38,24 +38,24 @@
 		}
 	}
 
-	function getPhaseColor(phase: string): string {
+	function getPhaseColorClass(phase: string): string {
 		switch (phase) {
-			case "nomination": return "#3b82f6"; // blue
-			case "voting": return "#f59e0b"; // amber
-			case "watching": return "#10b981"; // emerald
-			default: return "#6b7280"; // gray
+			case "nomination": return "phase-nomination";
+			case "voting": return "phase-voting"; 
+			case "watching": return "phase-watching";
+			default: return "phase-default";
 		}
 	}
 
 	$: phaseIcon = getPhaseIcon(cycle.phase);
-	$: phaseColor = getPhaseColor(cycle.phase);
+	$: phaseColorClass = getPhaseColorClass(cycle.phase);
 	$: timeRemaining = getTimeRemaining(cycle.phaseEndDate);
 </script>
 
 <div class="phase-status">
 	<div class="phase-header">
 		<div class="phase-info">
-			<div class="phase-icon" style="background-color: {phaseColor}">
+			<div class="phase-icon {phaseColorClass}">
 				<Icon icon={phaseIcon} />
 			</div>
 			<div class="phase-details">
@@ -108,48 +108,98 @@
 	.phase-status {
 		background: var(--background);
 		border: 1px solid var(--border);
-		border-radius: 12px;
-		padding: 1.5rem;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		border-radius: var(--radius-lg);
+		padding: var(--space-lg);
+		box-shadow: var(--shadow-md);
+		
+		// CSS custom properties for consistent design system
+		--space-xs: 0.25rem;
+		--space-sm: 0.5rem;
+		--space-md: 1rem;
+		--space-lg: 1.5rem;
+		--space-xl: 2rem;
+		--space-2xl: 3rem;
+		
+		--radius-sm: 4px;
+		--radius-md: 8px;
+		--radius-lg: 12px;
+		--radius-xl: 16px;
+		--radius-full: 50%;
+		
+		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+		
+		@media (prefers-color-scheme: dark) {
+			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+		}
 	}
 
 	.phase-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
-		margin-bottom: 1rem;
+		margin-bottom: var(--space-md);
 		flex-wrap: wrap;
-		gap: 1rem;
+		gap: var(--space-md);
 	}
 
 	.phase-info {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-md);
 	}
 
 	.phase-icon {
 		width: 50px;
 		height: 50px;
-		border-radius: 12px;
+		border-radius: var(--radius-lg);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		color: white;
 		font-size: 1.25rem;
+		transition: transform 0.2s ease;
+		
+		&:hover {
+			transform: scale(1.05);
+		}
+		
+		&.phase-nomination {
+			background: var(--info, #3b82f6);
+		}
+		
+		&.phase-voting {
+			background: var(--warning, #f59e0b);
+		}
+		
+		&.phase-watching {
+			background: var(--success, #10b981);
+		}
+		
+		&.phase-default {
+			background: var(--text-muted, #6b7280);
+		}
 	}
 
 	.phase-details {
 		h2 {
-			margin: 0 0 0.25rem 0;
+			margin: 0 0 var(--space-xs) 0;
 			font-size: 1.5rem;
 			color: var(--text);
+			font-weight: 700;
+			line-height: 1.2;
 		}
 
 		.phase-name {
 			margin: 0;
 			color: var(--text-muted);
 			font-weight: 500;
+			font-size: 0.875rem;
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
 		}
 	}
 
@@ -157,15 +207,16 @@
 		text-align: right;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: var(--space-xs);
 	}
 
 	.time-remaining {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		font-weight: 600;
 		color: var(--primary);
+		font-size: 0.9rem;
 	}
 
 	.phase-end {
@@ -175,14 +226,19 @@
 	}
 
 	.cycle-description {
-		margin: 1rem 0;
+		margin: var(--space-md) 0;
 		color: var(--text-muted);
 		font-style: italic;
+		line-height: 1.5;
+		padding: var(--space-sm) var(--space-md);
+		background: var(--background-secondary);
+		border-radius: var(--radius-md);
+		border-left: 3px solid var(--primary);
 	}
 
 	.phase-progress {
-		margin-top: 1.5rem;
-		padding-top: 1.5rem;
+		margin-top: var(--space-lg);
+		padding-top: var(--space-lg);
 		border-top: 1px solid var(--border);
 	}
 
@@ -207,26 +263,29 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		position: relative;
 		z-index: 2;
 
 		.step-icon {
 			width: 50px;
 			height: 50px;
-			border-radius: 50%;
+			border-radius: var(--radius-full);
 			border: 3px solid var(--border);
 			background: var(--background);
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			transition: all 0.3s ease;
+			box-shadow: var(--shadow-sm);
 		}
 
 		span {
 			font-size: 0.875rem;
 			color: var(--text-muted);
 			font-weight: 500;
+			text-align: center;
+			transition: all 0.3s ease;
 		}
 
 		&.active {
@@ -234,6 +293,8 @@
 				border-color: var(--primary);
 				background: var(--primary);
 				color: white;
+				box-shadow: var(--shadow-md);
+				transform: scale(1.05);
 			}
 
 			span {
@@ -247,10 +308,12 @@
 				border-color: var(--success);
 				background: var(--success);
 				color: white;
+				box-shadow: var(--shadow-md);
 			}
 
 			span {
 				color: var(--success);
+				font-weight: 600;
 			}
 		}
 	}

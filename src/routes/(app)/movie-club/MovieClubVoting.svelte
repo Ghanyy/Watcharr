@@ -265,36 +265,75 @@
 	.voting-section {
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
+		gap: var(--space-xl);
+		
+		// CSS custom properties for consistent design system
+		--space-xs: 0.25rem;
+		--space-sm: 0.5rem;
+		--space-md: 1rem;
+		--space-lg: 1.5rem;
+		--space-xl: 2rem;
+		--space-2xl: 3rem;
+		
+		--radius-sm: 4px;
+		--radius-md: 8px;
+		--radius-lg: 12px;
+		--radius-xl: 16px;
+		--radius-full: 50%;
+		
+		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+		
+		@media (prefers-color-scheme: dark) {
+			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+		}
 	}
 
 	.section-header {
 		text-align: center;
+		margin-bottom: var(--space-lg);
 
 		h3 {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			gap: 0.5rem;
-			margin-bottom: 0.5rem;
+			gap: var(--space-sm);
+			margin: 0 0 var(--space-sm) 0;
 			font-size: 1.5rem;
+			font-weight: 700;
+			color: var(--text);
+			line-height: 1.2;
 		}
 
 		p {
 			color: var(--text-muted);
 			margin: 0;
+			line-height: 1.4;
+			font-size: 0.95rem;
 		}
 	}
 
 	.no-nominations {
 		text-align: center;
-		padding: 3rem 1rem;
+		padding: var(--space-2xl) var(--space-md);
 		color: var(--text-muted);
+		background: var(--background-secondary);
+		border-radius: var(--radius-lg);
+		border: 2px dashed var(--border);
 
 		:global(svg) {
 			font-size: 3rem;
-			margin-bottom: 1rem;
-			opacity: 0.5;
+			margin-bottom: var(--space-md);
+			opacity: 0.4;
+			color: var(--text-muted);
+		}
+		
+		p {
+			margin: 0;
+			line-height: 1.4;
 		}
 	}
 
@@ -303,104 +342,164 @@
 		justify-content: space-between;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 1rem;
-		padding: 1rem;
+		gap: var(--space-md);
+		padding: var(--space-md);
 		background: var(--background);
 		border: 1px solid var(--border);
-		border-radius: 8px;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
 	}
 
 	.vote-status {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-md);
 
 		.votes-count {
 			font-weight: 600;
 			color: var(--primary);
+			font-size: 1rem;
+			padding: var(--space-xs) var(--space-sm);
+			background: var(--background-secondary);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border);
 		}
 
 		.clear-votes-btn {
-			background: var(--danger);
+			display: inline-flex;
+			align-items: center;
+			gap: var(--space-xs);
+			padding: var(--space-sm) var(--space-md);
+			background: var(--danger, #dc3545);
 			color: white;
 			border: none;
-			padding: 0.5rem 1rem;
-			border-radius: 4px;
+			border-radius: var(--radius-md);
 			font-size: 0.875rem;
+			font-weight: 500;
 			cursor: pointer;
-			display: flex;
-			align-items: center;
-			gap: 0.25rem;
+			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
 
 			&:hover:not(:disabled) {
-				background: var(--danger-dark);
+				background: var(--danger-dark, #c82333);
+				transform: translateY(-1px);
+				box-shadow: var(--shadow-md);
 			}
 
 			&:disabled {
 				opacity: 0.6;
 				cursor: not-allowed;
+				transform: none;
+				box-shadow: var(--shadow-sm);
+			}
+			
+			&:focus {
+				outline: none;
+				box-shadow: var(--shadow-md), 0 0 0 3px rgba(220, 53, 69, 0.2);
+			}
+			
+			&:active:not(:disabled) {
+				transform: translateY(0);
+				box-shadow: var(--shadow-sm);
 			}
 		}
 	}
 
 	.submit-votes-btn {
-		background: var(--success);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-sm) var(--space-lg);
+		background: var(--success, #28a745);
 		color: white;
 		border: none;
-		padding: 0.75rem 1.5rem;
-		border-radius: 6px;
+		border-radius: var(--radius-md);
 		font-size: 1rem;
+		font-weight: 600;
 		cursor: pointer;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		transition: all 0.2s ease;
+		box-shadow: var(--shadow-md);
+		min-width: 140px;
+		justify-content: center;
 
 		&:hover:not(:disabled) {
-			background: var(--success-dark);
+			background: var(--success-dark, #218838);
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-lg);
 		}
 
 		&:disabled {
 			opacity: 0.6;
 			cursor: not-allowed;
+			transform: none;
+			box-shadow: var(--shadow-sm);
+		}
+		
+		&:focus {
+			outline: none;
+			box-shadow: var(--shadow-lg), 0 0 0 3px rgba(40, 167, 69, 0.2);
+		}
+		
+		&:active:not(:disabled) {
+			transform: translateY(0);
+			box-shadow: var(--shadow-md);
 		}
 	}
 
 	.nominations-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-		gap: 1rem;
+		gap: var(--space-md);
 	}
 
 	.nomination-card {
 		background: var(--background);
 		border: 2px solid var(--border);
-		border-radius: 8px;
+		border-radius: var(--radius-lg);
 		overflow: hidden;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: all 0.3s ease;
 		position: relative;
+		box-shadow: var(--shadow-sm);
 
 		&:hover {
 			transform: translateY(-2px);
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			box-shadow: var(--shadow-lg);
+			border-color: var(--primary);
 		}
 
 		&.selected {
 			border-color: var(--primary);
-			box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+			box-shadow: var(--shadow-md);
+			background: var(--background-secondary);
+			position: relative;
+			
+			&::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: var(--primary);
+				opacity: 0.05;
+				border-radius: inherit;
+				pointer-events: none;
+			}
 		}
 
 		.priority-badge {
 			position: absolute;
-			top: 0.5rem;
-			right: 0.5rem;
+			top: var(--space-sm);
+			right: var(--space-sm);
 			background: var(--primary);
 			color: white;
-			padding: 0.25rem 0.5rem;
-			border-radius: 4px;
+			padding: var(--space-xs) var(--space-sm);
+			border-radius: var(--radius-md);
 			font-size: 0.75rem;
 			font-weight: 600;
 			z-index: 100;
+			box-shadow: var(--shadow-md);
+			border: 2px solid white;
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
 		}
 
 		.poster-container {
@@ -453,17 +552,20 @@
 		}
 
 		.nomination-details {
-			padding: 1rem;
+			padding: var(--space-md);
+			position: relative;
+			z-index: 1;
 
 			h5 {
-				margin: 0 0 0.5rem 0;
-				font-size: 0.9rem;
+				margin: 0 0 var(--space-sm) 0;
+				font-size: 0.95rem;
 				font-weight: 600;
 				line-height: 1.2;
+				color: var(--text);
 			}
 
 			.nominators {
-				margin: 0 0 0.5rem 0;
+				margin: 0 0 var(--space-sm) 0;
 			}
 
 			.nominator-label {
@@ -471,6 +573,7 @@
 				color: var(--text-muted);
 				margin: 0;
 				font-weight: 500;
+				line-height: 1.4;
 			}
 
 			.nominator {
@@ -479,57 +582,73 @@
 			}
 
 			.reasons {
-				margin: 0 0 1rem 0;
+				margin: 0 0 var(--space-md) 0;
 			}
 
 			.reason-container {
-				margin-bottom: 0.5rem;
+				margin-bottom: var(--space-sm);
+				background: var(--background-secondary);
+				padding: var(--space-sm);
+				border-radius: var(--radius-md);
+				border-left: 3px solid var(--primary);
 			}
 
 			.reason-container:last-child {
-				margin-bottom: 1rem;
+				margin-bottom: var(--space-md);
 			}
 
 			.reason {
-				font-size: 0.8rem;
+				font-size: 0.85rem;
 				color: var(--text-muted);
 				font-style: italic;
-				margin: 0 0 0.25rem 0;
-				line-height: 1.3;
+				margin: 0 0 var(--space-xs) 0;
+				line-height: 1.4;
 			}
 
 			.expand-btn {
 				background: none;
 				border: none;
 				color: var(--primary);
-				font-size: 0.7rem;
+				font-size: 0.75rem;
 				cursor: pointer;
-				padding: 0;
+				padding: var(--space-xs) 0;
 				text-decoration: underline;
 				font-family: inherit;
+				font-weight: 500;
+				transition: color 0.2s ease;
 				
 				&:hover {
-					color: var(--primary-dark);
+					color: var(--primary-dark, var(--primary));
+				}
+				
+				&:focus {
+					outline: none;
+					text-decoration: none;
+					box-shadow: 0 0 0 2px var(--primary);
+					border-radius: var(--radius-sm);
 				}
 			}
 
 			.priority-controls {
 				display: flex;
-				gap: 0.5rem;
-				margin-top: 0.75rem;
+				gap: var(--space-sm);
+				margin-top: var(--space-sm);
 
 				.priority-btn {
 					flex: 1;
-					background: var(--background-secondary);
-					border: 1px solid var(--border);
-					padding: 0.5rem;
-					border-radius: 4px;
-					font-size: 0.75rem;
-					cursor: pointer;
-					display: flex;
+					display: inline-flex;
 					align-items: center;
 					justify-content: center;
-					gap: 0.25rem;
+					gap: var(--space-xs);
+					padding: var(--space-sm);
+					background: var(--background-secondary);
+					border: 1px solid var(--border);
+					border-radius: var(--radius-md);
+					font-size: 0.75rem;
+					font-weight: 500;
+					cursor: pointer;
+					transition: all 0.2s ease;
+					box-shadow: var(--shadow-sm);
 
 					&:first-child :global(svg) {
 						transform: rotate(180deg);
@@ -541,11 +660,20 @@
 
 					&:hover:not(:disabled) {
 						background: var(--background);
+						border-color: var(--primary);
+						color: var(--primary);
+						box-shadow: var(--shadow-md);
 					}
 
 					&:disabled, &.disabled {
 						opacity: 0.5;
 						cursor: not-allowed;
+						box-shadow: var(--shadow-sm);
+					}
+					
+					&:focus {
+						outline: none;
+						box-shadow: var(--shadow-md), 0 0 0 2px var(--primary);
 					}
 				}
 			}
@@ -555,61 +683,162 @@
 	.vote-summary {
 		background: var(--background);
 		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 1.5rem;
+		border-radius: var(--radius-lg);
+		padding: var(--space-lg);
+		box-shadow: var(--shadow-md);
+		border-left: 4px solid var(--primary);
 
 		h4 {
-			margin: 0 0 1rem 0;
+			margin: 0 0 var(--space-md) 0;
 			color: var(--primary);
+			font-weight: 600;
+			font-size: 1.125rem;
 		}
 
 		.vote-list {
 			display: flex;
 			flex-direction: column;
-			gap: 0.5rem;
+			gap: var(--space-sm);
 		}
 
 		.vote-item {
 			display: flex;
 			align-items: center;
-			gap: 1rem;
+			gap: var(--space-md);
+			padding: var(--space-sm) var(--space-md);
+			background: var(--background-secondary);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border);
+			transition: all 0.2s ease;
+			
+			&:hover {
+				background: var(--background);
+				border-color: var(--primary);
+			}
 
 			.priority {
 				font-weight: 600;
-				color: var(--primary);
+				color: white;
+				background: var(--primary);
+				padding: var(--space-xs) var(--space-sm);
+				border-radius: var(--radius-md);
 				min-width: 80px;
+				text-align: center;
+				font-size: 0.8rem;
+				text-transform: uppercase;
+				letter-spacing: 0.025em;
 			}
 
 			.title {
 				color: var(--text);
+				font-weight: 500;
+				flex: 1;
 			}
 		}
 	}
 
 	@media (max-width: 768px) {
+		.voting-section {
+			gap: var(--space-lg);
+		}
+		
+		.section-header {
+			margin-bottom: var(--space-md);
+			
+			h3 {
+				font-size: 1.25rem;
+			}
+			
+			p {
+				font-size: 0.9rem;
+			}
+		}
+		
 		.voting-controls {
 			flex-direction: column;
 			align-items: stretch;
+			gap: var(--space-sm);
+			padding: var(--space-sm);
 		}
 
 		.vote-status {
 			justify-content: space-between;
+			gap: var(--space-sm);
+			
+			.votes-count {
+				font-size: 0.9rem;
+			}
+			
+			.clear-votes-btn {
+				padding: var(--space-xs) var(--space-sm);
+				font-size: 0.8rem;
+			}
+		}
+		
+		.submit-votes-btn {
+			padding: var(--space-xs) var(--space-md);
+			font-size: 0.9rem;
+			min-width: 120px;
 		}
 
 		.nominations-grid {
 			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-			gap: 0.75rem;
+			gap: var(--space-sm);
 		}
 
-		.nomination-card .nomination-details {
-			padding: 0.75rem;
-
-			h5 {
-				font-size: 0.85rem;
+		.nomination-card {
+			.priority-badge {
+				top: var(--space-xs);
+				right: var(--space-xs);
+				padding: var(--space-xs);
+				font-size: 0.7rem;
 			}
+			
+			.nomination-details {
+				padding: var(--space-sm);
 
-			.reason, .nominator {
-				font-size: 0.75rem;
+				h5 {
+					font-size: 0.85rem;
+				}
+
+				.reason, .nominator-label {
+					font-size: 0.75rem;
+				}
+				
+				.reason-container {
+					padding: var(--space-xs);
+				}
+				
+				.priority-controls {
+					gap: var(--space-xs);
+					
+					.priority-btn {
+						padding: var(--space-xs);
+						font-size: 0.7rem;
+					}
+				}
+			}
+		}
+		
+		.vote-summary {
+			padding: var(--space-md);
+			
+			h4 {
+				font-size: 1rem;
+			}
+			
+			.vote-item {
+				padding: var(--space-xs) var(--space-sm);
+				gap: var(--space-sm);
+				
+				.priority {
+					min-width: 70px;
+					font-size: 0.75rem;
+				}
+				
+				.title {
+					font-size: 0.85rem;
+				}
 			}
 		}
 	}
