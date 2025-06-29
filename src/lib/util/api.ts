@@ -391,6 +391,27 @@ export async function getMovieClubCurrent(): Promise<MovieClubCycleResponse | nu
 }
 
 /**
+ * Get all active movie club cycles with user data
+ */
+export async function getActiveMovieClubCycles(): Promise<MovieClubCycleResponse[]> {
+	try {
+		const response = await axios.get("/movie-club/cycles/active");
+		return response.data;
+	} catch (err: any) {
+		if (err.response?.status === 404) {
+			const errorMessage = err.response?.data?.error || "";
+			if (errorMessage.toLowerCase().includes("not enabled")) {
+				// Movie club is disabled - let the caller handle this
+				throw err;
+			}
+			return []; // No active cycles
+		}
+		console.error("getActiveMovieClubCycles failed!", err);
+		throw err;
+	}
+}
+
+/**
  * Nominate a movie for the current cycle
  */
 export async function nominateMovie(request: MovieClubNominationRequest): Promise<boolean> {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { getMovieClubCurrent, getMovieClubSettings } from "@/lib/util/api";
+	import { getMovieClubCurrent, getActiveMovieClubCycles, getMovieClubSettings } from "@/lib/util/api";
 	import type { MovieClubCycleResponse, MovieClubSettings } from "@/types";
 	import Spinner from "@/lib/Spinner.svelte";
 	import MovieClubDashboard from "./MovieClubDashboard.svelte";
@@ -15,6 +15,7 @@
 	import Icon from "@/lib/Icon.svelte";
 
 	let cycleData: MovieClubCycleResponse | null = null;
+	let allActiveCycles: MovieClubCycleResponse[] = [];
 	let settings: MovieClubSettings | null = null;
 	let loading = true;
 	let error: string | null = null;
@@ -26,22 +27,24 @@
 	onMount(async () => {
 		try {
 			// Fetch both cycle data and settings
-			const [cycleResult, settingsResult] = await Promise.allSettled([
-				getMovieClubCurrent(),
+			const [cyclesResult, settingsResult] = await Promise.allSettled([
+				getActiveMovieClubCycles(),
 				getMovieClubSettings()
 			]);
 
-			// Handle cycle data
-			if (cycleResult.status === "fulfilled") {
-				cycleData = cycleResult.value;
+			// Handle cycles data
+			if (cyclesResult.status === "fulfilled") {
+				allActiveCycles = cyclesResult.value;
+				cycleData = allActiveCycles.length > 0 ? allActiveCycles[0] : null;
 			} else {
-				const err = cycleResult.reason;
+				const err = cyclesResult.reason;
 				if (err.response?.status === 404) {
 					const errorMessage = err.response?.data?.error || "";
 					if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
 						movieClubDisabled = true;
 					} else {
-						cycleData = null; // No active cycle
+						allActiveCycles = []; // No active cycles
+						cycleData = null;
 					}
 				} else {
 					error = err.response?.data?.error || "Failed to load movie club data";
@@ -51,10 +54,17 @@
 			// Handle settings
 			if (settingsResult.status === "fulfilled") {
 				settings = settingsResult.value;
-				// Add settings to cycle data if available
-				if (cycleData && settings) {
-					cycleData.maxNominations = settings.nominationsPerUser;
-					cycleData.maxVotes = settings.votesPerUser;
+				// Add settings to all cycle data if available
+				if (settings) {
+					allActiveCycles = allActiveCycles.map(cycle => ({
+						...cycle,
+						maxNominations: settings.nominationsPerUser,
+						maxVotes: settings.votesPerUser
+					}));
+					if (cycleData) {
+						cycleData.maxNominations = settings.nominationsPerUser;
+						cycleData.maxVotes = settings.votesPerUser;
+					}
 				}
 			} else {
 				console.warn("Failed to load movie club settings:", settingsResult.reason);
@@ -71,11 +81,19 @@
 		error = null;
 		movieClubDisabled = false;
 		try {
-			cycleData = await getMovieClubCurrent();
+			allActiveCycles = await getActiveMovieClubCycles();
+			cycleData = allActiveCycles.length > 0 ? allActiveCycles[0] : null;
 			// Re-apply settings if available
-			if (cycleData && settings) {
-				cycleData.maxNominations = settings.nominationsPerUser;
-				cycleData.maxVotes = settings.votesPerUser;
+			if (settings) {
+				allActiveCycles = allActiveCycles.map(cycle => ({
+					...cycle,
+					maxNominations: settings.nominationsPerUser,
+					maxVotes: settings.votesPerUser
+				}));
+				if (cycleData) {
+					cycleData.maxNominations = settings.nominationsPerUser;
+					cycleData.maxVotes = settings.votesPerUser;
+				}
 			}
 		} catch (err: any) {
 			if (err.response?.status === 404) {
@@ -83,7 +101,8 @@
 				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
 					movieClubDisabled = true;
 				} else {
-					cycleData = null; // No active cycle
+					allActiveCycles = []; // No active cycles
+					cycleData = null;
 				}
 			} else {
 				error = err.response?.data?.error || "Failed to load movie club data";
@@ -93,8 +112,10 @@
 		}
 	}
 
-	async function deleteCycle() {
-		if (!cycleData?.cycle?.id) return;
+	async function deleteCycle(cycleId?: number) {
+		// Use the provided cycleId or fall back to the first cycle's ID for backwards compatibility
+		const targetCycleId = cycleId || cycleData?.cycle?.id;
+		if (!targetCycleId) return;
 		
 		if (!confirm("Are you sure you want to delete this movie club cycle? This will remove all nominations and votes.")) {
 			return;
@@ -103,9 +124,9 @@
 		const nid = notify({ text: "Deleting cycle...", type: "loading" });
 		
 		try {
-			await axios.delete(`/movie-club/cycle/${cycleData.cycle.id}`);
+			await axios.delete(`/movie-club/cycle/${targetCycleId}`);
 			notify({ id: nid, text: "Cycle deleted successfully!", type: "success" });
-			await refreshData(); // Refresh to show no active cycle
+			await refreshData(); // Refresh to update the cycles list
 		} catch (err: any) {
 			console.error("Failed to delete cycle:", err);
 			const message = err.response?.data?.error || "Failed to delete cycle";
@@ -142,10 +163,10 @@
 				<p>Ask an admin to enable it in the server settings.</p>
 			{/if}
 		</div>
-	{:else if !cycleData}
+	{:else if allActiveCycles.length === 0}
 		<div class="no-cycle">
 			<h2>No Active Movie Club</h2>
-			<p>There's no active movie club cycle running.</p>
+			<p>There are no active movie club cycles running.</p>
 			{#if isAdmin}
 				<p>As an admin, you can create a new cycle to get started!</p>
 				<button class="create-cycle-btn" on:click={() => showCreateModal = true}>
@@ -156,18 +177,32 @@
 			{/if}
 		</div>
 	{:else}
-		{#if isAdmin}
-			<div class="admin-controls">
-				<button 
-					class="delete-cycle-btn" 
-					on:click={deleteCycle}
-					disabled={loading}
-				>
-					Delete Current Cycle
-				</button>
-			</div>
-		{/if}
-		<MovieClubDashboard {cycleData} on:refresh={refreshData} />
+		<div class="cycles-container">
+			{#each allActiveCycles as cycleData, index}
+				<div class="cycle-section" class:watching-phase={cycleData.cycle.phase === 'watching'}>
+					<div class="cycle-header">
+						<h3>{cycleData.cycle.name || `Movie Club Cycle #${cycleData.cycle.id}`}</h3>
+						<div class="cycle-meta">
+							<span class="phase-badge phase-{cycleData.cycle.phase}">
+								{cycleData.cycle.phase === 'nomination' ? 'Nominating' : 
+								 cycleData.cycle.phase === 'voting' ? 'Voting' : 'Watching'}
+							</span>
+							{#if isAdmin}
+								<button 
+									class="delete-cycle-btn-small" 
+									on:click={() => deleteCycle(cycleData.cycle.id)}
+									disabled={loading}
+									title="Delete this cycle"
+								>
+									×
+								</button>
+							{/if}
+						</div>
+					</div>
+					<MovieClubDashboard {cycleData} on:refresh={refreshData} />
+				</div>
+			{/each}
+		</div>
 	{/if}
 
 	<!-- Always visible admin controls at bottom -->
@@ -360,6 +395,115 @@
 		.start-new-cycle-btn {
 			font-size: 0.9rem;
 			padding: 0.625rem 1.25rem;
+		}
+	}
+
+	.cycles-container {
+		display: flex;
+		flex-direction: column;
+		gap: 2rem;
+	}
+
+	.cycle-section {
+		background: var(--background-secondary);
+		border-radius: 12px;
+		padding: 1.5rem;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		border: 2px solid transparent;
+		transition: all 0.3s ease;
+	}
+
+	.cycle-section.watching-phase {
+		border-color: var(--success, #28a745);
+		box-shadow: 0 4px 16px rgba(40, 167, 69, 0.2);
+	}
+
+	.cycle-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1rem;
+		padding-bottom: 1rem;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.cycle-header h3 {
+		margin: 0;
+		font-size: 1.25rem;
+		color: var(--text);
+	}
+
+	.cycle-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.phase-badge {
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	.phase-badge.phase-nomination {
+		background: var(--info, #17a2b8);
+		color: white;
+	}
+
+	.phase-badge.phase-voting {
+		background: var(--warning, #ffc107);
+		color: #212529;
+	}
+
+	.phase-badge.phase-watching {
+		background: var(--success, #28a745);
+		color: white;
+	}
+
+	.delete-cycle-btn-small {
+		background: var(--danger, #dc3545);
+		color: white;
+		border: none;
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		cursor: pointer;
+		font-size: 1rem;
+		font-weight: bold;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s ease;
+
+		&:hover:not(:disabled) {
+			background: var(--danger-dark, #c82333);
+			transform: scale(1.1);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+			transform: none;
+		}
+	}
+
+	@media (max-width: 768px) {
+		.cycle-section {
+			padding: 1rem;
+		}
+
+		.cycle-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.5rem;
+		}
+
+		.cycle-meta {
+			width: 100%;
+			justify-content: space-between;
 		}
 	}
 </style>

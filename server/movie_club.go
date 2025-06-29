@@ -158,11 +158,11 @@ func (c *MovieClubCycle) GetNextPhase() MovieClubPhase {
 
 // Database helper functions
 
-// GetActiveMovieClubCycle returns the currently active movie club cycle
-func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
-	slog.Debug("GetActiveMovieClubCycle: Looking for active cycle")
+// GetActiveMovieClubCycles returns all currently active movie club cycles with proper sorting
+func GetActiveMovieClubCycles(db *gorm.DB) ([]MovieClubCycle, error) {
+	slog.Debug("GetActiveMovieClubCycles: Looking for active cycles")
 	
-	var cycle MovieClubCycle
+	var cycles []MovieClubCycle
 	result := db.Where("active = ?", true).
 		Preload("WinnerContent").
 		Preload("AllNominations.Content").
@@ -171,22 +171,40 @@ func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
 			return db.Joins("JOIN contents ON movie_club_nominations.content_id = contents.id").
 				Order("contents.title ASC")
 		}).
-		First(&cycle)
+		Find(&cycles)
 	
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			slog.Debug("GetActiveMovieClubCycle: No active cycle found")
-		} else {
-			slog.Error("GetActiveMovieClubCycle: Database error", "error", result.Error)
-		}
+		slog.Error("GetActiveMovieClubCycles: Database error", "error", result.Error)
 		return nil, result.Error
 	}
 	
-	// Group nominations by content
-	cycle.Nominations = GroupNominationsByContent(cycle.AllNominations)
+	// Group nominations for each cycle
+	for i := range cycles {
+		cycles[i].Nominations = GroupNominationsByContent(cycles[i].AllNominations)
+	}
 	
-	slog.Debug("GetActiveMovieClubCycle: Found active cycle", "cycleId", cycle.ID, "phase", cycle.Phase, "active", cycle.Active)
-	return &cycle, nil
+	// Sort cycles according to the rules:
+	// 1. Watching phase cycles first, sorted by time left to end (ascending)
+	// 2. Other cycles sorted by time left to start watching phase (ascending)
+	SortActiveMovieClubCycles(cycles)
+	
+	slog.Debug("GetActiveMovieClubCycles: Found active cycles", "count", len(cycles))
+	return cycles, nil
+}
+
+// GetActiveMovieClubCycle returns the currently active movie club cycle (backwards compatibility)
+// Now returns the first cycle from the sorted list of active cycles
+func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
+	cycles, err := GetActiveMovieClubCycles(db)
+	if err != nil {
+		return nil, err
+	}
+	
+	if len(cycles) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	
+	return &cycles[0], nil
 }
 
 // GetMovieClubNominationsForCycle returns all nominations for a specific cycle
@@ -249,6 +267,56 @@ func GroupNominationsByContent(nominations []MovieClubNomination) []MovieClubNom
 	})
 	
 	return groups
+}
+
+// SortActiveMovieClubCycles sorts cycles according to the specified rules:
+// 1. Watching phase cycles first, sorted by time left to end (ascending - less time left = higher priority)
+// 2. Other cycles sorted by time left to start watching phase (ascending - less time to watching = higher priority)
+func SortActiveMovieClubCycles(cycles []MovieClubCycle) {
+	now := time.Now()
+	
+	sort.Slice(cycles, func(i, j int) bool {
+		cycleA := cycles[i]
+		cycleB := cycles[j]
+		
+		// Both cycles in watching phase - sort by time left to end (ascending)
+		if cycleA.IsWatchingPhase() && cycleB.IsWatchingPhase() {
+			timeLeftA := cycleA.PhaseEndDate.Sub(now)
+			timeLeftB := cycleB.PhaseEndDate.Sub(now)
+			return timeLeftA < timeLeftB
+		}
+		
+		// Only A is in watching phase - A comes first
+		if cycleA.IsWatchingPhase() && !cycleB.IsWatchingPhase() {
+			return true
+		}
+		
+		// Only B is in watching phase - B comes first
+		if !cycleA.IsWatchingPhase() && cycleB.IsWatchingPhase() {
+			return false
+		}
+		
+		// Both cycles NOT in watching phase - sort by time left to start watching phase
+		timeToWatchingA := cycleA.WatchingEndDate.Sub(now)
+		timeToWatchingB := cycleB.WatchingEndDate.Sub(now)
+		
+		// For cycles in nomination/voting phase, calculate time until watching phase starts
+		if cycleA.IsNominationPhase() {
+			// Time until watching = time to finish nomination + voting duration + time from watching start to end
+			timeToWatchingA = cycleA.VotingEndDate.Sub(now)
+		} else if cycleA.IsVotingPhase() {
+			// Time until watching = time to finish voting + time from watching start to end  
+			timeToWatchingA = cycleA.VotingEndDate.Sub(now)
+		}
+		
+		if cycleB.IsNominationPhase() {
+			timeToWatchingB = cycleB.VotingEndDate.Sub(now)
+		} else if cycleB.IsVotingPhase() {
+			timeToWatchingB = cycleB.VotingEndDate.Sub(now)
+		}
+		
+		return timeToWatchingA < timeToWatchingB
+	})
 }
 
 // GetMovieClubVotesForCycle returns all votes for a specific cycle
@@ -405,6 +473,9 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	// Get current cycle and user data
 	movieClub.GET("/current", b.getCurrentMovieClubCycle)
 	
+	// Get all active cycles with user data
+	movieClub.GET("/cycles/active", b.getActiveMovieClubCycles)
+	
 	// Nomination endpoints
 	movieClub.POST("/nominate", b.nominateMovie)
 	movieClub.DELETE("/nominate/:id", b.removeNomination)
@@ -491,6 +562,76 @@ func (b *BaseRouter) getCurrentMovieClubCycle(c *gin.Context) {
 	}
 	
 	c.JSON(http.StatusOK, response)
+}
+
+// getActiveMovieClubCycles returns all active cycles with user-specific data
+func (b *BaseRouter) getActiveMovieClubCycles(c *gin.Context) {
+	// Check if movie club is enabled
+	if !Config.MOVIE_CLUB.Enabled {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Movie club is not enabled"})
+		return
+	}
+	
+	userID := c.GetUint("userId")
+	
+	// Get all active cycles
+	cycles, err := GetActiveMovieClubCycles(b.db)
+	if err != nil {
+		slog.Error("Failed to get active movie club cycles", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get cycles"})
+		return
+	}
+	
+	if len(cycles) == 0 {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycles"})
+		return
+	}
+	
+	slog.Debug("Found active movie club cycles", "count", len(cycles))
+	
+	// Build response with user data for each cycle
+	var responses []MovieClubCycleResponse
+	for _, cycle := range cycles {
+		// Get user nominations for this cycle
+		userNominations, err := GetUserNominationsForCycle(b.db, cycle.ID, userID)
+		if err != nil {
+			slog.Error("Failed to get user nominations", "error", err, "cycleId", cycle.ID)
+			continue
+		}
+		
+		// Get user votes for this cycle
+		userVotes, err := GetUserVotesForCycle(b.db, cycle.ID, userID)
+		if err != nil {
+			slog.Error("Failed to get user votes", "error", err, "cycleId", cycle.ID)
+			continue
+		}
+		
+		// Calculate abilities for this cycle
+		canNominate := cycle.IsNominationPhase() && len(userNominations) < Config.MOVIE_CLUB.NominationsPerUser
+		canVote := cycle.IsVotingPhase() && len(userVotes) < Config.MOVIE_CLUB.VotesPerUser
+		
+		// Get vote results if in watching phase
+		var voteResults []MovieClubVoteCount
+		if cycle.IsWatchingPhase() {
+			voteResults, err = CalculateVoteResults(b.db, cycle.ID)
+			if err != nil {
+				slog.Error("Failed to calculate vote results", "error", err, "cycleId", cycle.ID)
+			}
+		}
+		
+		response := MovieClubCycleResponse{
+			Cycle:           cycle,
+			UserNominations: userNominations,
+			UserVotes:       userVotes,
+			VoteResults:     voteResults,
+			CanNominate:     canNominate,
+			CanVote:         canVote,
+		}
+		
+		responses = append(responses, response)
+	}
+	
+	c.JSON(http.StatusOK, responses)
 }
 
 // nominateMovie allows a user to nominate a movie for the current cycle
@@ -1038,60 +1179,40 @@ func checkMovieClubTransition(db *gorm.DB) {
 	
 	slog.Debug("Checking movie club cycle transitions")
 	
-	// Get active cycle
-	cycle, err := GetActiveMovieClubCycle(db)
+	// Get all active cycles
+	cycles, err := GetActiveMovieClubCycles(db)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			slog.Error("Failed to get active movie club cycle for transition check", "error", err)
-		}
+		slog.Error("Failed to get active movie club cycles for transition check", "error", err)
 		return
 	}
 	
-	// Check if transition is needed
-	if !cycle.ShouldTransitionPhase() {
-		return
-	}
-	
-	slog.Info("Transitioning movie club cycle phase", "cycleId", cycle.ID, "currentPhase", cycle.Phase)
-	
-	// Handle special case for watching -> nomination transition (start new cycle)
-	if cycle.Phase == PHASE_WATCHING {
-		// End current cycle
-		cycle.Active = false
-		if err := db.Save(cycle).Error; err != nil {
-			slog.Error("Failed to deactivate completed cycle", "error", err)
-			return
+	// Process each cycle for transitions
+	for _, cycle := range cycles {
+		// Check if transition is needed
+		if !cycle.ShouldTransitionPhase() {
+			continue
 		}
 		
-		// Create new cycle
-		now := time.Now()
-		phaseDuration := time.Duration(Config.MOVIE_CLUB.PhaseDurationDays) * 24 * time.Hour
+		slog.Info("Transitioning movie club cycle phase", "cycleId", cycle.ID, "currentPhase", cycle.Phase)
 		
-		newCycle := MovieClubCycle{
-			Name:              "Movie Club Cycle",
-			Description:       "Automated movie club cycle",
-			Phase:             PHASE_NOMINATION,
-			PhaseStartDate:    now,
-			PhaseEndDate:      now.Add(phaseDuration),
-			NominationEndDate: now.Add(phaseDuration),
-			VotingEndDate:     now.Add(2 * phaseDuration),
-			WatchingEndDate:   now.Add(3 * phaseDuration),
-			Active:            true,
+		// Handle special case for watching phase ending - deactivate cycle
+		if cycle.Phase == PHASE_WATCHING {
+			// End current cycle - set to inactive
+			cycle.Active = false
+			if err := db.Save(&cycle).Error; err != nil {
+				slog.Error("Failed to deactivate completed cycle", "error", err, "cycleId", cycle.ID)
+				continue
+			}
+			
+			slog.Info("Deactivated completed watching phase cycle", "cycleId", cycle.ID)
+		} else {
+			// Regular phase transition (nomination -> voting, voting -> watching)
+			if err := TransitionCyclePhase(db, &cycle); err != nil {
+				slog.Error("Failed to transition cycle phase", "error", err, "cycleId", cycle.ID)
+				continue
+			}
+			
+			slog.Info("Successfully transitioned cycle phase", "cycleId", cycle.ID, "newPhase", cycle.Phase)
 		}
-		
-		if err := db.Create(&newCycle).Error; err != nil {
-			slog.Error("Failed to create new movie club cycle", "error", err)
-			return
-		}
-		
-		slog.Info("Created new movie club cycle", "cycleId", newCycle.ID)
-	} else {
-		// Regular phase transition
-		if err := TransitionCyclePhase(db, cycle); err != nil {
-			slog.Error("Failed to transition cycle phase", "error", err)
-			return
-		}
-		
-		slog.Info("Successfully transitioned cycle phase", "cycleId", cycle.ID, "newPhase", cycle.Phase)
 	}
 }
