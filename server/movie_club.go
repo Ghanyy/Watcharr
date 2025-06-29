@@ -387,7 +387,7 @@ func (b *BaseRouter) getCurrentMovieClubCycle(c *gin.Context) {
 		return
 	}
 	
-	userID := c.GetUint("UserID")
+	userID := c.GetUint("userId")
 	
 	// Get active cycle
 	cycle, err := GetActiveMovieClubCycle(b.db)
@@ -453,7 +453,7 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 		return
 	}
 	
-	userID := c.GetUint("UserID")
+	userID := c.GetUint("userId")
 	
 	var req MovieClubNominationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -532,7 +532,7 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 
 // removeNomination allows a user to remove their nomination
 func (b *BaseRouter) removeNomination(c *gin.Context) {
-	userID := c.GetUint("UserID")
+	userID := c.GetUint("userId")
 	nominationID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid nomination ID"})
@@ -581,7 +581,7 @@ func (b *BaseRouter) voteForMovies(c *gin.Context) {
 		return
 	}
 	
-	userID := c.GetUint("UserID")
+	userID := c.GetUint("userId")
 	
 	var req MovieClubVoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -668,7 +668,7 @@ func (b *BaseRouter) voteForMovies(c *gin.Context) {
 
 // clearVotes allows a user to clear all their votes
 func (b *BaseRouter) clearVotes(c *gin.Context) {
-	userID := c.GetUint("UserID")
+	userID := c.GetUint("userId")
 	
 	// Get active cycle
 	cycle, err := GetActiveMovieClubCycle(b.db)

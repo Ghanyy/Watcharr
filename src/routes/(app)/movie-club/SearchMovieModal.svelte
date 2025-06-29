@@ -120,7 +120,7 @@
 					{#each searchResults as movie}
 						<div class="movie-result" on:click={() => selectMovie(movie)}>
 							<div class="poster-small">
-								<Poster media={movie} showRating={false} disableInteraction={true} />
+								<Poster media={movie} showRating={false} disableInteraction={true} small={true} />
 							</div>
 							<div class="movie-info">
 								<h4>{movie.title}</h4>
@@ -157,7 +157,7 @@
 
 			<div class="selected-movie">
 				<div class="poster-large">
-					<Poster media={selectedMovie} showRating={false} disableInteraction={true} />
+					<Poster media={selectedMovie} showRating={false} disableInteraction={true} small={false} />
 				</div>
 				<div class="movie-details">
 					<h4>{selectedMovie.title}</h4>
@@ -197,8 +197,8 @@
 <style lang="scss">
 	.search-modal {
 		width: 100%;
-		max-width: 600px;
-		max-height: 80vh;
+		max-width: 700px;
+		max-height: 85vh;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
@@ -304,12 +304,14 @@
 		padding: 1rem;
 		border-radius: 8px;
 		cursor: pointer;
-		transition: background-color 0.2s ease;
+		transition: all 0.2s ease;
 		border: 1px solid transparent;
 
 		&:hover {
 			background: var(--background-secondary);
-			border-color: var(--border);
+			border-color: var(--primary);
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px var(--shadow-color);
 		}
 
 		.poster-small {
@@ -318,6 +320,18 @@
 			flex-shrink: 0;
 			border-radius: 4px;
 			overflow: hidden;
+			position: relative;
+
+			:global(.container) {
+				width: 100% !important;
+				height: 100% !important;
+				transform: none !important;
+				position: static !important;
+			}
+
+			:global(.active .container) {
+				transform: none !important;
+			}
 		}
 
 		.movie-info {
@@ -394,6 +408,18 @@
 			width: 120px;
 			height: 180px;
 			flex-shrink: 0;
+			position: relative;
+
+			:global(.container) {
+				width: 100% !important;
+				height: 100% !important;
+				transform: none !important;
+				position: static !important;
+			}
+
+			:global(.active .container) {
+				transform: none !important;
+			}
 		}
 
 		.movie-details {
@@ -481,6 +507,7 @@
 
 			&:hover {
 				background: var(--background-secondary);
+				border-color: var(--text-muted);
 			}
 		}
 
@@ -498,19 +525,42 @@
 	@media (max-width: 768px) {
 		.search-modal {
 			max-height: 90vh;
+			max-width: 95vw;
+		}
+
+		.search-section {
+			padding: 1rem;
+		}
+
+		.nomination-section {
+			padding: 1rem;
+		}
+
+		.movie-result {
+			padding: 0.75rem;
+			gap: 0.75rem;
+
+			.poster-small {
+				width: 50px;
+				height: 75px;
+			}
 		}
 
 		.selected-movie {
 			flex-direction: column;
 			text-align: center;
+			gap: 1rem;
 
 			.poster-large {
 				align-self: center;
+				width: 100px;
+				height: 150px;
 			}
 		}
 
 		.action-buttons {
 			flex-direction: column;
+			gap: 0.75rem;
 
 			button {
 				justify-content: center;

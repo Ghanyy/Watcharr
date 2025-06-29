@@ -57,3 +57,27 @@ $success-hover: #1e7e34;
 
 // For ratings that are on bg-color.
 $rating-color: var(--rating-color);
+
+// Modern theme variables for movie club and other components
+:root {
+	--primary: #007bff;
+	--primary-dark: #0056b3;
+	--danger: #dc3545;
+	--danger-dark: #c82333;
+	--success: #28a745;
+	--background: var(--bg-color);
+	--background-secondary: var(--bg-color-accent);
+	--text: var(--text-color);
+	--text-muted: var(--text-color-accent);
+	--border: var(--accent-color);
+	--shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+:root.theme-dark {
+	--primary: #4da3ff;
+	--primary-dark: #0078ff;
+	--danger: #ff6b7a;
+	--danger-dark: #ff4757;
+	--success: #2ed573;
+	--shadow-color: rgba(255, 255, 255, 0.1);
+}
