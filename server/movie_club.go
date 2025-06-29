@@ -991,7 +991,30 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 	// Update cycle
 	cycle.Phase = nextPhase
 	cycle.PhaseStartDate = now
-	cycle.PhaseEndDate = now.Add(phaseDuration)
+	
+	// Use specific phase end date if available, otherwise calculate from duration
+	switch nextPhase {
+	case PHASE_NOMINATION:
+		if !cycle.NominationEndDate.IsZero() && cycle.NominationEndDate.After(now) {
+			cycle.PhaseEndDate = cycle.NominationEndDate
+		} else {
+			cycle.PhaseEndDate = now.Add(phaseDuration)
+		}
+	case PHASE_VOTING:
+		if !cycle.VotingEndDate.IsZero() && cycle.VotingEndDate.After(now) {
+			cycle.PhaseEndDate = cycle.VotingEndDate
+		} else {
+			cycle.PhaseEndDate = now.Add(phaseDuration)
+		}
+	case PHASE_WATCHING:
+		if !cycle.WatchingEndDate.IsZero() && cycle.WatchingEndDate.After(now) {
+			cycle.PhaseEndDate = cycle.WatchingEndDate
+		} else {
+			cycle.PhaseEndDate = now.Add(phaseDuration)
+		}
+	default:
+		cycle.PhaseEndDate = now.Add(phaseDuration)
+	}
 	
 	return db.Save(cycle).Error
 }
