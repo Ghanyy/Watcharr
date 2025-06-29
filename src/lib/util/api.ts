@@ -16,6 +16,7 @@ import {
 	type MovieClubNominationRequest,
 	type MovieClubVoteRequest,
 	type MovieClubVoteCount,
+	type MovieClubSettings,
 } from "@/types";
 import axios from "axios";
 import { notify, unNotify } from "./notify";
@@ -466,6 +467,19 @@ export async function getMovieClubResults(): Promise<MovieClubVoteCount[]> {
 		return response.data;
 	} catch (err: any) {
 		console.error("getMovieClubResults failed!", err);
+		throw err;
+	}
+}
+
+/**
+ * Get movie club settings
+ */
+export async function getMovieClubSettings(): Promise<MovieClubSettings> {
+	try {
+		const response = await axios.get("/server/config?s=MOVIE_CLUB");
+		return response.data.value;
+	} catch (err: any) {
+		console.error("getMovieClubSettings failed!", err);
 		throw err;
 	}
 }

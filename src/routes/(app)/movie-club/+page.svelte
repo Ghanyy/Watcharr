@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { getMovieClubCurrent } from "@/lib/util/api";
-	import type { MovieClubCycleResponse } from "@/types";
+	import { getMovieClubCurrent, getMovieClubSettings } from "@/lib/util/api";
+	import type { MovieClubCycleResponse, MovieClubSettings } from "@/types";
 	import Spinner from "@/lib/Spinner.svelte";
 	import MovieClubDashboard from "./MovieClubDashboard.svelte";
 	import Error from "@/lib/Error.svelte";
@@ -14,6 +14,7 @@
 	import { UserPermission } from "@/types";
 
 	let cycleData: MovieClubCycleResponse | null = null;
+	let settings: MovieClubSettings | null = null;
 	let loading = true;
 	let error: string | null = null;
 	let showCreateModal = false;
@@ -23,18 +24,42 @@
 
 	onMount(async () => {
 		try {
-			cycleData = await getMovieClubCurrent();
-		} catch (err: any) {
-			if (err.response?.status === 404) {
-				const errorMessage = err.response?.data?.error || "";
-				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
-					movieClubDisabled = true;
+			// Fetch both cycle data and settings
+			const [cycleResult, settingsResult] = await Promise.allSettled([
+				getMovieClubCurrent(),
+				getMovieClubSettings()
+			]);
+
+			// Handle cycle data
+			if (cycleResult.status === "fulfilled") {
+				cycleData = cycleResult.value;
+			} else {
+				const err = cycleResult.reason;
+				if (err.response?.status === 404) {
+					const errorMessage = err.response?.data?.error || "";
+					if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
+						movieClubDisabled = true;
+					} else {
+						cycleData = null; // No active cycle
+					}
 				} else {
-					cycleData = null; // No active cycle
+					error = err.response?.data?.error || "Failed to load movie club data";
+				}
+			}
+
+			// Handle settings
+			if (settingsResult.status === "fulfilled") {
+				settings = settingsResult.value;
+				// Add settings to cycle data if available
+				if (cycleData && settings) {
+					cycleData.maxNominations = settings.nominationsPerUser;
+					cycleData.maxVotes = settings.votesPerUser;
 				}
 			} else {
-				error = err.response?.data?.error || "Failed to load movie club data";
+				console.warn("Failed to load movie club settings:", settingsResult.reason);
 			}
+		} catch (err: any) {
+			error = "Failed to load movie club data";
 		} finally {
 			loading = false;
 		}
@@ -46,6 +71,11 @@
 		movieClubDisabled = false;
 		try {
 			cycleData = await getMovieClubCurrent();
+			// Re-apply settings if available
+			if (cycleData && settings) {
+				cycleData.maxNominations = settings.nominationsPerUser;
+				cycleData.maxVotes = settings.votesPerUser;
+			}
 		} catch (err: any) {
 			if (err.response?.status === 404) {
 				const errorMessage = err.response?.data?.error || "";

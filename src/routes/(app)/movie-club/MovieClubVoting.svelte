@@ -21,7 +21,7 @@
 	}
 
 	$: nominations = cycleData.cycle.nominations || [];
-	$: maxVotes = 2; // Should come from settings
+	$: maxVotes = cycleData.maxVotes || 2; // Get from settings, fallback to 2
 	$: canVote = cycleData.canVote;
 
 	function toggleVote(contentId: number) {

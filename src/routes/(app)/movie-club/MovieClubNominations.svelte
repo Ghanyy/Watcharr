@@ -16,6 +16,12 @@
 
 	async function handleNomination(content: Content, reason: string) {
 		if (submitting) return;
+		
+		// Frontend validation to prevent nominations beyond limit
+		if (!canNominateLocal) {
+			console.warn("Nomination blocked: limit reached or not allowed");
+			return;
+		}
 
 		submitting = true;
 		const success = await nominateMovie({
@@ -44,9 +50,11 @@
 
 	$: userNominations = cycleData.userNominations;
 	$: canNominate = cycleData.canNominate;
-	$: maxNominations = cycleData.cycle.nominations?.length ? 
-		Math.max(...cycleData.cycle.nominations.map(n => n.userId === cycleData.cycle.nominations?.find(un => un.userId === userNominations[0]?.userId)?.userId ? 1 : 0)) : 
-		1; // This should come from settings, defaulting to 1
+	// Calculate max nominations based on existing data
+	// TODO: This should come from movie club settings API
+	$: maxNominations = cycleData.maxNominations || Math.max(userNominations.length + (canNominate ? 1 : 0), 1);
+	// Local validation - check if user has reached the limit
+	$: canNominateLocal = canNominate && userNominations.length < maxNominations && !submitting;
 </script>
 
 <div class="nominations-section">
@@ -66,7 +74,7 @@
 			<div class="empty-state">
 				<Icon icon="film" />
 				<p>You haven't nominated any movies yet.</p>
-				{#if canNominate}
+				{#if canNominateLocal}
 					<button class="nominate-btn" on:click={() => showSearchModal = true}>
 						<Icon icon="add" />
 						Nominate a Movie
@@ -100,7 +108,7 @@
 				{/each}
 			</div>
 
-			{#if canNominate}
+			{#if canNominateLocal}
 				<button class="nominate-btn" on:click={() => showSearchModal = true}>
 					<Icon icon="add" />
 					Nominate Another Movie

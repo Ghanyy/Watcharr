@@ -21,8 +21,10 @@
 			title?: string;
 			name?: string;
 			overview?: string;
-			id: number; // tmdb id
-			media_type: MediaType;
+			id?: number; // tmdb id
+			tmdbId?: number; // tmdb id (for Content from nominations)  
+			media_type?: MediaType;
+			type?: ContentType; // type field (for Content from nominations)
 			release_date?: string;
 			first_air_date?: string;
 		};
@@ -84,7 +86,7 @@
 			: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
 	);
 	let link = $derived(
-		media.id ? `/${media.media_type}/${media.id}` : undefined,
+		(media.id || media.tmdbId) ? `/${media.media_type || media.type}/${media.id || media.tmdbId}` : undefined,
 	);
 	let dateStr = $derived(media.release_date || media.first_air_date);
 	let year = $derived(dateStr ? new Date(dateStr).getFullYear() : undefined);

@@ -1363,6 +1363,8 @@ export interface MovieClubCycleResponse {
 	voteResults?: MovieClubVoteCount[];
 	canNominate: boolean;
 	canVote: boolean;
+	maxNominations?: number;
+	maxVotes?: number;
 }
 
 export interface MovieClubNominationRequest {
