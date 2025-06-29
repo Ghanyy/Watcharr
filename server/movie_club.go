@@ -298,38 +298,6 @@ func CalculateVoteResults(db *gorm.DB, cycleID uint) ([]MovieClubVoteCount, erro
 	return results, nil
 }
 
-// getOrCreateContent retrieves content from database or creates it if it doesn't exist
-func getOrCreateContent(db *gorm.DB, tmdbID int, contentType ContentType) (*Content, error) {
-	var content Content
-	
-	// Try to find existing content
-	result := db.Where("tmdb_id = ? AND type = ?", tmdbID, contentType).First(&content)
-	
-	if result.Error == nil {
-		// Content already exists
-		return &content, nil
-	}
-	
-	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// Database error
-		return nil, result.Error
-	}
-	
-	// Content doesn't exist, we need to create it
-	// For movie club nominations, we'll create a minimal content record
-	// The actual TMDB data fetching can be done later when needed
-	content = Content{
-		TmdbID: tmdbID,
-		Type:   contentType,
-		Title:  "Loading...", // Placeholder until TMDB data is fetched
-	}
-	
-	if err := db.Create(&content).Error; err != nil {
-		return nil, err
-	}
-	
-	return &content, nil
-}
 
 // addMovieClubActivity creates an activity record for movie club actions
 func addMovieClubActivity(db *gorm.DB, userID uint, activityType ActivityType, data string) error {
@@ -488,7 +456,7 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 	}
 	
 	// Check if content exists, if not create it
-	content, err := getOrCreateContent(b.db, req.ContentID, MOVIE)
+	content, err := getOrCacheContent(b.db, MOVIE, req.ContentID)
 	if err != nil {
 		slog.Error("Failed to get or create content", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to process content"})
