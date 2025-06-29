@@ -400,7 +400,7 @@
 			border-radius: 4px;
 			font-size: 0.75rem;
 			font-weight: 600;
-			z-index: 2;
+			z-index: 100;
 		}
 
 		.poster-container {

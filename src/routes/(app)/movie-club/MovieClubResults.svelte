@@ -78,11 +78,7 @@
 				{#each results as result, index}
 					<div class="result-row" class:winner={index === 0}>
 						<div class="rank">
-							{#if index === 0}
-								<Icon icon="sparkles" />
-							{:else}
-								#{index + 1}
-							{/if}
+							#{index + 1}
 						</div>
 						
 						<div class="movie">
