@@ -68,7 +68,7 @@
 		if (submitting || selectedVotes.length === 0) return;
 
 		submitting = true;
-		const success = await voteForMovies({ votes: selectedVotes });
+		const success = await voteForMovies({ votes: selectedVotes, cycleId: cycleData.cycle.id });
 		
 		if (success) {
 			dispatch("votesChanged");
@@ -80,7 +80,7 @@
 		if (submitting) return;
 
 		submitting = true;
-		const success = await clearVotes();
+		const success = await clearVotes(cycleData.cycle.id);
 		
 		if (success) {
 			selectedVotes = [];

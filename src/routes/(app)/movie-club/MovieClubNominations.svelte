@@ -26,7 +26,8 @@
 		submitting = true;
 		const success = await nominateMovie({
 			contentId: content.tmdbId,
-			reason: reason
+			reason: reason,
+			cycleId: cycleData.cycle.id
 		});
 
 		if (success) {

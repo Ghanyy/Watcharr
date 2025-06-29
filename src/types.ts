@@ -1378,10 +1378,12 @@ export interface MovieClubCycleResponse {
 export interface MovieClubNominationRequest {
 	contentId: number;
 	reason?: string;
+	cycleId?: number; // Optional: if not provided, uses first active cycle
 }
 
 export interface MovieClubVoteRequest {
 	votes: MovieClubVoteItem[];
+	cycleId?: number; // Optional: if not provided, uses first active cycle
 }
 
 export interface MovieClubVoteItem {

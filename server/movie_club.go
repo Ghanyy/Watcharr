@@ -88,11 +88,13 @@ type MovieClubVoteCount struct {
 type MovieClubNominationRequest struct {
 	ContentID int    `json:"contentId" binding:"required"`
 	Reason    string `json:"reason" binding:"max=500"`
+	CycleID   *uint  `json:"cycleId,omitempty"` // Optional: if not provided, uses first active cycle
 }
 
 // MovieClubVoteRequest represents the request to cast votes
 type MovieClubVoteRequest struct {
-	Votes []MovieClubVoteItem `json:"votes" binding:"required,dive"`
+	Votes   []MovieClubVoteItem `json:"votes" binding:"required,dive"`
+	CycleID *uint               `json:"cycleId,omitempty"` // Optional: if not provided, uses first active cycle
 }
 
 type MovieClubVoteItem struct {
@@ -650,11 +652,30 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 		return
 	}
 	
-	// Get active cycle
-	cycle, err := GetActiveMovieClubCycle(b.db)
-	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
-		return
+	// Get the specified cycle or first active cycle
+	var cycle *MovieClubCycle
+	var err error
+	
+	if req.CycleID != nil {
+		// Get specific cycle by ID
+		var targetCycle MovieClubCycle
+		result := b.db.Where("id = ? AND active = ?", *req.CycleID, true).First(&targetCycle)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, ErrorResponse{Error: "Specified cycle not found or inactive"})
+			} else {
+				c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get cycle"})
+			}
+			return
+		}
+		cycle = &targetCycle
+	} else {
+		// Fall back to first active cycle for backwards compatibility
+		cycle, err = GetActiveMovieClubCycle(b.db)
+		if err != nil {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
+			return
+		}
 	}
 	
 	// Check if we're in nomination phase
@@ -778,11 +799,30 @@ func (b *BaseRouter) voteForMovies(c *gin.Context) {
 		return
 	}
 	
-	// Get active cycle
-	cycle, err := GetActiveMovieClubCycle(b.db)
-	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
-		return
+	// Get the specified cycle or first active cycle
+	var cycle *MovieClubCycle
+	var err error
+	
+	if req.CycleID != nil {
+		// Get specific cycle by ID
+		var targetCycle MovieClubCycle
+		result := b.db.Where("id = ? AND active = ?", *req.CycleID, true).First(&targetCycle)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, ErrorResponse{Error: "Specified cycle not found or inactive"})
+			} else {
+				c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get cycle"})
+			}
+			return
+		}
+		cycle = &targetCycle
+	} else {
+		// Fall back to first active cycle for backwards compatibility
+		cycle, err = GetActiveMovieClubCycle(b.db)
+		if err != nil {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
+			return
+		}
 	}
 	
 	// Check if we're in voting phase
@@ -859,11 +899,39 @@ func (b *BaseRouter) voteForMovies(c *gin.Context) {
 func (b *BaseRouter) clearVotes(c *gin.Context) {
 	userID := c.GetUint("userId")
 	
-	// Get active cycle
-	cycle, err := GetActiveMovieClubCycle(b.db)
-	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
-		return
+	// Get the specified cycle or first active cycle
+	var cycle *MovieClubCycle
+	var err error
+	
+	// Check for cycle ID in query parameters
+	cycleIDStr := c.Query("cycleId")
+	if cycleIDStr != "" {
+		// Parse cycle ID from query parameter
+		cycleID, parseErr := strconv.ParseUint(cycleIDStr, 10, 32)
+		if parseErr != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid cycle ID"})
+			return
+		}
+		
+		// Get specific cycle by ID
+		var targetCycle MovieClubCycle
+		result := b.db.Where("id = ? AND active = ?", uint(cycleID), true).First(&targetCycle)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, ErrorResponse{Error: "Specified cycle not found or inactive"})
+			} else {
+				c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get cycle"})
+			}
+			return
+		}
+		cycle = &targetCycle
+	} else {
+		// Fall back to first active cycle for backwards compatibility
+		cycle, err = GetActiveMovieClubCycle(b.db)
+		if err != nil {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
+			return
+		}
 	}
 	
 	// Check if we're in voting phase

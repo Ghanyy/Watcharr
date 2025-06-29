@@ -463,12 +463,13 @@ export async function voteForMovies(request: MovieClubVoteRequest): Promise<bool
 }
 
 /**
- * Clear all votes for the current cycle
+ * Clear all votes for the specified cycle or current cycle
  */
-export async function clearVotes(): Promise<boolean> {
+export async function clearVotes(cycleId?: number): Promise<boolean> {
 	const nid = notify({ text: "Clearing votes...", type: "loading" });
 	try {
-		await axios.delete("/movie-club/vote");
+		const params = cycleId ? { cycleId: cycleId.toString() } : {};
+		await axios.delete("/movie-club/vote", { params });
 		notify({ id: nid, text: "Votes cleared!", type: "success" });
 		return true;
 	} catch (err: any) {
