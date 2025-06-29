@@ -12,6 +12,7 @@
 	import { notify } from "@/lib/util/notify";
 	import { userHasPermission } from "@/lib/util/helpers";
 	import { UserPermission } from "@/types";
+	import Icon from "@/lib/Icon.svelte";
 
 	let cycleData: MovieClubCycleResponse | null = null;
 	let settings: MovieClubSettings | null = null;
@@ -168,6 +169,21 @@
 		{/if}
 		<MovieClubDashboard {cycleData} on:refresh={refreshData} />
 	{/if}
+
+	<!-- Always visible admin controls at bottom -->
+	{#if isAdmin && !movieClubDisabled}
+		<div class="bottom-admin-controls">
+			<button 
+				class="start-new-cycle-btn"
+				on:click={() => showCreateModal = true}
+				disabled={loading}
+				title={cycleData ? "Start a new cycle (will replace current cycle)" : "Start a new movie club cycle"}
+			>
+				<Icon icon="plus" />
+				Start New Cycle
+			</button>
+		</div>
+	{/if}
 </div>
 
 {#if showCreateModal}
@@ -286,6 +302,64 @@
 		&:disabled {
 			opacity: 0.6;
 			cursor: not-allowed;
+		}
+	}
+
+	.bottom-admin-controls {
+		position: sticky;
+		bottom: 0;
+		background: var(--background);
+		padding: 1rem 0;
+		border-top: 1px solid var(--border);
+		margin-top: 2rem;
+		display: flex;
+		justify-content: center;
+		backdrop-filter: blur(10px);
+		z-index: 10;
+	}
+
+	.start-new-cycle-btn {
+		background: var(--success, #28a745);
+		color: white;
+		border: none;
+		padding: 0.75rem 1.5rem;
+		border-radius: 8px;
+		cursor: pointer;
+		font-size: 1rem;
+		font-weight: 600;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+
+		&:hover:not(:disabled) {
+			background: var(--success-dark, #218838);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+		}
+
+		&:active:not(:disabled) {
+			transform: translateY(0);
+			box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+		}
+	}
+
+	@media (max-width: 768px) {
+		.bottom-admin-controls {
+			padding: 0.75rem 1rem;
+		}
+
+		.start-new-cycle-btn {
+			font-size: 0.9rem;
+			padding: 0.625rem 1.25rem;
 		}
 	}
 </style>
