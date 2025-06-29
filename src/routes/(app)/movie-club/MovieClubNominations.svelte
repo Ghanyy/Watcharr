@@ -7,12 +7,22 @@
 	import Modal from "@/lib/Modal.svelte";
 	import SearchMovieModal from "./SearchMovieModal.svelte";
 
+	// Component for collapsible reason text
+	function CollapsibleReason(reason: string, maxLength: number = 40) {
+		return {
+			shouldCollapse: reason.length > maxLength,
+			truncated: reason.substring(0, maxLength) + "...",
+			full: reason
+		};
+	}
+
 	export let cycleData: MovieClubCycleResponse;
 
 	const dispatch = createEventDispatcher<{ nominationChanged: void }>();
 
 	let showSearchModal = false;
 	let submitting = false;
+	let expandedReasons: Set<string> = new Set(); // Track expanded reasons by unique ID
 
 	async function handleNomination(content: Content, reason: string) {
 		if (submitting) return;
@@ -47,6 +57,15 @@
 			dispatch("nominationChanged");
 		}
 		submitting = false;
+	}
+
+	function toggleReasonExpansion(reasonId: string) {
+		if (expandedReasons.has(reasonId)) {
+			expandedReasons.delete(reasonId);
+		} else {
+			expandedReasons.add(reasonId);
+		}
+		expandedReasons = expandedReasons; // Trigger reactivity
 	}
 
 	$: userNominations = cycleData.userNominations;
@@ -94,7 +113,24 @@
 						<div class="nomination-details">
 							<h5>{nomination.content?.title}</h5>
 							{#if nomination.reason}
-								<p class="reason">"{nomination.reason}"</p>
+								{@const reasonData = CollapsibleReason(nomination.reason)}
+								{@const reasonId = `user-${nomination.id}`}
+								{@const isExpanded = expandedReasons.has(reasonId)}
+								
+								<div class="reason-container">
+									<p class="reason">
+										"{isExpanded ? reasonData.full : (reasonData.shouldCollapse ? reasonData.truncated : reasonData.full)}"
+									</p>
+									{#if reasonData.shouldCollapse}
+										<button 
+											class="expand-btn" 
+											on:click={() => toggleReasonExpansion(reasonId)}
+											type="button"
+										>
+											{isExpanded ? 'Show less' : 'Show more'}
+										</button>
+									{/if}
+								</div>
 							{/if}
 							<button 
 								class="remove-btn"
@@ -141,7 +177,24 @@
 							{#if nomination.reasons && nomination.reasons.length > 0}
 								<div class="reasons">
 									{#each nomination.reasons as reason, i}
-										<p class="reason">"{reason}"</p>
+										{@const reasonData = CollapsibleReason(reason)}
+										{@const reasonId = `all-${nomination.content.tmdbId}-${i}`}
+										{@const isExpanded = expandedReasons.has(reasonId)}
+										
+										<div class="reason-container">
+											<p class="reason">
+												"{isExpanded ? reasonData.full : (reasonData.shouldCollapse ? reasonData.truncated : reasonData.full)}"
+											</p>
+											{#if reasonData.shouldCollapse}
+												<button 
+													class="expand-btn" 
+													on:click={() => toggleReasonExpansion(reasonId)}
+													type="button"
+												>
+													{isExpanded ? 'Show less' : 'Show more'}
+												</button>
+											{/if}
+										</div>
 									{/each}
 								</div>
 							{/if}
@@ -270,16 +323,35 @@
 				margin: 0 0 1rem 0;
 			}
 
+			.reason-container {
+				margin-bottom: 0.5rem;
+			}
+
+			.reason-container:last-child {
+				margin-bottom: 1rem;
+			}
+
 			.reason {
 				font-size: 0.8rem;
 				color: var(--text-muted);
 				font-style: italic;
-				margin: 0 0 0.5rem 0;
+				margin: 0 0 0.25rem 0;
 				line-height: 1.3;
 			}
 
-			.reason:last-child {
-				margin-bottom: 1rem;
+			.expand-btn {
+				background: none;
+				border: none;
+				color: var(--primary);
+				font-size: 0.7rem;
+				cursor: pointer;
+				padding: 0;
+				text-decoration: underline;
+				font-family: inherit;
+				
+				&:hover {
+					color: var(--primary-dark);
+				}
 			}
 
 			.remove-btn {

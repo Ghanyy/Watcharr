@@ -36,9 +36,6 @@
 				<div class="winner-card">
 					<div class="winner-poster">
 						<Poster media={winner.content} showRating={false} disableInteraction={true} />
-						<div class="winner-overlay">
-							<Icon icon="play" />
-						</div>
 					</div>
 					
 					<div class="winner-details">
@@ -234,17 +231,9 @@
 		width: 150px;
 		height: 225px;
 		flex-shrink: 0;
-
-		.winner-overlay {
-			position: absolute;
-			inset: 0;
-			background: rgba(255, 215, 0, 0.9);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			color: #000;
-			font-size: 3rem;
-			border-radius: 8px;
+		
+		:global(li) {
+			list-style: none;
 		}
 	}
 
@@ -346,6 +335,10 @@
 				width: 40px;
 				height: 60px;
 				flex-shrink: 0;
+				
+				:global(li) {
+					list-style: none;
+				}
 			}
 
 			.movie-info {

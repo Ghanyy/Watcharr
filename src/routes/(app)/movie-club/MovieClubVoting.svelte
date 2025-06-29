@@ -5,12 +5,22 @@
 	import Icon from "@/lib/Icon.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
 
+	// Component for collapsible reason text
+	function CollapsibleReason(reason: string, maxLength: number = 40) {
+		return {
+			shouldCollapse: reason.length > maxLength,
+			truncated: reason.substring(0, maxLength) + "...",
+			full: reason
+		};
+	}
+
 	export let cycleData: MovieClubCycleResponse;
 
 	const dispatch = createEventDispatcher<{ votesChanged: void }>();
 
 	let submitting = false;
 	let selectedVotes: MovieClubVoteItem[] = [];
+	let expandedReasons: Set<string> = new Set(); // Track expanded reasons by unique ID
 
 	// Initialize selected votes from current user votes
 	$: {
@@ -97,6 +107,15 @@
 			default: return `${priority}th Choice`;
 		}
 	}
+
+	function toggleReasonExpansion(reasonId: string) {
+		if (expandedReasons.has(reasonId)) {
+			expandedReasons.delete(reasonId);
+		} else {
+			expandedReasons.add(reasonId);
+		}
+		expandedReasons = expandedReasons; // Trigger reactivity
+	}
 </script>
 
 <div class="voting-section">
@@ -161,11 +180,6 @@
 
 					<div class="poster-container">
 						<Poster media={nomination.content} showRating={false} disableInteraction={true} />
-						{#if isSelected}
-							<div class="selected-overlay">
-								<Icon icon="check" />
-							</div>
-						{/if}
 					</div>
 
 					<div class="nomination-details">
@@ -181,7 +195,24 @@
 						{#if nomination.reasons && nomination.reasons.length > 0}
 							<div class="reasons">
 								{#each nomination.reasons as reason, i}
-									<p class="reason">"{reason}"</p>
+									{@const reasonData = CollapsibleReason(reason)}
+									{@const reasonId = `vote-${nomination.contentId}-${i}`}
+									{@const isExpanded = expandedReasons.has(reasonId)}
+									
+									<div class="reason-container">
+										<p class="reason">
+											"{isExpanded ? reasonData.full : (reasonData.shouldCollapse ? reasonData.truncated : reasonData.full)}"
+										</p>
+										{#if reasonData.shouldCollapse}
+											<button 
+												class="expand-btn" 
+												on:click|stopPropagation={() => toggleReasonExpansion(reasonId)}
+												type="button"
+											>
+												{isExpanded ? 'Show less' : 'Show more'}
+											</button>
+										{/if}
+									</div>
 								{/each}
 							</div>
 						{/if}
@@ -376,17 +407,6 @@
 			position: relative;
 			aspect-ratio: 2/3;
 			overflow: hidden;
-
-			.selected-overlay {
-				position: absolute;
-				inset: 0;
-				background: rgba(59, 130, 246, 0.8);
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				color: white;
-				font-size: 2rem;
-			}
 		}
 
 		.nomination-details {
@@ -419,16 +439,35 @@
 				margin: 0 0 1rem 0;
 			}
 
+			.reason-container {
+				margin-bottom: 0.5rem;
+			}
+
+			.reason-container:last-child {
+				margin-bottom: 1rem;
+			}
+
 			.reason {
 				font-size: 0.8rem;
 				color: var(--text-muted);
 				font-style: italic;
-				margin: 0 0 0.5rem 0;
+				margin: 0 0 0.25rem 0;
 				line-height: 1.3;
 			}
 
-			.reason:last-child {
-				margin-bottom: 1rem;
+			.expand-btn {
+				background: none;
+				border: none;
+				color: var(--primary);
+				font-size: 0.7rem;
+				cursor: pointer;
+				padding: 0;
+				text-decoration: underline;
+				font-family: inherit;
+				
+				&:hover {
+					color: var(--primary-dark);
+				}
 			}
 
 			.priority-controls {
