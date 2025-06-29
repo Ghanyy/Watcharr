@@ -291,6 +291,35 @@
 		.poster-container {
 			aspect-ratio: 2/3;
 			overflow: hidden;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			
+			:global(li) {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			
+			:global(.container) {
+				width: 100% !important;
+				height: 100% !important;
+				display: flex !important;
+				align-items: center !important;
+				justify-content: center !important;
+			}
+			
+			:global(img) {
+				max-width: 100%;
+				max-height: 100%;
+				object-fit: cover;
+				object-position: center;
+			}
 		}
 
 		.nomination-details {
