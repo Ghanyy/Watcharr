@@ -86,11 +86,12 @@
 						</div>
 						
 						<div class="movie">
-							<div class="movie-poster">
-								<Poster media={result.content} showRating={false} disableInteraction={true} />
-							</div>
 							<div class="movie-info">
-								<h5>{result.content.title}</h5>
+								<h5>
+									<a href="/movie/{result.content.tmdbId}" class="movie-link">
+										{result.content.title}
+									</a>
+								</h5>
 								<span class="release-year">
 									{result.content.release_date ? new Date(result.content.release_date).getFullYear() : "Unknown"}
 								</span>
@@ -329,23 +330,23 @@
 		.movie {
 			display: flex;
 			align-items: center;
-			gap: 1rem;
-
-			.movie-poster {
-				width: 40px;
-				height: 60px;
-				flex-shrink: 0;
-				
-				:global(li) {
-					list-style: none;
-				}
-			}
 
 			.movie-info {
 				h5 {
 					margin: 0 0 0.25rem 0;
 					font-size: 0.9rem;
 					line-height: 1.2;
+				}
+
+				.movie-link {
+					color: var(--text);
+					text-decoration: none;
+					transition: color 0.2s ease;
+
+					&:hover {
+						color: var(--primary);
+						text-decoration: underline;
+					}
 				}
 
 				.release-year {
