@@ -343,6 +343,7 @@
 				padding: 0;
 				width: 100%;
 				height: 100%;
+				cursor: default !important;
 			}
 
 			:global(.container) {
@@ -352,10 +353,16 @@
 				transform: none !important;
 				position: static !important;
 				border-radius: 0 !important;
+				transition: none !important;
 			}
 
 			:global(.active .container) {
 				transform: none !important;
+			}
+
+			:global(.inner) {
+				opacity: 0 !important;
+				pointer-events: none !important;
 			}
 
 			:global(img) {
@@ -364,6 +371,8 @@
 				object-fit: cover;
 				object-position: center;
 				border-radius: 0;
+				filter: none !important;
+				mix-blend-mode: normal !important;
 			}
 		}
 
@@ -464,6 +473,7 @@
 				padding: 0;
 				width: 100%;
 				height: 100%;
+				cursor: default !important;
 			}
 
 			:global(.container) {
@@ -473,10 +483,16 @@
 				transform: none !important;
 				position: static !important;
 				border-radius: 0 !important;
+				transition: none !important;
 			}
 
 			:global(.active .container) {
 				transform: none !important;
+			}
+
+			:global(.inner) {
+				opacity: 0 !important;
+				pointer-events: none !important;
 			}
 
 			:global(img) {
@@ -485,6 +501,8 @@
 				object-fit: cover;
 				object-position: center;
 				border-radius: 0;
+				filter: none !important;
+				mix-blend-mode: normal !important;
 			}
 		}
 

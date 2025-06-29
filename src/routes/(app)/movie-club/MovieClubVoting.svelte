@@ -420,6 +420,7 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
+				cursor: default !important;
 			}
 			
 			:global(.container) {
@@ -428,6 +429,17 @@
 				display: flex !important;
 				align-items: center !important;
 				justify-content: center !important;
+				transform: none !important;
+				transition: none !important;
+			}
+			
+			:global(.active .container) {
+				transform: none !important;
+			}
+			
+			:global(.inner) {
+				opacity: 0 !important;
+				pointer-events: none !important;
 			}
 			
 			:global(img) {
@@ -435,6 +447,8 @@
 				max-height: 100%;
 				object-fit: cover;
 				object-position: center;
+				filter: none !important;
+				mix-blend-mode: normal !important;
 			}
 		}
 
