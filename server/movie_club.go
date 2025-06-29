@@ -749,22 +749,35 @@ func (b *BaseRouter) removeNomination(c *gin.Context) {
 		return
 	}
 	
-	// Get active cycle
-	cycle, err := GetActiveMovieClubCycle(b.db)
-	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "No active movie club cycle"})
+	// First, get the nomination to determine which cycle it belongs to
+	var nomination MovieClubNomination
+	result := b.db.Where("id = ? AND user_id = ?", nominationID, userID).
+		Preload("Cycle").
+		First(&nomination)
+	
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Nomination not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get nomination"})
+		}
 		return
 	}
 	
-	// Check if we're in nomination phase
-	if !cycle.IsNominationPhase() {
-		c.JSON(http.StatusForbidden, ErrorResponse{Error: "Not currently in nomination phase"})
+	// Check if the cycle is still active
+	if !nomination.Cycle.Active {
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: "Cannot remove nomination from inactive cycle"})
 		return
 	}
 	
-	// Find and delete the nomination (only if it belongs to the user)
-	result := b.db.Where("id = ? AND user_id = ? AND cycle_id = ?", nominationID, userID, cycle.ID).
-		Delete(&MovieClubNomination{})
+	// Check if the cycle is in nomination phase
+	if !nomination.Cycle.IsNominationPhase() {
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: "Not currently in nomination phase for this cycle"})
+		return
+	}
+	
+	// Delete the nomination
+	result = b.db.Delete(&nomination)
 	
 	if result.Error != nil {
 		slog.Error("Failed to delete nomination", "error", result.Error)
