@@ -425,6 +425,164 @@
 		box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
 	}
 
+	.cycles-container {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xl);
+		margin-bottom: var(--space-xl);
+	}
+
+	.cycle-section {
+		background: var(--background);
+		border: 2px solid var(--border);
+		border-radius: var(--radius-xl);
+		padding: var(--space-xl);
+		box-shadow: var(--shadow-lg);
+		transition: all 0.3s ease;
+		position: relative;
+		overflow: hidden;
+
+		&::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 4px;
+			background: linear-gradient(90deg, var(--primary), var(--primary-dark, var(--primary)));
+			border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+		}
+
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-lg), 0 8px 25px rgba(0, 0, 0, 0.15);
+			border-color: var(--primary);
+		}
+
+		&.watching-phase {
+			border-color: var(--success, #22c55e);
+			
+			&::before {
+				background: linear-gradient(90deg, var(--success, #22c55e), #16a34a);
+			}
+			
+			&:hover {
+				border-color: var(--success, #22c55e);
+				box-shadow: var(--shadow-lg), 0 8px 25px rgba(34, 197, 94, 0.2);
+			}
+		}
+
+		& + .cycle-section {
+			position: relative;
+			
+			&::after {
+				content: '';
+				position: absolute;
+				top: calc(-1 * var(--space-2xl) / 2 - 1px);
+				left: 50%;
+				transform: translateX(-50%);
+				width: 60%;
+				height: 2px;
+				background: linear-gradient(90deg, transparent, var(--border), transparent);
+			}
+		}
+	}
+
+	.cycle-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-lg);
+		padding-bottom: var(--space-md);
+		border-bottom: 1px solid var(--border);
+
+		h3 {
+			margin: 0;
+			font-size: 1.5rem;
+			font-weight: 700;
+			color: var(--text);
+			display: flex;
+			align-items: center;
+			gap: var(--space-sm);
+			
+			&::before {
+				content: '🎬';
+				font-size: 1.25rem;
+			}
+		}
+
+		.cycle-meta {
+			display: flex;
+			align-items: center;
+			gap: var(--space-md);
+		}
+
+		.phase-badge {
+			display: inline-flex;
+			align-items: center;
+			padding: var(--space-xs) var(--space-md);
+			border-radius: var(--radius-full);
+			font-size: 0.875rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
+			box-shadow: var(--shadow-sm);
+			border: 1px solid transparent;
+
+			&.phase-nomination {
+				background: var(--info, #3b82f6);
+				color: white;
+				border-color: #2563eb;
+			}
+
+			&.phase-voting {
+				background: var(--warning, #f59e0b);
+				color: white;
+				border-color: #d97706;
+			}
+
+			&.phase-watching {
+				background: var(--success, #22c55e);
+				color: white;
+				border-color: #16a34a;
+			}
+		}
+
+		.delete-cycle-btn-small {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			background: var(--danger, #dc3545);
+			color: white;
+			border: none;
+			border-radius: var(--radius-full);
+			cursor: pointer;
+			font-size: 1rem;
+			font-weight: 700;
+			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
+
+			&:hover:not(:disabled) {
+				background: var(--danger-dark, #c82333);
+				transform: scale(1.1);
+				box-shadow: var(--shadow-md);
+			}
+
+			&:disabled {
+				opacity: 0.6;
+				cursor: not-allowed;
+				transform: none;
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow: var(--shadow-md), 0 0 0 2px rgba(220, 53, 69, 0.3);
+			}
+		}
+	}
+
 	.start-new-cycle-btn {
 		display: inline-flex;
 		align-items: center;
@@ -482,19 +640,49 @@
 			padding: var(--space-sm) var(--space-md);
 		}
 		
+		.cycles-container {
+			gap: var(--space-xl);
+		}
+		
 		.cycle-section {
-			padding: var(--space-md);
+			padding: var(--space-lg);
+			border-radius: var(--radius-lg);
+			
+			&::before {
+				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			}
+
+			& + .cycle-section::after {
+				top: calc(-1 * var(--space-xl) / 2 - 1px);
+				width: 80%;
+			}
 		}
 
 		.cycle-header {
 			flex-direction: column;
 			align-items: flex-start;
 			gap: var(--space-sm);
-		}
+			margin-bottom: var(--space-md);
 
-		.cycle-meta {
-			width: 100%;
-			justify-content: space-between;
+			h3 {
+				font-size: 1.25rem;
+			}
+
+			.cycle-meta {
+				width: 100%;
+				justify-content: space-between;
+			}
+
+			.phase-badge {
+				font-size: 0.8rem;
+				padding: var(--space-xs) var(--space-sm);
+			}
+
+			.delete-cycle-btn-small {
+				width: 24px;
+				height: 24px;
+				font-size: 0.9rem;
+			}
 		}
 	}
 </style>
