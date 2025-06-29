@@ -476,8 +476,8 @@ export async function getMovieClubResults(): Promise<MovieClubVoteCount[]> {
  */
 export async function getMovieClubSettings(): Promise<MovieClubSettings> {
 	try {
-		const response = await axios.get("/server/config?s=MOVIE_CLUB");
-		return response.data.value;
+		const response = await axios.get("/movie-club/settings");
+		return response.data;
 	} catch (err: any) {
 		console.error("getMovieClubSettings failed!", err);
 		throw err;

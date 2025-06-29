@@ -298,6 +298,16 @@ func CalculateVoteResults(db *gorm.DB, cycleID uint) ([]MovieClubVoteCount, erro
 	return results, nil
 }
 
+// getMovieClubSettings returns the movie club configuration
+func (b *BaseRouter) getMovieClubSettings(c *gin.Context) {
+	// Check if movie club is enabled
+	if !Config.MOVIE_CLUB.Enabled {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Movie club is not enabled"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, Config.MOVIE_CLUB)
+}
 
 // addMovieClubActivity creates an activity record for movie club actions
 func addMovieClubActivity(db *gorm.DB, userID uint, activityType ActivityType, data string) error {
@@ -338,6 +348,9 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	
 	// Results endpoint
 	movieClub.GET("/results", b.getMovieClubResults)
+	
+	// Settings endpoint (public for all users)
+	movieClub.GET("/settings", b.getMovieClubSettings)
 	
 	// Admin endpoints
 	movieClub.POST("/cycle", AdminRequired(), b.createMovieClubCycle)
