@@ -1017,13 +1017,8 @@ func (b *BaseRouter) createMovieClubCycle(c *gin.Context) {
 		}
 	}()
 	
-	// Deactivate any existing active cycle
-	if err := tx.Model(&MovieClubCycle{}).Where("active = ?", true).Update("active", false).Error; err != nil {
-		tx.Rollback()
-		slog.Error("Failed to deactivate existing cycles", "error", err)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create cycle"})
-		return
-	}
+	// Note: We no longer deactivate existing cycles when creating new ones
+	// Multiple cycles can be active simultaneously
 	
 	// Set up new cycle
 	now := time.Now()
@@ -1105,49 +1100,17 @@ func (b *BaseRouter) deleteMovieClubCycle(c *gin.Context) {
 		return
 	}
 	
-	// Delete cycle and all related data
-	tx := b.db.Begin()
-	if tx.Error != nil {
-		slog.Error("Failed to begin transaction", "error", tx.Error)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
-		return
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
+	// Mark cycle as inactive instead of deleting it
+	// This preserves the cycle data and history while removing it from active display
+	slog.Info("Deactivating movie club cycle", "cycleId", cycleID)
 	
-	slog.Info("Deleting movie club cycle", "cycleId", cycleID)
-	
-	if err := tx.Where("cycle_id = ?", cycleID).Delete(&MovieClubVote{}).Error; err != nil {
-		tx.Rollback()
-		slog.Error("Failed to delete votes", "error", err)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete votes"})
+	if err := b.db.Model(&MovieClubCycle{}).Where("id = ?", cycleID).Update("active", false).Error; err != nil {
+		slog.Error("Failed to deactivate cycle", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to deactivate cycle"})
 		return
 	}
 	
-	if err := tx.Where("cycle_id = ?", cycleID).Delete(&MovieClubNomination{}).Error; err != nil {
-		tx.Rollback()
-		slog.Error("Failed to delete nominations", "error", err)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete nominations"})
-		return
-	}
-	
-	if err := tx.Delete(&MovieClubCycle{}, cycleID).Error; err != nil {
-		tx.Rollback()
-		slog.Error("Failed to delete cycle", "error", err)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
-		return
-	}
-	
-	if err := tx.Commit().Error; err != nil {
-		slog.Error("Failed to commit transaction", "error", err)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
-		return
-	}
-	
-	slog.Info("Successfully deleted movie club cycle", "cycleId", cycleID)
+	slog.Info("Successfully deactivated movie club cycle", "cycleId", cycleID)
 	c.JSON(http.StatusOK, gin.H{"message": "Cycle deleted"})
 }
 

@@ -117,19 +117,19 @@
 		const targetCycleId = cycleId || cycleData?.cycle?.id;
 		if (!targetCycleId) return;
 		
-		if (!confirm("Are you sure you want to delete this movie club cycle? This will remove all nominations and votes.")) {
+		if (!confirm("Are you sure you want to remove this movie club cycle? This will hide it from the active cycles list but preserve the data.")) {
 			return;
 		}
 
-		const nid = notify({ text: "Deleting cycle...", type: "loading" });
+		const nid = notify({ text: "Removing cycle...", type: "loading" });
 		
 		try {
 			await axios.delete(`/movie-club/cycle/${targetCycleId}`);
-			notify({ id: nid, text: "Cycle deleted successfully!", type: "success" });
+			notify({ id: nid, text: "Cycle removed successfully!", type: "success" });
 			await refreshData(); // Refresh to update the cycles list
 		} catch (err: any) {
-			console.error("Failed to delete cycle:", err);
-			const message = err.response?.data?.error || "Failed to delete cycle";
+			console.error("Failed to remove cycle:", err);
+			const message = err.response?.data?.error || "Failed to remove cycle";
 			notify({ id: nid, text: message, type: "error" });
 		}
 	}
@@ -192,7 +192,7 @@
 									class="delete-cycle-btn-small" 
 									on:click={() => deleteCycle(cycleData.cycle.id)}
 									disabled={loading}
-									title="Delete this cycle"
+									title="Remove this cycle"
 								>
 									×
 								</button>
@@ -212,7 +212,7 @@
 				class="start-new-cycle-btn"
 				on:click={() => showCreateModal = true}
 				disabled={loading}
-				title={cycleData ? "Start a new cycle (will replace current cycle)" : "Start a new movie club cycle"}
+				title="Start a new movie club cycle"
 			>
 				<Icon icon="plus" />
 				Start New Cycle
