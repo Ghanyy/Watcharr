@@ -1315,7 +1315,7 @@ export interface MovieClubCycle extends dbModel {
 	winnerContentId?: number;
 	winnerContent?: Content;
 	active: boolean;
-	nominations?: MovieClubNomination[];
+	nominations?: MovieClubNominationGroup[];
 	votes?: MovieClubVote[];
 }
 
@@ -1327,6 +1327,14 @@ export interface MovieClubNomination extends dbModel {
 	contentId: number;
 	content?: Content;
 	reason: string;
+}
+
+export interface MovieClubNominationGroup {
+	contentId: number;
+	content: Content;
+	nominations: MovieClubNomination[];
+	nominators: PublicUser[];
+	reasons: string[];
 }
 
 export interface MovieClubVote extends dbModel {

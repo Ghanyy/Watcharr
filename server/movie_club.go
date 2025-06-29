@@ -35,7 +35,8 @@ type MovieClubCycle struct {
 	WinnerContentID   *int            `json:"winnerContentId,omitempty"`
 	WinnerContent     *Content        `json:"winnerContent,omitempty" gorm:"foreignKey:WinnerContentID;references:ID"`
 	Active            bool            `json:"active"`
-	Nominations       []MovieClubNomination `json:"nominations,omitempty" gorm:"foreignKey:CycleID"`
+	Nominations       []MovieClubNominationGroup `json:"nominations,omitempty" gorm:"-"`
+	AllNominations    []MovieClubNomination `json:"-" gorm:"foreignKey:CycleID"`
 	Votes             []MovieClubVote `json:"votes,omitempty" gorm:"foreignKey:CycleID"`
 }
 
@@ -98,6 +99,15 @@ type MovieClubVoteItem struct {
 	Priority  int `json:"priority" binding:"required,min=1"`
 }
 
+// MovieClubNominationGroup represents a movie with all its nominations grouped together
+type MovieClubNominationGroup struct {
+	ContentID   int                     `json:"contentId"`
+	Content     Content                 `json:"content"`
+	Nominations []MovieClubNomination   `json:"nominations"`
+	Nominators  []User                  `json:"nominators"`
+	Reasons     []string                `json:"reasons"`
+}
+
 // MovieClubCycleResponse represents the full cycle data for frontend
 type MovieClubCycleResponse struct {
 	Cycle          MovieClubCycle       `json:"cycle"`
@@ -154,8 +164,8 @@ func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
 	var cycle MovieClubCycle
 	result := db.Where("active = ?", true).
 		Preload("WinnerContent").
-		Preload("Nominations.Content").
-		Preload("Nominations.User").
+		Preload("AllNominations.Content").
+		Preload("AllNominations.User").
 		First(&cycle)
 	
 	if result.Error != nil {
@@ -166,6 +176,9 @@ func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
 		}
 		return nil, result.Error
 	}
+	
+	// Group nominations by content
+	cycle.Nominations = GroupNominationsByContent(cycle.AllNominations)
 	
 	slog.Debug("GetActiveMovieClubCycle: Found active cycle", "cycleId", cycle.ID, "phase", cycle.Phase, "active", cycle.Active)
 	return &cycle, nil
@@ -184,6 +197,46 @@ func GetMovieClubNominationsForCycle(db *gorm.DB, cycleID uint) ([]MovieClubNomi
 	}
 	
 	return nominations, nil
+}
+
+// GroupNominationsByContent groups nominations by movie content
+func GroupNominationsByContent(nominations []MovieClubNomination) []MovieClubNominationGroup {
+	contentMap := make(map[int]*MovieClubNominationGroup)
+	
+	for _, nomination := range nominations {
+		contentID := nomination.ContentID
+		
+		if group, exists := contentMap[contentID]; exists {
+			// Add to existing group
+			group.Nominations = append(group.Nominations, nomination)
+			group.Nominators = append(group.Nominators, nomination.User)
+			if nomination.Reason != "" {
+				group.Reasons = append(group.Reasons, nomination.Reason)
+			}
+		} else {
+			// Create new group
+			reasons := []string{}
+			if nomination.Reason != "" {
+				reasons = append(reasons, nomination.Reason)
+			}
+			
+			contentMap[contentID] = &MovieClubNominationGroup{
+				ContentID:   contentID,
+				Content:     nomination.Content,
+				Nominations: []MovieClubNomination{nomination},
+				Nominators:  []User{nomination.User},
+				Reasons:     reasons,
+			}
+		}
+	}
+	
+	// Convert map to slice
+	var groups []MovieClubNominationGroup
+	for _, group := range contentMap {
+		groups = append(groups, *group)
+	}
+	
+	return groups
 }
 
 // GetMovieClubVotesForCycle returns all votes for a specific cycle

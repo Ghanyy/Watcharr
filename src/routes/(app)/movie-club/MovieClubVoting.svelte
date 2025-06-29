@@ -170,9 +170,20 @@
 
 					<div class="nomination-details">
 						<h5>{nomination.content?.title}</h5>
-						<p class="nominator">by {nomination.user?.username}</p>
-						{#if nomination.reason}
-							<p class="reason">"{nomination.reason}"</p>
+						<div class="nominators">
+							<p class="nominator-label">
+								Nominated by: 
+								{#each nomination.nominators as nominator, i}
+									<span class="nominator">{nominator.username}</span>{#if i < nomination.nominators.length - 1}, {/if}
+								{/each}
+							</p>
+						</div>
+						{#if nomination.reasons && nomination.reasons.length > 0}
+							<div class="reasons">
+								{#each nomination.reasons as reason, i}
+									<p class="reason">"{reason}"</p>
+								{/each}
+							</div>
 						{/if}
 
 						{#if isSelected && selectedVotes.length > 1}
@@ -388,19 +399,36 @@
 				line-height: 1.2;
 			}
 
-			.nominator {
+			.nominators {
+				margin: 0 0 0.5rem 0;
+			}
+
+			.nominator-label {
 				font-size: 0.8rem;
 				color: var(--text-muted);
-				margin: 0 0 0.5rem 0;
+				margin: 0;
 				font-weight: 500;
+			}
+
+			.nominator {
+				color: var(--primary);
+				font-weight: 600;
+			}
+
+			.reasons {
+				margin: 0 0 1rem 0;
 			}
 
 			.reason {
 				font-size: 0.8rem;
 				color: var(--text-muted);
 				font-style: italic;
-				margin: 0 0 1rem 0;
+				margin: 0 0 0.5rem 0;
 				line-height: 1.3;
+			}
+
+			.reason:last-child {
+				margin-bottom: 1rem;
 			}
 
 			.priority-controls {
