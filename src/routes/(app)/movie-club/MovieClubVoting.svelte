@@ -320,9 +320,29 @@
 		text-align: center;
 		padding: var(--space-2xl) var(--space-md);
 		color: var(--text-muted);
-		background: var(--background-secondary);
 		border-radius: var(--radius-lg);
 		border: 2px dashed var(--border);
+		position: relative;
+		transition: all 0.2s ease;
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: var(--text-muted);
+			opacity: 0.02;
+			border-radius: inherit;
+			pointer-events: none;
+		}
+
+		&:hover {
+			border-color: var(--primary);
+			
+			&::before {
+				background: var(--primary);
+				opacity: 0.03;
+			}
+		}
 
 		:global(svg) {
 			font-size: 3rem;
@@ -334,6 +354,8 @@
 		p {
 			margin: 0;
 			line-height: 1.4;
+			position: relative;
+			z-index: 1;
 		}
 	}
 
@@ -360,9 +382,19 @@
 			color: var(--primary);
 			font-size: 1rem;
 			padding: var(--space-xs) var(--space-sm);
-			background: var(--background-secondary);
 			border-radius: var(--radius-md);
-			border: 1px solid var(--border);
+			border: 2px solid var(--primary);
+			position: relative;
+			
+			&::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: var(--primary);
+				opacity: 0.05;
+				border-radius: inherit;
+				pointer-events: none;
+			}
 		}
 
 		.clear-votes-btn {
@@ -470,8 +502,8 @@
 
 		&.selected {
 			border-color: var(--primary);
+			border-width: 2px;
 			box-shadow: var(--shadow-md);
-			background: var(--background-secondary);
 			position: relative;
 			
 			&::before {
@@ -479,7 +511,7 @@
 				position: absolute;
 				inset: 0;
 				background: var(--primary);
-				opacity: 0.05;
+				opacity: 0.04;
 				border-radius: inherit;
 				pointer-events: none;
 			}
@@ -587,10 +619,21 @@
 
 			.reason-container {
 				margin-bottom: var(--space-sm);
-				background: var(--background-secondary);
 				padding: var(--space-sm);
 				border-radius: var(--radius-md);
 				border-left: 3px solid var(--primary);
+				border: 1px solid var(--border);
+				position: relative;
+				
+				&::before {
+					content: '';
+					position: absolute;
+					inset: 0;
+					background: var(--primary);
+					opacity: 0.02;
+					border-radius: inherit;
+					pointer-events: none;
+				}
 			}
 
 			.reason-container:last-child {
@@ -706,14 +749,27 @@
 			align-items: center;
 			gap: var(--space-md);
 			padding: var(--space-sm) var(--space-md);
-			background: var(--background-secondary);
 			border-radius: var(--radius-md);
 			border: 1px solid var(--border);
 			transition: all 0.2s ease;
+			position: relative;
+			
+			&::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: var(--primary);
+				opacity: 0.02;
+				border-radius: inherit;
+				pointer-events: none;
+			}
 			
 			&:hover {
-				background: var(--background);
 				border-color: var(--primary);
+				
+				&::before {
+					opacity: 0.04;
+				}
 			}
 
 			.priority {

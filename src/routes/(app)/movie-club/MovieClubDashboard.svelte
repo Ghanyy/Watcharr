@@ -71,15 +71,30 @@
 	}
 
 	.phase-content {
-		background: var(--background-secondary);
+		background: var(--background);
 		border-radius: var(--radius-lg);
 		padding: var(--space-lg);
-		box-shadow: var(--shadow-md);
 		border: 1px solid var(--border);
-		transition: box-shadow 0.2s ease;
+		transition: all 0.2s ease;
+		position: relative;
+		
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: var(--primary);
+			opacity: 0.01;
+			border-radius: inherit;
+			pointer-events: none;
+		}
 		
 		&:hover {
-			box-shadow: var(--shadow-lg);
+			border-color: var(--primary);
+			box-shadow: var(--shadow-sm);
+			
+			&::before {
+				opacity: 0.02;
+			}
 		}
 	}
 

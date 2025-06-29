@@ -238,7 +238,16 @@
 		align-items: center;
 		padding: var(--space-lg);
 		border-bottom: 1px solid var(--border);
-		background: var(--background-secondary);
+		position: relative;
+		
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: var(--primary);
+			opacity: 0.01;
+			pointer-events: none;
+		}
 
 		h3 {
 			margin: 0;
@@ -338,9 +347,19 @@
 		color: var(--text-muted);
 		gap: var(--space-md);
 		padding: var(--space-xl) var(--space-md);
-		background: var(--background-secondary);
 		border-radius: var(--radius-lg);
 		border: 2px dashed var(--border);
+		position: relative;
+		
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: var(--text-muted);
+			opacity: 0.02;
+			border-radius: inherit;
+			pointer-events: none;
+		}
 
 		:global(svg) {
 			font-size: 2.5rem;

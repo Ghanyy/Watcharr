@@ -231,9 +231,19 @@
 		font-style: italic;
 		line-height: 1.5;
 		padding: var(--space-sm) var(--space-md);
-		background: var(--background-secondary);
 		border-radius: var(--radius-md);
 		border-left: 3px solid var(--primary);
+		position: relative;
+		
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: var(--primary);
+			opacity: 0.03;
+			border-radius: inherit;
+			pointer-events: none;
+		}
 	}
 
 	.phase-progress {
