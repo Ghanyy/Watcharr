@@ -154,6 +154,8 @@ func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
 	var cycle MovieClubCycle
 	result := db.Where("active = ?", true).
 		Preload("WinnerContent").
+		Preload("Nominations.Content").
+		Preload("Nominations.User").
 		First(&cycle)
 	
 	if result.Error != nil {
