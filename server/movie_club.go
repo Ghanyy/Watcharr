@@ -1100,17 +1100,47 @@ func (b *BaseRouter) deleteMovieClubCycle(c *gin.Context) {
 		return
 	}
 	
-	// Mark cycle as inactive instead of deleting it
-	// This preserves the cycle data and history while removing it from active display
-	slog.Info("Deactivating movie club cycle", "cycleId", cycleID)
+	// Use GORM soft delete to populate deleted_at and set active to false
+	// This preserves the cycle data and history while marking it as deleted
+	slog.Info("Soft deleting movie club cycle", "cycleId", cycleID)
 	
-	if err := b.db.Model(&MovieClubCycle{}).Where("id = ?", cycleID).Update("active", false).Error; err != nil {
+	// Use a transaction to ensure both operations succeed
+	tx := b.db.Begin()
+	if tx.Error != nil {
+		slog.Error("Failed to begin transaction", "error", tx.Error)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	
+	// First set active to false
+	if err := tx.Model(&MovieClubCycle{}).Where("id = ?", cycleID).Update("active", false).Error; err != nil {
+		tx.Rollback()
 		slog.Error("Failed to deactivate cycle", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to deactivate cycle"})
 		return
 	}
 	
-	slog.Info("Successfully deactivated movie club cycle", "cycleId", cycleID)
+	// Then perform soft delete to populate deleted_at
+	if err := tx.Delete(&MovieClubCycle{}, cycleID).Error; err != nil {
+		tx.Rollback()
+		slog.Error("Failed to soft delete cycle", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
+		return
+	}
+	
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		slog.Error("Failed to commit transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to delete cycle"})
+		return
+	}
+	
+	slog.Info("Successfully soft deleted movie club cycle", "cycleId", cycleID)
 	c.JSON(http.StatusOK, gin.H{"message": "Cycle deleted"})
 }
 
