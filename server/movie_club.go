@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -166,6 +167,10 @@ func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
 		Preload("WinnerContent").
 		Preload("AllNominations.Content").
 		Preload("AllNominations.User").
+		Preload("AllNominations", func(db *gorm.DB) *gorm.DB {
+			return db.Joins("JOIN contents ON movie_club_nominations.content_id = contents.id").
+				Order("contents.title ASC")
+		}).
 		First(&cycle)
 	
 	if result.Error != nil {
@@ -190,6 +195,8 @@ func GetMovieClubNominationsForCycle(db *gorm.DB, cycleID uint) ([]MovieClubNomi
 	result := db.Where("cycle_id = ?", cycleID).
 		Preload("User").
 		Preload("Content").
+		Joins("JOIN contents ON movie_club_nominations.content_id = contents.id").
+		Order("contents.title ASC").
 		Find(&nominations)
 	
 	if result.Error != nil {
@@ -235,6 +242,11 @@ func GroupNominationsByContent(nominations []MovieClubNomination) []MovieClubNom
 	for _, group := range contentMap {
 		groups = append(groups, *group)
 	}
+	
+	// Sort groups by content title for consistent ordering
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Content.Title < groups[j].Content.Title
+	})
 	
 	return groups
 }
