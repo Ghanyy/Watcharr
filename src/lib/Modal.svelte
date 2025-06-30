@@ -40,14 +40,13 @@
 
 <style lang="scss">
 	.backdrop {
-		position: absolute;
+		position: fixed;
 		top: 0;
 		left: 0;
-		width: 100dvw;
-		height: 100dvh;
+		width: 100vw;
+		height: 100vh;
 		backdrop-filter: blur(2px) saturate(180%);
 		background-color: color-mix(in srgb, black 85%, transparent);
-		position: fixed;
 		z-index: 99998;
 	}
 
@@ -55,12 +54,14 @@
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		width: 100dvw;
-		height: 100dvh;
+		width: 100vw;
+		height: 100vh;
 		top: 0;
 		left: 0;
 		position: fixed;
-		z-index: 99998;
+		z-index: 99999;
+		padding: 20px;
+		box-sizing: border-box;
 
 		& > div {
 			position: relative;
@@ -68,14 +69,14 @@
 			flex-flow: column;
 			min-width: 300px;
 			width: 100%;
-			max-height: calc(100% - 20px);
+			max-width: min(90vw, 1200px);
+			max-height: calc(100vh - 40px);
 			background-color: $bg-color;
 			border-radius: 10px;
 			padding: 15px 20px;
-			margin: 20px 100px;
-			transition: margin 100ms ease;
 			outline: 2px solid $text-color;
 			overflow: auto;
+			box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 
 			h5 {
 				margin-bottom: 15px;
@@ -87,10 +88,12 @@
 				right: 8px;
 				width: max-content;
 				padding: 3px 5px;
+				z-index: 1;
 			}
 
 			@media screen and (max-width: 680px) {
-				margin: 20px;
+				max-width: calc(100vw - 20px);
+				max-height: calc(100vh - 20px);
 			}
 
 			.error {

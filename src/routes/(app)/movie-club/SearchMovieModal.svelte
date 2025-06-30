@@ -197,8 +197,9 @@
 <style lang="scss">
 	.search-modal {
 		width: 100%;
-		max-width: 700px;
-		max-height: 85vh;
+		max-width: 800px;
+		min-height: 500px;
+		max-height: 90vh;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
@@ -383,7 +384,8 @@
 		border-radius: var(--radius-lg);
 		background: var(--background-secondary);
 		border: 1px solid var(--border);
-		max-height: 400px;
+		min-height: 300px;
+		max-height: none;
 		box-shadow: var(--shadow-sm);
 	}
 
@@ -537,6 +539,9 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 		background: var(--background-secondary);
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
 	}
 
 	.back-btn {
@@ -808,9 +813,9 @@
 
 	@media (max-width: 768px) {
 		.search-modal {
-			max-height: 92vh;
-			max-width: 95vw;
-			margin: var(--space-md);
+			max-height: 95vh;
+			min-height: 400px;
+			max-width: 100%;
 		}
 
 		.modal-header {

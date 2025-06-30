@@ -114,12 +114,15 @@
 <style lang="scss">
 	.create-cycle-modal {
 		width: 100%;
-		max-width: 500px;
+		max-width: 600px;
+		min-height: 400px;
 		background: var(--background);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		box-shadow: var(--shadow-lg);
 		border: 1px solid var(--border);
+		display: flex;
+		flex-direction: column;
 		
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
@@ -194,6 +197,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-lg);
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
 	}
 
 	.form-group {
@@ -356,8 +362,8 @@
 
 	@media (max-width: 768px) {
 		.create-cycle-modal {
-			max-width: 95vw;
-			margin: var(--space-md);
+			max-width: 100%;
+			min-height: 300px;
 		}
 
 		.modal-header {
