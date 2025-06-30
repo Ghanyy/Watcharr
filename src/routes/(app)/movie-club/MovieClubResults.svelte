@@ -35,7 +35,7 @@
 				
 				<div class="winner-card">
 					<div class="winner-poster">
-						<Poster media={winner.content} showRating={false} disableInteraction={true} />
+						<Poster media={winner.content} showRating={false} disableInteraction={true} fluidSize={true} />
 					</div>
 					
 					<div class="winner-details">
@@ -303,6 +303,12 @@
 			padding: 0;
 			width: 100%;
 			height: 100%;
+		}
+		
+		:global(.container) {
+			width: 100% !important;
+			height: 100% !important;
+			min-width: unset !important;
 		}
 	}
 
