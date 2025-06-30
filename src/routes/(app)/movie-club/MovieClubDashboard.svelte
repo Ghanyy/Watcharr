@@ -8,7 +8,11 @@
 
 	export let cycleData: MovieClubCycleResponse;
 
-	const dispatch = createEventDispatcher<{ refresh: void }>();
+	const dispatch = createEventDispatcher<{ 
+		refresh: void;
+		openSearchModal: void;
+		nominateMovie: { content: any; reason: string };
+	}>();
 
 	function onDataChanged() {
 		dispatch("refresh");
@@ -25,6 +29,8 @@
 			<MovieClubNominations
 				{cycleData}
 				on:nominationChanged={onDataChanged}
+				on:openSearchModal={() => dispatch("openSearchModal")}
+				on:nominateMovie={(e) => dispatch("nominateMovie", e.detail)}
 			/>
 		{:else if currentPhase === "voting"}
 			<MovieClubVoting

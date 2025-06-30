@@ -4,8 +4,7 @@
 	import { nominateMovie, removeNomination } from "@/lib/util/api";
 	import Icon from "@/lib/Icon.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
-	import Modal from "@/lib/Modal.svelte";
-	import SearchMovieModal from "./SearchMovieModal.svelte";
+	// Modal imports moved to parent component
 
 	// Component for collapsible reason text
 	function CollapsibleReason(reason: string, maxLength: number = 40) {
@@ -18,33 +17,25 @@
 
 	export let cycleData: MovieClubCycleResponse;
 
-	const dispatch = createEventDispatcher<{ nominationChanged: void }>();
+	const dispatch = createEventDispatcher<{ 
+		nominationChanged: void;
+		openSearchModal: void;
+		nominateMovie: { content: Content; reason: string };
+	}>();
 
-	let showSearchModal = false;
+	// Remove local modal state - parent will handle it
 	let submitting = false;
 	let expandedReasons: Set<string> = new Set(); // Track expanded reasons by unique ID
 
-	async function handleNomination(content: Content, reason: string) {
-		if (submitting) return;
-		
-		// Frontend validation to prevent nominations beyond limit
-		if (!canNominateLocal) {
-			console.warn("Nomination blocked: limit reached or not allowed");
-			return;
-		}
+	function handleOpenSearchModal() {
+		dispatch("openSearchModal");
+	}
 
-		submitting = true;
-		const success = await nominateMovie({
-			contentId: content.tmdbId,
-			reason: reason,
-			cycleId: cycleData.cycle.id
+	function handleNominateMovie(content: Content, reason: string) {
+		dispatch("nominateMovie", {
+			content,
+			reason
 		});
-
-		if (success) {
-			dispatch("nominationChanged");
-			showSearchModal = false;
-		}
-		submitting = false;
 	}
 
 	async function handleRemoveNomination(nominationId: number) {
@@ -95,7 +86,7 @@
 				<Icon icon="film" />
 				<p>You haven't nominated any movies yet.</p>
 				{#if canNominateLocal}
-					<button class="nominate-btn" on:click={() => showSearchModal = true}>
+					<button class="nominate-btn" on:click={handleOpenSearchModal}>
 						<Icon icon="add" />
 						Nominate a Movie
 					</button>
@@ -146,7 +137,7 @@
 			</div>
 
 			{#if canNominateLocal}
-				<button class="nominate-btn" on:click={() => showSearchModal = true}>
+				<button class="nominate-btn" on:click={handleOpenSearchModal}>
 					<Icon icon="add" />
 					Nominate Another Movie
 				</button>
@@ -206,14 +197,7 @@
 	{/if}
 </div>
 
-{#if showSearchModal}
-	<Modal on:close={() => showSearchModal = false}>
-		<SearchMovieModal 
-			on:movieSelected={(e) => handleNomination(e.detail.content, e.detail.reason)}
-			on:close={() => showSearchModal = false}
-		/>
-	</Modal>
-{/if}
+<!-- Modal moved to parent component to avoid transform issues -->
 
 <style lang="scss">
 	.nominations-section {

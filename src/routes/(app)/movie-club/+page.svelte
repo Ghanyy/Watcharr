@@ -7,11 +7,13 @@
 	import Error from "@/lib/Error.svelte";
 	import { store } from "@/store.svelte";
 	import CreateCycleModal from "./CreateCycleModal.svelte";
+	import SearchMovieModal from "./SearchMovieModal.svelte";
 	import Modal from "@/lib/Modal.svelte";
 	import axios from "axios";
 	import { notify } from "@/lib/util/notify";
 	import { userHasPermission } from "@/lib/util/helpers";
 	import { UserPermission } from "@/types";
+	import { nominateMovie } from "@/lib/util/api";
 	import Icon from "@/lib/Icon.svelte";
 
 	let cycleData: MovieClubCycleResponse | null = null;
@@ -20,7 +22,10 @@
 	let loading = true;
 	let error: string | null = null;
 	let showCreateModal = false;
+	let showSearchModal = false;
+	let currentNominationCycleId = 0;
 	let movieClubDisabled = false;
+	let submitting = false;
 
 	$: isAdmin = store.userInfo && userHasPermission(store.userInfo.permissions, UserPermission.PERM_ADMIN);
 
@@ -133,6 +138,28 @@
 			notify({ id: nid, text: message, type: "error" });
 		}
 	}
+
+	async function handleNomination(content: any, reason: string) {
+		if (submitting) return;
+
+		submitting = true;
+		const success = await nominateMovie({
+			contentId: content.tmdbId,
+			reason: reason,
+			cycleId: currentNominationCycleId
+		});
+
+		if (success) {
+			await refreshData();
+			showSearchModal = false;
+		}
+		submitting = false;
+	}
+
+	function handleOpenSearchModal(cycleId: number) {
+		currentNominationCycleId = cycleId;
+		showSearchModal = true;
+	}
 </script>
 
 <svelte:head>
@@ -199,7 +226,12 @@
 							{/if}
 						</div>
 					</div>
-					<MovieClubDashboard {cycleData} on:refresh={refreshData} />
+					<MovieClubDashboard 
+						{cycleData} 
+						on:refresh={refreshData}
+						on:openSearchModal={() => handleOpenSearchModal(cycleData.cycle.id)}
+						on:nominateMovie={(e) => handleNomination(e.detail.content, e.detail.reason)}
+					/>
 				</div>
 			{/each}
 		</div>
@@ -229,6 +261,15 @@
 				refreshData();
 			}}
 			on:close={() => showCreateModal = false}
+		/>
+	</Modal>
+{/if}
+
+{#if showSearchModal}
+	<Modal on:close={() => showSearchModal = false}>
+		<SearchMovieModal 
+			on:movieSelected={(e) => handleNomination(e.detail.content, e.detail.reason)}
+			on:close={() => showSearchModal = false}
 		/>
 	</Modal>
 {/if}
