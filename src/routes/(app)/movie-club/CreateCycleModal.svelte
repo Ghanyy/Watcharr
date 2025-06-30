@@ -114,7 +114,7 @@
 <style lang="scss">
 	.create-cycle-modal {
 		width: 100%;
-		max-width: 600px;
+		height: 100%;
 		min-height: 400px;
 		background: var(--background);
 		border-radius: var(--radius-lg);
@@ -155,7 +155,6 @@
 		align-items: center;
 		padding: var(--space-lg);
 		border-bottom: 1px solid var(--border);
-		background: var(--background-secondary);
 
 		h3 {
 			margin: 0;
@@ -228,13 +227,11 @@
 				outline: none;
 				border-color: var(--primary);
 				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.1);
-				background: var(--background-secondary);
 			}
 
 			&:disabled {
 				opacity: 0.6;
 				cursor: not-allowed;
-				background: var(--background-secondary);
 			}
 
 			&::placeholder {
@@ -256,11 +253,21 @@
 	}
 
 	.cycle-info {
-		background: var(--background-secondary);
 		padding: var(--space-md);
 		border-radius: var(--radius-lg);
+		border: 1px solid var(--border);
 		border-left: 3px solid var(--primary);
-		box-shadow: var(--shadow-sm);
+		position: relative;
+		
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: var(--primary);
+			opacity: 0.02;
+			border-radius: inherit;
+			pointer-events: none;
+		}
 
 		h4 {
 			margin: 0 0 var(--space-sm) 0;
@@ -325,7 +332,6 @@
 			color: var(--text);
 
 			&:hover:not(:disabled) {
-				background: var(--background-secondary);
 				border-color: var(--text-muted);
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
@@ -362,7 +368,6 @@
 
 	@media (max-width: 768px) {
 		.create-cycle-modal {
-			max-width: 100%;
 			min-height: 300px;
 		}
 

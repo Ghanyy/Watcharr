@@ -69,7 +69,7 @@
 			flex-flow: column;
 			min-width: 300px;
 			width: 100%;
-			max-width: min(90vw, 1200px);
+			max-width: min(95vw, 1400px);
 			max-height: calc(100vh - 40px);
 			background-color: $bg-color;
 			border-radius: 10px;

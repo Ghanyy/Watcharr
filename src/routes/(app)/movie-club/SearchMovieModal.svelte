@@ -197,9 +197,8 @@
 <style lang="scss">
 	.search-modal {
 		width: 100%;
-		max-width: 800px;
+		height: 100%;
 		min-height: 500px;
-		max-height: 90vh;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
@@ -324,7 +323,7 @@
 				outline: none;
 				border-color: var(--primary);
 				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.1);
-				background: var(--background-secondary);
+				background: var(--background);
 			}
 
 			&::placeholder {
@@ -382,7 +381,6 @@
 		margin: 0;
 		padding: var(--space-sm);
 		border-radius: var(--radius-lg);
-		background: var(--background-secondary);
 		border: 1px solid var(--border);
 		min-height: 300px;
 		max-height: none;
@@ -409,7 +407,7 @@
 		}
 
 		&:hover {
-			background: var(--background-secondary);
+			background: var(--background);
 			border-color: var(--primary);
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
@@ -433,7 +431,7 @@
 			overflow: hidden;
 			position: relative;
 			border: 1px solid var(--border);
-			background: var(--background-secondary);
+			background: var(--background);
 
 			:global(li) {
 				list-style: none;
@@ -499,7 +497,6 @@
 				font-size: 0.875rem;
 				font-weight: 500;
 				padding: var(--space-xs) var(--space-sm);
-				background: var(--background-secondary);
 				border-radius: var(--radius-md);
 				border: 1px solid var(--border);
 				width: fit-content;
@@ -538,7 +535,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-lg);
-		background: var(--background-secondary);
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
@@ -562,7 +558,7 @@
 		box-shadow: var(--shadow-sm);
 
 		&:hover {
-			background: var(--background-secondary);
+			background: var(--background);
 			border-color: var(--primary);
 			color: var(--primary);
 			transform: translateX(-2px);
@@ -668,7 +664,6 @@
 				font-size: 1rem;
 				font-weight: 500;
 				padding: var(--space-xs) var(--space-sm);
-				background: var(--background-secondary);
 				border-radius: var(--radius-md);
 				border: 1px solid var(--border);
 				width: fit-content;
@@ -682,9 +677,20 @@
 				max-height: 120px;
 				overflow-y: auto;
 				padding: var(--space-sm);
-				background: var(--background-secondary);
 				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
 				border-left: 3px solid var(--primary);
+				position: relative;
+				
+				&::before {
+					content: '';
+					position: absolute;
+					inset: 0;
+					background: var(--primary);
+					opacity: 0.02;
+					border-radius: inherit;
+					pointer-events: none;
+				}
 			}
 		}
 	}
@@ -711,7 +717,7 @@
 			border-radius: var(--radius-md);
 			font-family: inherit;
 			font-size: 0.9rem;
-			background: var(--background-secondary);
+			background: var(--background);
 			color: var(--text);
 			resize: vertical;
 			transition: all 0.2s ease;
@@ -776,7 +782,7 @@
 			color: var(--text);
 
 			&:hover {
-				background: var(--background-secondary);
+				background: var(--background);
 				border-color: var(--text-muted);
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
@@ -813,9 +819,7 @@
 
 	@media (max-width: 768px) {
 		.search-modal {
-			max-height: 95vh;
 			min-height: 400px;
-			max-width: 100%;
 		}
 
 		.modal-header {
