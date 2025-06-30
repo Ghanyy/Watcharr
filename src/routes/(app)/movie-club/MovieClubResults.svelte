@@ -310,6 +310,12 @@
 			height: 100% !important;
 			min-width: unset !important;
 		}
+		
+		// Disable the zoom/scale effect on hover for winner poster
+		:global(.active .container) {
+			transform: none !important;
+			z-index: 1 !important;
+		}
 	}
 
 	.winner-details {
