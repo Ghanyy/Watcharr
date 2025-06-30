@@ -289,14 +289,13 @@
 
 	.winner-poster {
 		position: relative;
-		width: 150px;
-		height: 225px;
+		width: 200px;
+		height: 300px;
 		flex-shrink: 0;
 		z-index: 1;
 		border-radius: var(--radius-lg);
 		overflow: hidden;
-		box-shadow: var(--shadow-md);
-		border: 2px solid #ffd700;
+		box-shadow: var(--shadow-lg);
 		
 		:global(li) {
 			list-style: none;
@@ -665,8 +664,8 @@
 
 			.winner-poster {
 				align-self: center;
-				width: 120px;
-				height: 180px;
+				width: 160px;
+				height: 240px;
 			}
 
 			.winner-details {
