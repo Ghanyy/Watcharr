@@ -40,13 +40,14 @@
 
 <div class="archives-page">
 	<header>
-		<button class="back-btn" on:click={goBack}>
-			<Icon icon="arrow" />
-			Back to Movie Club
-		</button>
 		<h1>🗂️ Movie Club Archives</h1>
 		<p>Browse through all completed movie club cycles</p>
 	</header>
+
+	<button class="back-btn" on:click={goBack}>
+		<Icon icon="arrow" />
+		Back to Movie Club
+	</button>
 
 	{#if loading}
 		<div class="loading">
@@ -183,53 +184,53 @@
 		}
 	}
 
+	.back-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		background: var(--background);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		color: var(--text);
+		font-family: inherit;
+		font-size: 0.9rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--shadow-sm);
+		margin-bottom: var(--space-xl);
+		max-width: 800px;
+		margin-left: auto;
+		margin-right: auto;
+
+		&:hover {
+			background: var(--background-secondary);
+			transform: translateX(-2px);
+			box-shadow: var(--shadow-md);
+		}
+
+		&:focus {
+			outline: none;
+			box-shadow:
+				var(--shadow-md),
+				0 0 0 3px rgba(59, 130, 246, 0.2);
+		}
+
+		:global(svg) {
+			transform: rotate(180deg);
+		}
+	}
+
 	header {
 		text-align: center;
 		margin-bottom: var(--space-2xl);
 		max-width: 800px;
 		margin-left: auto;
 		margin-right: auto;
-		position: relative;
-
-		.back-btn {
-			position: absolute;
-			left: 0;
-			top: 0;
-			display: inline-flex;
-			align-items: center;
-			gap: var(--space-sm);
-			padding: var(--space-sm) var(--space-md);
-			background: var(--background);
-			border: 1px solid var(--border);
-			border-radius: var(--radius-md);
-			color: var(--text);
-			font-family: inherit;
-			font-size: 0.9rem;
-			font-weight: 500;
-			cursor: pointer;
-			transition: all 0.2s ease;
-			box-shadow: var(--shadow-sm);
-
-			&:hover {
-				background: var(--background-secondary);
-				transform: translateY(-50%) translateX(-2px);
-				box-shadow: var(--shadow-md);
-			}
-
-			&:focus {
-				outline: none;
-				box-shadow:
-					var(--shadow-md),
-					0 0 0 3px rgba(59, 130, 246, 0.2);
-			}
-
-			:global(svg) {
-				transform: rotate(180deg);
-			}
-		}
 
 		h1 {
-			margin: var(--space-lg) 0 var(--space-sm) 0;
+			margin: 0 0 var(--space-sm) 0;
 			font-size: 2.5rem;
 			font-weight: 700;
 			color: var(--text);
@@ -503,13 +504,11 @@
 			padding: var(--space-lg) var(--space-md);
 		}
 
-		header {
-			.back-btn {
-				position: static;
-				transform: none;
-				margin-bottom: var(--space-md);
-			}
+		.back-btn {
+			margin-bottom: var(--space-md);
+		}
 
+		header {
 			h1 {
 				font-size: 2rem;
 			}
