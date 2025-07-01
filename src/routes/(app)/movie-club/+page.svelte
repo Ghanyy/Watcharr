@@ -4,6 +4,7 @@
 		getMovieClubCurrent,
 		getActiveMovieClubCycles,
 		getMovieClubSettings,
+		getArchivedMovieClubCycles,
 	} from "@/lib/util/api";
 	import type { MovieClubCycleResponse, MovieClubSettings } from "@/types";
 	import Spinner from "@/lib/Spinner.svelte";
@@ -22,6 +23,7 @@
 
 	let cycleData: MovieClubCycleResponse | null = null;
 	let allActiveCycles: MovieClubCycleResponse[] = [];
+	let archivedCycles: MovieClubCycleResponse[] = [];
 	let settings: MovieClubSettings | null = null;
 	let loading = true;
 	let error: string | null = null;
@@ -37,10 +39,11 @@
 
 	onMount(async () => {
 		try {
-			// Fetch both cycle data and settings
-			const [cyclesResult, settingsResult] = await Promise.allSettled([
+			// Fetch cycle data, settings, and archived cycles
+			const [cyclesResult, settingsResult, archivedResult] = await Promise.allSettled([
 				getActiveMovieClubCycles(),
 				getMovieClubSettings(),
+				getArchivedMovieClubCycles(),
 			]);
 
 			// Handle cycles data
@@ -84,6 +87,16 @@
 				console.warn(
 					"Failed to load movie club settings:",
 					settingsResult.reason,
+				);
+			}
+
+			// Handle archived cycles
+			if (archivedResult.status === "fulfilled") {
+				archivedCycles = archivedResult.value;
+			} else {
+				console.warn(
+					"Failed to load archived cycles:",
+					archivedResult.reason,
 				);
 			}
 		} catch (err: any) {
@@ -283,6 +296,21 @@
 			>
 				<Icon icon="plus" />
 				Start New Cycle
+			</button>
+		</div>
+	{/if}
+
+	<!-- Archives button for all users (only show if there are archived cycles) -->
+	{#if archivedCycles.length > 0}
+		<div class="bottom-user-controls">
+			<button
+				class="view-archives-btn"
+				on:click={() => window.location.href = '/movie-club/archives'}
+				disabled={loading}
+				title="View archived movie club cycles"
+			>
+				<Icon icon="archive" />
+				View Archives ({archivedCycles.length})
 			</button>
 		</div>
 	{/if}
@@ -784,6 +812,57 @@
 				height: 24px;
 				font-size: 0.9rem;
 			}
+		}
+	}
+
+	.bottom-user-controls {
+		padding: var(--space-lg) var(--space-xl);
+		text-align: center;
+		border-top: 1px solid var(--border);
+		margin-top: var(--space-xl);
+		background: var(--background-secondary);
+	}
+
+	.view-archives-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-sm) var(--space-lg);
+		background: var(--background);
+		color: var(--text);
+		border: 2px solid var(--border);
+		border-radius: var(--radius-md);
+		font-size: 0.95rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--shadow-sm);
+
+		&:hover:not(:disabled) {
+			background: var(--primary);
+			color: white;
+			border-color: var(--primary);
+			transform: translateY(-1px);
+			box-shadow: var(--shadow-md);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: var(--shadow-sm);
+		}
+
+		&:active:not(:disabled) {
+			transform: translateY(0);
+			box-shadow: var(--shadow-sm);
+		}
+
+		&:focus {
+			outline: none;
+			box-shadow:
+				var(--shadow-md),
+				0 0 0 3px rgba(59, 130, 246, 0.2);
 		}
 	}
 </style>

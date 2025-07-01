@@ -511,3 +511,15 @@ export async function getMovieClubSettings(): Promise<MovieClubSettings> {
 		throw err;
 	}
 }
+
+export async function getArchivedMovieClubCycles(): Promise<
+	MovieClubCycleResponse[]
+> {
+	try {
+		const response = await axios.get("/movie-club/cycles/archived");
+		return response.data;
+	} catch (err: any) {
+		console.error("getArchivedMovieClubCycles failed!", err);
+		throw err;
+	}
+}

@@ -374,6 +374,13 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
+			border: 2px solid transparent;
+			border-radius: var(--radius-md);
+			transition: border-color 0.3s ease;
+
+			&:hover {
+				border-color: var(--primary);
+			}
 
 			:global(li) {
 				list-style: none;

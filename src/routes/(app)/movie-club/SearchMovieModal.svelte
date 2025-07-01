@@ -455,6 +455,11 @@
 			position: relative;
 			border: 1px solid var(--border);
 			background: var(--background);
+			transition: border-color 0.3s ease;
+
+			&:hover {
+				border-color: var(--primary);
+			}
 
 			:global(li) {
 				list-style: none;
@@ -627,6 +632,11 @@
 			overflow: hidden;
 			border: 1px solid var(--border);
 			background: var(--background);
+			transition: border-color 0.3s ease;
+
+			&:hover {
+				border-color: var(--primary);
+			}
 
 			:global(li) {
 				list-style: none;

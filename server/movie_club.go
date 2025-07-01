@@ -195,6 +195,35 @@ func GetActiveMovieClubCycles(db *gorm.DB) ([]MovieClubCycle, error) {
 	return cycles, nil
 }
 
+func GetArchivedMovieClubCycles(db *gorm.DB) ([]MovieClubCycle, error) {
+	slog.Debug("GetArchivedMovieClubCycles: Looking for archived cycles")
+	
+	var cycles []MovieClubCycle
+	result := db.Where("active = ? AND phase = ? AND winner_content_id IS NOT NULL", false, PHASE_WATCHING).
+		Preload("WinnerContent").
+		Preload("AllNominations.Content").
+		Preload("AllNominations.User").
+		Preload("AllNominations", func(db *gorm.DB) *gorm.DB {
+			return db.Joins("JOIN contents ON movie_club_nominations.content_id = contents.id").
+				Order("contents.title ASC")
+		}).
+		Order("watching_end_date DESC").
+		Find(&cycles)
+	
+	if result.Error != nil {
+		slog.Error("GetArchivedMovieClubCycles: Database error", "error", result.Error)
+		return nil, result.Error
+	}
+	
+	// Group nominations for each cycle
+	for i := range cycles {
+		cycles[i].Nominations = GroupNominationsByContent(cycles[i].AllNominations)
+	}
+	
+	slog.Debug("GetArchivedMovieClubCycles: Found archived cycles", "count", len(cycles))
+	return cycles, nil
+}
+
 // GetActiveMovieClubCycle returns the currently active movie club cycle (backwards compatibility)
 // Now returns the first cycle from the sorted list of active cycles
 func GetActiveMovieClubCycle(db *gorm.DB) (*MovieClubCycle, error) {
@@ -481,6 +510,9 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	// Get all active cycles with user data
 	movieClub.GET("/cycles/active", b.getActiveMovieClubCycles)
 	
+	// Get all archived cycles (completed, non-deleted)
+	movieClub.GET("/cycles/archived", b.getArchivedMovieClubCycles)
+	
 	// Nomination endpoints
 	movieClub.POST("/nominate", b.nominateMovie)
 	movieClub.DELETE("/nominate/:id", b.removeNomination)
@@ -624,6 +656,73 @@ func (b *BaseRouter) getActiveMovieClubCycles(c *gin.Context) {
 			}
 		}
 		
+		response := MovieClubCycleResponse{
+			Cycle:           cycle,
+			UserNominations: userNominations,
+			UserVotes:       userVotes,
+			VoteResults:     voteResults,
+			CanNominate:     canNominate,
+			CanVote:         canVote,
+		}
+		
+		responses = append(responses, response)
+	}
+	
+	c.JSON(http.StatusOK, responses)
+}
+
+// getArchivedMovieClubCycles returns all archived (completed) movie club cycles
+func (b *BaseRouter) getArchivedMovieClubCycles(c *gin.Context) {
+	// Check if movie club is enabled
+	if !Config.MOVIE_CLUB.Enabled {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Movie club is not enabled"})
+		return
+	}
+	
+	userID := c.GetUint("userId")
+	
+	// Get all archived cycles
+	cycles, err := GetArchivedMovieClubCycles(b.db)
+	if err != nil {
+		slog.Error("Failed to get archived movie club cycles", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get archived cycles"})
+		return
+	}
+	
+	slog.Debug("Found archived movie club cycles", "count", len(cycles))
+	
+	// Build response with user data for each cycle
+	var responses []MovieClubCycleResponse
+	for _, cycle := range cycles {
+		// Get user nominations for this cycle
+		userNominations, err := GetUserNominationsForCycle(b.db, cycle.ID, userID)
+		if err != nil {
+			slog.Error("Failed to get user nominations", "error", err, "cycleId", cycle.ID)
+			userNominations = []MovieClubNomination{}
+		}
+		
+		// Get user votes for this cycle
+		userVotes, err := GetUserVotesForCycle(b.db, cycle.ID, userID)
+		if err != nil {
+			slog.Error("Failed to get user votes", "error", err, "cycleId", cycle.ID)
+			userVotes = []MovieClubVote{}
+		}
+		
+		// Get vote results for this cycle if it's in watching phase (completed)
+		var voteResults []MovieClubVoteCount
+		if cycle.Phase == PHASE_WATCHING {
+			voteResults, err = CalculateVoteResults(b.db, cycle.ID)
+			if err != nil {
+				slog.Error("Failed to get vote results", "error", err, "cycleId", cycle.ID)
+				voteResults = []MovieClubVoteCount{}
+			}
+		}
+		
+		// Check if user can nominate/vote (always false for archived cycles)
+		canNominate := false
+		canVote := false
+		
+		// Build the response
 		response := MovieClubCycleResponse{
 			Cycle:           cycle,
 			UserNominations: userNominations,
