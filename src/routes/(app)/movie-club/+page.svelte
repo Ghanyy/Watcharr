@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { getMovieClubCurrent, getActiveMovieClubCycles, getMovieClubSettings } from "@/lib/util/api";
+	import {
+		getMovieClubCurrent,
+		getActiveMovieClubCycles,
+		getMovieClubSettings,
+	} from "@/lib/util/api";
 	import type { MovieClubCycleResponse, MovieClubSettings } from "@/types";
 	import Spinner from "@/lib/Spinner.svelte";
 	import MovieClubDashboard from "./MovieClubDashboard.svelte";
@@ -27,14 +31,16 @@
 	let movieClubDisabled = false;
 	let submitting = false;
 
-	$: isAdmin = store.userInfo && userHasPermission(store.userInfo.permissions, UserPermission.PERM_ADMIN);
+	$: isAdmin =
+		store.userInfo &&
+		userHasPermission(store.userInfo.permissions, UserPermission.PERM_ADMIN);
 
 	onMount(async () => {
 		try {
 			// Fetch both cycle data and settings
 			const [cyclesResult, settingsResult] = await Promise.allSettled([
 				getActiveMovieClubCycles(),
-				getMovieClubSettings()
+				getMovieClubSettings(),
 			]);
 
 			// Handle cycles data
@@ -45,7 +51,10 @@
 				const err = cyclesResult.reason;
 				if (err.response?.status === 404) {
 					const errorMessage = err.response?.data?.error || "";
-					if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
+					if (
+						errorMessage.toLowerCase().includes("not enabled") ||
+						errorMessage.toLowerCase().includes("disabled")
+					) {
 						movieClubDisabled = true;
 					} else {
 						allActiveCycles = []; // No active cycles
@@ -61,10 +70,10 @@
 				settings = settingsResult.value;
 				// Add settings to all cycle data if available
 				if (settings) {
-					allActiveCycles = allActiveCycles.map(cycle => ({
+					allActiveCycles = allActiveCycles.map((cycle) => ({
 						...cycle,
 						maxNominations: settings.nominationsPerUser,
-						maxVotes: settings.votesPerUser
+						maxVotes: settings.votesPerUser,
 					}));
 					if (cycleData) {
 						cycleData.maxNominations = settings.nominationsPerUser;
@@ -72,7 +81,10 @@
 					}
 				}
 			} else {
-				console.warn("Failed to load movie club settings:", settingsResult.reason);
+				console.warn(
+					"Failed to load movie club settings:",
+					settingsResult.reason,
+				);
 			}
 		} catch (err: any) {
 			error = "Failed to load movie club data";
@@ -90,10 +102,10 @@
 			cycleData = allActiveCycles.length > 0 ? allActiveCycles[0] : null;
 			// Re-apply settings if available
 			if (settings) {
-				allActiveCycles = allActiveCycles.map(cycle => ({
+				allActiveCycles = allActiveCycles.map((cycle) => ({
 					...cycle,
 					maxNominations: settings.nominationsPerUser,
-					maxVotes: settings.votesPerUser
+					maxVotes: settings.votesPerUser,
 				}));
 				if (cycleData) {
 					cycleData.maxNominations = settings.nominationsPerUser;
@@ -103,7 +115,10 @@
 		} catch (err: any) {
 			if (err.response?.status === 404) {
 				const errorMessage = err.response?.data?.error || "";
-				if (errorMessage.toLowerCase().includes("not enabled") || errorMessage.toLowerCase().includes("disabled")) {
+				if (
+					errorMessage.toLowerCase().includes("not enabled") ||
+					errorMessage.toLowerCase().includes("disabled")
+				) {
 					movieClubDisabled = true;
 				} else {
 					allActiveCycles = []; // No active cycles
@@ -121,13 +136,17 @@
 		// Use the provided cycleId or fall back to the first cycle's ID for backwards compatibility
 		const targetCycleId = cycleId || cycleData?.cycle?.id;
 		if (!targetCycleId) return;
-		
-		if (!confirm("Are you sure you want to remove this movie club cycle? This will hide it from the active cycles list but preserve the data.")) {
+
+		if (
+			!confirm(
+				"Are you sure you want to remove this movie club cycle? This will hide it from the active cycles list but preserve the data.",
+			)
+		) {
 			return;
 		}
 
 		const nid = notify({ text: "Removing cycle...", type: "loading" });
-		
+
 		try {
 			await axios.delete(`/movie-club/cycle/${targetCycleId}`);
 			notify({ id: nid, text: "Cycle removed successfully!", type: "success" });
@@ -146,7 +165,7 @@
 		const success = await nominateMovie({
 			contentId: content.tmdbId,
 			reason: reason,
-			cycleId: currentNominationCycleId
+			cycleId: currentNominationCycleId,
 		});
 
 		if (success) {
@@ -169,7 +188,10 @@
 <div class="movie-club-page">
 	<header>
 		<h1>🎬 Movie Club</h1>
-		<p>Nominate movies, vote for your favorites, and discover what to watch together!</p>
+		<p>
+			Nominate movies, vote for your favorites, and discover what to watch
+			together!
+		</p>
 	</header>
 
 	{#if loading}
@@ -178,7 +200,7 @@
 			<p>Loading movie club...</p>
 		</div>
 	{:else if error}
-		<Error error={error} />
+		<Error {error} />
 		<button on:click={refreshData} class="refresh-btn">Try Again</button>
 	{:else if movieClubDisabled}
 		<div class="disabled">
@@ -196,7 +218,10 @@
 			<p>There are no active movie club cycles running.</p>
 			{#if isAdmin}
 				<p>As an admin, you can create a new cycle to get started!</p>
-				<button class="create-cycle-btn" on:click={() => showCreateModal = true}>
+				<button
+					class="create-cycle-btn"
+					on:click={() => (showCreateModal = true)}
+				>
 					Create New Cycle
 				</button>
 			{:else}
@@ -206,17 +231,26 @@
 	{:else}
 		<div class="cycles-container">
 			{#each allActiveCycles as cycleData, index}
-				<div class="cycle-section" class:watching-phase={cycleData.cycle.phase === 'watching'}>
+				<div
+					class="cycle-section"
+					class:watching-phase={cycleData.cycle.phase === "watching"}
+				>
 					<div class="cycle-header">
-						<h3>{cycleData.cycle.name || `Movie Club Cycle #${cycleData.cycle.id}`}</h3>
+						<h3>
+							{cycleData.cycle.name ||
+								`Movie Club Cycle #${cycleData.cycle.id}`}
+						</h3>
 						<div class="cycle-meta">
 							<span class="phase-badge phase-{cycleData.cycle.phase}">
-								{cycleData.cycle.phase === 'nomination' ? 'Nominating' : 
-								 cycleData.cycle.phase === 'voting' ? 'Voting' : 'Watching'}
+								{cycleData.cycle.phase === "nomination"
+									? "Nominating"
+									: cycleData.cycle.phase === "voting"
+										? "Voting"
+										: "Watching"}
 							</span>
 							{#if isAdmin}
-								<button 
-									class="delete-cycle-btn-small" 
+								<button
+									class="delete-cycle-btn-small"
 									on:click={() => deleteCycle(cycleData.cycle.id)}
 									disabled={loading}
 									title="Remove this cycle"
@@ -226,11 +260,12 @@
 							{/if}
 						</div>
 					</div>
-					<MovieClubDashboard 
-						{cycleData} 
+					<MovieClubDashboard
+						{cycleData}
 						on:refresh={refreshData}
 						on:openSearchModal={() => handleOpenSearchModal(cycleData.cycle.id)}
-						on:nominateMovie={(e) => handleNomination(e.detail.content, e.detail.reason)}
+						on:nominateMovie={(e) =>
+							handleNomination(e.detail.content, e.detail.reason)}
 					/>
 				</div>
 			{/each}
@@ -240,9 +275,9 @@
 	<!-- Always visible admin controls at bottom -->
 	{#if isAdmin && !movieClubDisabled}
 		<div class="bottom-admin-controls">
-			<button 
+			<button
 				class="start-new-cycle-btn"
-				on:click={() => showCreateModal = true}
+				on:click={() => (showCreateModal = true)}
 				disabled={loading}
 				title="Start a new movie club cycle"
 			>
@@ -254,22 +289,23 @@
 </div>
 
 {#if showCreateModal}
-	<Modal on:close={() => showCreateModal = false}>
-		<CreateCycleModal 
+	<Modal on:close={() => (showCreateModal = false)}>
+		<CreateCycleModal
 			on:cycleCreated={() => {
 				showCreateModal = false;
 				refreshData();
 			}}
-			on:close={() => showCreateModal = false}
+			on:close={() => (showCreateModal = false)}
 		/>
 	</Modal>
 {/if}
 
 {#if showSearchModal}
-	<Modal on:close={() => showSearchModal = false}>
-		<SearchMovieModal 
-			on:movieSelected={(e) => handleNomination(e.detail.content, e.detail.reason)}
-			on:close={() => showSearchModal = false}
+	<Modal on:close={() => (showSearchModal = false)}>
+		<SearchMovieModal
+			on:movieSelected={(e) =>
+				handleNomination(e.detail.content, e.detail.reason)}
+			on:close={() => (showSearchModal = false)}
 		/>
 	</Modal>
 {/if}
@@ -279,7 +315,7 @@
 		padding: var(--space-xl) var(--space-md);
 		max-width: 1200px;
 		margin: 0 auto;
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -287,20 +323,24 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -338,7 +378,8 @@
 		}
 	}
 
-	.no-cycle, .disabled {
+	.no-cycle,
+	.disabled {
 		text-align: center;
 		margin: var(--space-2xl) 0;
 		padding: var(--space-xl);
@@ -356,7 +397,7 @@
 			color: var(--text-muted);
 			margin: 0 0 var(--space-sm) 0;
 			line-height: 1.4;
-			
+
 			&:last-child {
 				margin-bottom: 0;
 			}
@@ -367,9 +408,9 @@
 		border-color: var(--danger, #dc3545);
 		background: var(--background-secondary);
 		position: relative;
-		
+
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--danger, #dc3545);
@@ -382,14 +423,15 @@
 			position: relative;
 			z-index: 1;
 		}
-		
+
 		p {
 			position: relative;
 			z-index: 1;
 		}
 	}
 
-	.refresh-btn, .create-cycle-btn {
+	.refresh-btn,
+	.create-cycle-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-sm);
@@ -410,15 +452,17 @@
 			transform: translateY(-1px);
 			box-shadow: var(--shadow-md);
 		}
-		
+
 		&:active {
 			transform: translateY(0);
 			box-shadow: var(--shadow-sm);
 		}
-		
+
 		&:focus {
 			outline: none;
-			box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.1);
+			box-shadow:
+				var(--shadow-md),
+				0 0 0 3px rgba(59, 130, 246, 0.1);
 		}
 	}
 
@@ -484,47 +528,60 @@
 		overflow: hidden;
 
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			top: 0;
 			left: 0;
 			right: 0;
 			height: 4px;
-			background: linear-gradient(90deg, var(--primary), var(--primary-dark, var(--primary)));
+			background: linear-gradient(
+				90deg,
+				var(--primary),
+				var(--primary-dark, var(--primary))
+			);
 			border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 		}
 
 		&:hover {
 			transform: translateY(-2px);
-			box-shadow: var(--shadow-lg), 0 8px 25px rgba(0, 0, 0, 0.15);
+			box-shadow:
+				var(--shadow-lg),
+				0 8px 25px rgba(0, 0, 0, 0.15);
 			border-color: var(--primary);
 		}
 
 		&.watching-phase {
 			border-color: var(--success, #22c55e);
-			
+
 			&::before {
 				background: linear-gradient(90deg, var(--success, #22c55e), #16a34a);
 			}
-			
+
 			&:hover {
 				border-color: var(--success, #22c55e);
-				box-shadow: var(--shadow-lg), 0 8px 25px rgba(34, 197, 94, 0.2);
+				box-shadow:
+					var(--shadow-lg),
+					0 8px 25px rgba(34, 197, 94, 0.2);
 			}
 		}
 
 		& + .cycle-section {
 			position: relative;
-			
+
 			&::after {
-				content: '';
+				content: "";
 				position: absolute;
 				top: calc(-1 * var(--space-2xl) / 2 - 1px);
 				left: 50%;
 				transform: translateX(-50%);
 				width: 60%;
 				height: 2px;
-				background: linear-gradient(90deg, transparent, var(--border), transparent);
+				background: linear-gradient(
+					90deg,
+					transparent,
+					var(--border),
+					transparent
+				);
 			}
 		}
 	}
@@ -545,9 +602,9 @@
 			display: flex;
 			align-items: center;
 			gap: var(--space-sm);
-			
+
 			&::before {
-				content: '🎬';
+				content: "🎬";
 				font-size: 1.25rem;
 			}
 		}
@@ -619,7 +676,9 @@
 
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 2px rgba(220, 53, 69, 0.3);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px rgba(220, 53, 69, 0.3);
 			}
 		}
 	}
@@ -656,10 +715,12 @@
 			transform: translateY(0);
 			box-shadow: var(--shadow-md);
 		}
-		
+
 		&:focus {
 			outline: none;
-			box-shadow: var(--shadow-lg), 0 0 0 3px rgba(40, 167, 69, 0.2);
+			box-shadow:
+				var(--shadow-lg),
+				0 0 0 3px rgba(40, 167, 69, 0.2);
 		}
 	}
 
@@ -667,11 +728,11 @@
 		.movie-club-page {
 			padding: var(--space-lg) var(--space-sm);
 		}
-		
+
 		header h1 {
 			font-size: 2rem;
 		}
-		
+
 		.bottom-admin-controls {
 			padding: var(--space-sm) var(--space-md);
 		}
@@ -680,15 +741,15 @@
 			font-size: 0.9rem;
 			padding: var(--space-sm) var(--space-md);
 		}
-		
+
 		.cycles-container {
 			gap: var(--space-xl);
 		}
-		
+
 		.cycle-section {
 			padding: var(--space-lg);
 			border-radius: var(--radius-lg);
-			
+
 			&::before {
 				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 			}

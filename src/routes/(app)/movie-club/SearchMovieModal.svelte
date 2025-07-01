@@ -37,15 +37,15 @@
 		try {
 			const response = await axios.get(`/content/search/movie`, {
 				params: {
-					q: query
-				}
+					q: query,
+				},
 			});
 			// Map TMDB response to our Content interface
 			const results = response.data.results || [];
 			searchResults = results.map((movie: any) => ({
 				...movie,
 				tmdbId: movie.id, // Ensure tmdbId is set from TMDB's id field
-				type: "movie" as const
+				type: "movie" as const,
 			}));
 		} catch (err) {
 			console.error("Search failed:", err);
@@ -72,7 +72,7 @@
 
 		dispatch("movieSelected", {
 			content: selectedMovie,
-			reason: reason.trim()
+			reason: reason.trim(),
 		});
 	}
 
@@ -120,12 +120,19 @@
 					{#each searchResults as movie}
 						<div class="movie-result" on:click={() => selectMovie(movie)}>
 							<div class="poster-small">
-								<Poster media={movie} showRating={false} disableInteraction={true} small={true} />
+								<Poster
+									media={movie}
+									showRating={false}
+									disableInteraction={true}
+									small={true}
+								/>
 							</div>
 							<div class="movie-info">
 								<h4>{movie.title}</h4>
 								<p class="release-year">
-									{movie.release_date ? new Date(movie.release_date).getFullYear() : "Unknown"}
+									{movie.release_date
+										? new Date(movie.release_date).getFullYear()
+										: "Unknown"}
 								</p>
 								{#if movie.overview}
 									<p class="overview">{movie.overview.substring(0, 150)}...</p>
@@ -157,12 +164,19 @@
 
 			<div class="selected-movie">
 				<div class="poster-large">
-					<Poster media={selectedMovie} showRating={false} disableInteraction={true} small={false} />
+					<Poster
+						media={selectedMovie}
+						showRating={false}
+						disableInteraction={true}
+						small={false}
+					/>
 				</div>
 				<div class="movie-details">
 					<h4>{selectedMovie.title}</h4>
 					<p class="release-year">
-						{selectedMovie.release_date ? new Date(selectedMovie.release_date).getFullYear() : "Unknown"}
+						{selectedMovie.release_date
+							? new Date(selectedMovie.release_date).getFullYear()
+							: "Unknown"}
 					</p>
 					{#if selectedMovie.overview}
 						<p class="overview">{selectedMovie.overview}</p>
@@ -171,7 +185,8 @@
 			</div>
 
 			<div class="reason-section">
-				<label for="reason">Why are you nominating this movie? (Optional)</label>
+				<label for="reason">Why are you nominating this movie? (Optional)</label
+				>
 				<textarea
 					id="reason"
 					placeholder="Share why you think this would be a great choice..."
@@ -206,7 +221,7 @@
 		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-lg);
 		border: 1px solid var(--border);
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -214,21 +229,25 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
 		--radius-full: 50%;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -239,9 +258,9 @@
 		padding: var(--space-lg);
 		border-bottom: 1px solid var(--border);
 		position: relative;
-		
+
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--primary);
@@ -276,10 +295,12 @@
 				border-color: var(--border);
 				box-shadow: var(--shadow-sm);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 2px var(--primary);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--primary);
 			}
 		}
 	}
@@ -322,7 +343,9 @@
 			&:focus {
 				outline: none;
 				border-color: var(--primary);
-				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.1);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 3px rgba(59, 130, 246, 0.1);
 				background: var(--background);
 			}
 
@@ -330,7 +353,7 @@
 				color: var(--text-muted);
 				font-weight: 400;
 			}
-			
+
 			&:hover:not(:focus) {
 				border-color: var(--primary);
 				box-shadow: var(--shadow-md);
@@ -338,7 +361,9 @@
 		}
 	}
 
-	.searching, .no-results, .search-prompt {
+	.searching,
+	.no-results,
+	.search-prompt {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -350,9 +375,9 @@
 		border-radius: var(--radius-lg);
 		border: 2px dashed var(--border);
 		position: relative;
-		
+
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--text-muted);
@@ -366,7 +391,7 @@
 			opacity: 0.4;
 			color: var(--text-muted);
 		}
-		
+
 		p {
 			margin: 0;
 			text-align: center;
@@ -411,9 +436,9 @@
 			border-color: var(--primary);
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
-			
+
 			&::before {
-				content: '';
+				content: "";
 				position: absolute;
 				inset: 0;
 				background: var(--primary);
@@ -523,7 +548,7 @@
 			position: relative;
 			z-index: 1;
 		}
-		
+
 		&:hover :global(svg) {
 			color: var(--primary);
 			transform: rotate(-90deg) scale(1.1);
@@ -564,17 +589,19 @@
 			transform: translateX(-2px);
 			box-shadow: var(--shadow-md);
 		}
-		
+
 		&:focus {
 			outline: none;
-			box-shadow: var(--shadow-md), 0 0 0 2px var(--primary);
+			box-shadow:
+				var(--shadow-md),
+				0 0 0 2px var(--primary);
 		}
 
 		:global(svg) {
 			transform: rotate(90deg);
 			transition: transform 0.2s ease;
 		}
-		
+
 		&:hover :global(svg) {
 			transform: rotate(90deg) translateX(-1px);
 		}
@@ -589,7 +616,7 @@
 		border: 1px solid var(--border);
 		box-shadow: var(--shadow-md);
 		transition: all 0.2s ease;
-		
+
 		&:hover {
 			box-shadow: var(--shadow-lg);
 			border-color: var(--primary);
@@ -681,9 +708,9 @@
 				border: 1px solid var(--border);
 				border-left: 3px solid var(--primary);
 				position: relative;
-				
+
 				&::before {
-					content: '';
+					content: "";
 					position: absolute;
 					inset: 0;
 					background: var(--primary);
@@ -700,7 +727,7 @@
 		padding: var(--space-md);
 		border-radius: var(--radius-lg);
 		border: 1px solid var(--border);
-		
+
 		label {
 			display: block;
 			margin-bottom: var(--space-sm);
@@ -726,7 +753,9 @@
 			&:focus {
 				outline: none;
 				border-color: var(--primary);
-				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.1);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 3px rgba(59, 130, 246, 0.1);
 				background: var(--background);
 			}
 
@@ -734,7 +763,7 @@
 				color: var(--text-muted);
 				font-style: italic;
 			}
-			
+
 			&:hover:not(:focus) {
 				border-color: var(--primary);
 				box-shadow: var(--shadow-md);
@@ -758,7 +787,9 @@
 		background: var(--background);
 		border-top: 1px solid var(--border);
 		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-		margin: var(--space-md) -#{var(--space-lg)} -#{var(--space-lg)} -#{var(--space-lg)};
+		margin: var(--space-md) -#{var(--space-lg)} -#{var(--space-lg)} -#{var(
+				--space-lg
+			)};
 
 		button {
 			display: inline-flex;
@@ -787,10 +818,12 @@
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 2px var(--text-muted);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--text-muted);
 			}
 		}
 
@@ -804,12 +837,14 @@
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.2);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 3px rgba(59, 130, 246, 0.2);
 			}
-			
+
 			&:active {
 				transform: translateY(0);
 				box-shadow: var(--shadow-sm);
@@ -824,11 +859,11 @@
 
 		.modal-header {
 			padding: var(--space-md);
-			
+
 			h3 {
 				font-size: 1.125rem;
 			}
-			
+
 			.close-btn {
 				width: 28px;
 				height: 28px;
@@ -850,20 +885,22 @@
 				left: var(--space-sm);
 				font-size: 1rem;
 			}
-			
+
 			input {
 				padding: var(--space-sm) var(--space-sm) var(--space-sm) 2.5rem;
 				font-size: 0.95rem;
 			}
 		}
 
-		.searching, .no-results, .search-prompt {
+		.searching,
+		.no-results,
+		.search-prompt {
 			padding: var(--space-lg) var(--space-sm);
-			
+
 			:global(svg) {
 				font-size: 2rem;
 			}
-			
+
 			p {
 				font-size: 0.9rem;
 			}
@@ -933,19 +970,19 @@
 				}
 			}
 		}
-		
+
 		.reason-section {
 			padding: var(--space-sm);
-			
+
 			label {
 				font-size: 0.9rem;
 			}
-			
+
 			textarea {
 				min-height: 80px;
 				font-size: 0.85rem;
 			}
-			
+
 			small {
 				font-size: 0.75rem;
 			}
@@ -955,7 +992,9 @@
 			flex-direction: column;
 			gap: var(--space-sm);
 			padding: var(--space-sm);
-			margin: var(--space-sm) -#{var(--space-md)} -#{var(--space-md)} -#{var(--space-md)};
+			margin: var(--space-sm) -#{var(--space-md)} -#{var(--space-md)} -#{var(
+					--space-md
+				)};
 
 			button {
 				justify-content: center;

@@ -393,7 +393,9 @@ export async function getMovieClubCurrent(): Promise<MovieClubCycleResponse | nu
 /**
  * Get all active movie club cycles with user data
  */
-export async function getActiveMovieClubCycles(): Promise<MovieClubCycleResponse[]> {
+export async function getActiveMovieClubCycles(): Promise<
+	MovieClubCycleResponse[]
+> {
 	try {
 		const response = await axios.get("/movie-club/cycles/active");
 		return response.data;
@@ -414,7 +416,9 @@ export async function getActiveMovieClubCycles(): Promise<MovieClubCycleResponse
 /**
  * Nominate a movie for the current cycle
  */
-export async function nominateMovie(request: MovieClubNominationRequest): Promise<boolean> {
+export async function nominateMovie(
+	request: MovieClubNominationRequest,
+): Promise<boolean> {
 	const nid = notify({ text: "Nominating movie...", type: "loading" });
 	try {
 		await axios.post("/movie-club/nominate", request);
@@ -448,7 +452,9 @@ export async function removeNomination(nominationId: number): Promise<boolean> {
 /**
  * Cast votes for nominated movies
  */
-export async function voteForMovies(request: MovieClubVoteRequest): Promise<boolean> {
+export async function voteForMovies(
+	request: MovieClubVoteRequest,
+): Promise<boolean> {
 	const nid = notify({ text: "Casting votes...", type: "loading" });
 	try {
 		await axios.post("/movie-club/vote", request);

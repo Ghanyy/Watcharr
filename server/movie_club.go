@@ -75,13 +75,14 @@ type MovieClubSettings struct {
 
 // MovieClubVoteCount represents vote tallies for a content item
 type MovieClubVoteCount struct {
-	ContentID    int     `json:"contentId"`
-	Content      Content `json:"content"`
-	TotalVotes   int     `json:"totalVotes"`
-	FirstChoice  int     `json:"firstChoice"`
-	SecondChoice int     `json:"secondChoice"`
-	ThirdChoice  int     `json:"thirdChoice"`
-	WeightedScore float64 `json:"weightedScore"` // Calculated score based on vote priorities
+	ContentID    int       `json:"contentId"`
+	Content      Content   `json:"content"`
+	TotalVotes   int       `json:"totalVotes"`
+	FirstChoice  int       `json:"firstChoice"`
+	SecondChoice int       `json:"secondChoice"`
+	ThirdChoice  int       `json:"thirdChoice"`
+	WeightedScore float64  `json:"weightedScore"` // Calculated score based on vote priorities
+	NominatedAt  time.Time `json:"nominatedAt"`   // When this content was nominated (for tie-breaking)
 }
 
 // MovieClubNominationRequest represents the request to nominate a movie
@@ -393,6 +394,7 @@ func CalculateVoteResults(db *gorm.DB, cycleID uint) ([]MovieClubVoteCount, erro
 			SecondChoice: 0,
 			ThirdChoice: 0,
 			WeightedScore: 0,
+			NominatedAt: nomination.CreatedAt,
 		}
 	}
 	
@@ -421,12 +423,13 @@ func CalculateVoteResults(db *gorm.DB, cycleID uint) ([]MovieClubVoteCount, erro
 		results = append(results, *count)
 	}
 	
-	// Sort by weighted score (descending), then by first choice votes, then by total votes
+	// Sort by weighted score (descending), then by first choice votes, then by total votes, then by nomination time (ascending - earlier nominations win)
 	for i := 0; i < len(results)-1; i++ {
 		for j := i + 1; j < len(results); j++ {
 			if results[i].WeightedScore < results[j].WeightedScore ||
 				(results[i].WeightedScore == results[j].WeightedScore && results[i].FirstChoice < results[j].FirstChoice) ||
-				(results[i].WeightedScore == results[j].WeightedScore && results[i].FirstChoice == results[j].FirstChoice && results[i].TotalVotes < results[j].TotalVotes) {
+				(results[i].WeightedScore == results[j].WeightedScore && results[i].FirstChoice == results[j].FirstChoice && results[i].TotalVotes < results[j].TotalVotes) ||
+				(results[i].WeightedScore == results[j].WeightedScore && results[i].FirstChoice == results[j].FirstChoice && results[i].TotalVotes == results[j].TotalVotes && results[i].NominatedAt.After(results[j].NominatedAt)) {
 				results[i], results[j] = results[j], results[i]
 			}
 		}

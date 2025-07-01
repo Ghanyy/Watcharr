@@ -11,13 +11,13 @@
 		return {
 			shouldCollapse: reason.length > maxLength,
 			truncated: reason.substring(0, maxLength) + "...",
-			full: reason
+			full: reason,
 		};
 	}
 
 	export let cycleData: MovieClubCycleResponse;
 
-	const dispatch = createEventDispatcher<{ 
+	const dispatch = createEventDispatcher<{
 		nominationChanged: void;
 		openSearchModal: void;
 		nominateMovie: { content: Content; reason: string };
@@ -34,7 +34,7 @@
 	function handleNominateMovie(content: Content, reason: string) {
 		dispatch("nominateMovie", {
 			content,
-			reason
+			reason,
 		});
 	}
 
@@ -63,9 +63,12 @@
 	$: canNominate = cycleData.canNominate;
 	// Calculate max nominations based on existing data
 	// TODO: This should come from movie club settings API
-	$: maxNominations = cycleData.maxNominations || Math.max(userNominations.length + (canNominate ? 1 : 0), 1);
+	$: maxNominations =
+		cycleData.maxNominations ||
+		Math.max(userNominations.length + (canNominate ? 1 : 0), 1);
 	// Local validation - check if user has reached the limit
-	$: canNominateLocal = canNominate && userNominations.length < maxNominations && !submitting;
+	$: canNominateLocal =
+		canNominate && userNominations.length < maxNominations && !submitting;
 </script>
 
 <div class="nominations-section">
@@ -80,7 +83,7 @@
 	<!-- Your Nominations -->
 	<div class="your-nominations">
 		<h4>Your Nominations ({userNominations.length}/{maxNominations})</h4>
-		
+
 		{#if userNominations.length === 0}
 			<div class="empty-state">
 				<Icon icon="film" />
@@ -99,7 +102,11 @@
 				{#each userNominations as nomination}
 					<div class="nomination-card">
 						<div class="poster-container">
-							<Poster media={nomination.content} showRating={false} disableInteraction={true} />
+							<Poster
+								media={nomination.content}
+								showRating={false}
+								disableInteraction={true}
+							/>
 						</div>
 						<div class="nomination-details">
 							<h5>{nomination.content?.title}</h5>
@@ -107,23 +114,27 @@
 								{@const reasonData = CollapsibleReason(nomination.reason)}
 								{@const reasonId = `user-${nomination.id}`}
 								{@const isExpanded = expandedReasons.has(reasonId)}
-								
+
 								<div class="reason-container">
 									<p class="reason">
-										"{isExpanded ? reasonData.full : (reasonData.shouldCollapse ? reasonData.truncated : reasonData.full)}"
+										"{isExpanded
+											? reasonData.full
+											: reasonData.shouldCollapse
+												? reasonData.truncated
+												: reasonData.full}"
 									</p>
 									{#if reasonData.shouldCollapse}
-										<button 
-											class="expand-btn" 
+										<button
+											class="expand-btn"
 											on:click={() => toggleReasonExpansion(reasonId)}
 											type="button"
 										>
-											{isExpanded ? 'Show less' : 'Show more'}
+											{isExpanded ? "Show less" : "Show more"}
 										</button>
 									{/if}
 								</div>
 							{/if}
-							<button 
+							<button
 								class="remove-btn"
 								on:click={() => handleRemoveNomination(nomination.id)}
 								disabled={submitting}
@@ -153,15 +164,21 @@
 				{#each cycleData.cycle.nominations as nomination}
 					<div class="nomination-card">
 						<div class="poster-container">
-							<Poster media={nomination.content} showRating={false} disableInteraction={true} />
+							<Poster
+								media={nomination.content}
+								showRating={false}
+								disableInteraction={true}
+							/>
 						</div>
 						<div class="nomination-details">
 							<h5>{nomination.content?.title}</h5>
 							<div class="nominators">
 								<p class="nominator-label">
-									Nominated by: 
+									Nominated by:
 									{#each nomination.nominators as nominator, i}
-										<span class="nominator">{nominator.username}</span>{#if i < nomination.nominators.length - 1}, {/if}
+										<span class="nominator">{nominator.username}</span
+										>{#if i < nomination.nominators.length - 1},
+										{/if}
 									{/each}
 								</p>
 							</div>
@@ -171,18 +188,22 @@
 										{@const reasonData = CollapsibleReason(reason)}
 										{@const reasonId = `all-${nomination.content.tmdbId}-${i}`}
 										{@const isExpanded = expandedReasons.has(reasonId)}
-										
+
 										<div class="reason-container">
 											<p class="reason">
-												"{isExpanded ? reasonData.full : (reasonData.shouldCollapse ? reasonData.truncated : reasonData.full)}"
+												"{isExpanded
+													? reasonData.full
+													: reasonData.shouldCollapse
+														? reasonData.truncated
+														: reasonData.full}"
 											</p>
 											{#if reasonData.shouldCollapse}
-												<button 
-													class="expand-btn" 
+												<button
+													class="expand-btn"
 													on:click={() => toggleReasonExpansion(reasonId)}
 													type="button"
 												>
-													{isExpanded ? 'Show less' : 'Show more'}
+													{isExpanded ? "Show less" : "Show more"}
 												</button>
 											{/if}
 										</div>
@@ -204,7 +225,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xl);
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -212,21 +233,25 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
 		--radius-full: 50%;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -254,7 +279,8 @@
 		}
 	}
 
-	.your-nominations, .all-nominations {
+	.your-nominations,
+	.all-nominations {
 		h4 {
 			margin: 0 0 var(--space-md) 0;
 			padding-bottom: var(--space-sm);
@@ -275,7 +301,7 @@
 		transition: all 0.2s ease;
 
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--text-muted);
@@ -286,7 +312,7 @@
 
 		&:hover {
 			border-color: var(--primary);
-			
+
 			&::before {
 				background: var(--primary);
 				opacity: 0.03;
@@ -305,7 +331,7 @@
 			line-height: 1.4;
 			position: relative;
 			z-index: 1;
-			
+
 			&:last-child {
 				margin-bottom: 0;
 			}
@@ -351,7 +377,7 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			
+
 			:global(li) {
 				list-style: none;
 				margin: 0;
@@ -363,7 +389,7 @@
 				justify-content: center;
 				cursor: default !important;
 			}
-			
+
 			:global(.container) {
 				width: 100% !important;
 				height: 100% !important;
@@ -373,16 +399,16 @@
 				transform: none !important;
 				transition: none !important;
 			}
-			
+
 			:global(.active .container) {
 				transform: none !important;
 			}
-			
+
 			:global(.inner) {
 				opacity: 0 !important;
 				pointer-events: none !important;
 			}
-			
+
 			:global(img) {
 				max-width: 100%;
 				max-height: 100%;
@@ -432,9 +458,9 @@
 				border-left: 3px solid var(--primary);
 				border: 1px solid var(--border);
 				position: relative;
-				
+
 				&::before {
-					content: '';
+					content: "";
 					position: absolute;
 					inset: 0;
 					background: var(--primary);
@@ -467,11 +493,11 @@
 				font-family: inherit;
 				font-weight: 500;
 				transition: color 0.2s ease;
-				
+
 				&:hover {
 					color: var(--primary-dark, var(--primary));
 				}
-				
+
 				&:focus {
 					outline: none;
 					text-decoration: none;
@@ -509,12 +535,14 @@
 					transform: none;
 					box-shadow: var(--shadow-sm);
 				}
-				
+
 				&:focus {
 					outline: none;
-					box-shadow: var(--shadow-md), 0 0 0 3px rgba(220, 53, 69, 0.2);
+					box-shadow:
+						var(--shadow-md),
+						0 0 0 3px rgba(220, 53, 69, 0.2);
 				}
-				
+
 				&:active:not(:disabled) {
 					transform: translateY(0);
 					box-shadow: var(--shadow-sm);
@@ -546,19 +574,21 @@
 			transform: translateY(-1px);
 			box-shadow: var(--shadow-md);
 		}
-		
+
 		&:disabled {
 			opacity: 0.6;
 			cursor: not-allowed;
 			transform: none;
 			box-shadow: var(--shadow-sm);
 		}
-		
+
 		&:focus {
 			outline: none;
-			box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.2);
+			box-shadow:
+				var(--shadow-md),
+				0 0 0 3px rgba(59, 130, 246, 0.2);
 		}
-		
+
 		&:active:not(:disabled) {
 			transform: translateY(0);
 			box-shadow: var(--shadow-sm);
@@ -569,19 +599,19 @@
 		.nominations-section {
 			gap: var(--space-lg);
 		}
-		
+
 		.section-header {
 			margin-bottom: var(--space-md);
-			
+
 			h3 {
 				font-size: 1.25rem;
 			}
-			
+
 			p {
 				font-size: 0.9rem;
 			}
 		}
-		
+
 		.nominations-grid {
 			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 			gap: var(--space-sm);
@@ -595,30 +625,31 @@
 					font-size: 0.85rem;
 				}
 
-				.reason, .nominator-label {
+				.reason,
+				.nominator-label {
 					font-size: 0.75rem;
 				}
-				
+
 				.reason-container {
 					padding: var(--space-xs);
 				}
-				
+
 				.remove-btn {
 					padding: var(--space-xs) var(--space-sm);
 					font-size: 0.75rem;
 				}
 			}
 		}
-		
+
 		.nominate-btn {
 			padding: var(--space-xs) var(--space-md);
 			font-size: 0.9rem;
 			min-width: 140px;
 		}
-		
+
 		.empty-state {
 			padding: var(--space-xl) var(--space-sm);
-			
+
 			:global(svg) {
 				font-size: 2.5rem;
 			}

@@ -7,7 +7,7 @@
 
 	$: results = cycleData.voteResults || [];
 	$: winner = results.length > 0 ? results[0] : null;
-	$: hasVotes = results.some(r => r.totalVotes > 0);
+	$: hasVotes = results.some((r) => r.totalVotes > 0);
 </script>
 
 <div class="results-section">
@@ -32,12 +32,17 @@
 					<Icon icon="sparkles" />
 					<span>Winner</span>
 				</div>
-				
+
 				<div class="winner-card">
 					<div class="winner-poster">
-						<Poster media={winner.content} showRating={false} disableInteraction={true} fluidSize={true} />
+						<Poster
+							media={winner.content}
+							showRating={false}
+							disableInteraction={true}
+							fluidSize={true}
+						/>
 					</div>
-					
+
 					<div class="winner-details">
 						<h2>{winner.content.title}</h2>
 						<div class="winner-stats">
@@ -46,7 +51,8 @@
 								<span class="stat-label">Total Votes</span>
 							</div>
 							<div class="stat">
-								<span class="stat-value">{winner.weightedScore.toFixed(1)}</span>
+								<span class="stat-value">{winner.weightedScore.toFixed(1)}</span
+								>
 								<span class="stat-label">Score</span>
 							</div>
 							<div class="stat">
@@ -54,7 +60,7 @@
 								<span class="stat-label">1st Choice</span>
 							</div>
 						</div>
-						
+
 						{#if winner.content.overview}
 							<p class="winner-overview">{winner.content.overview}</p>
 						{/if}
@@ -74,13 +80,13 @@
 					<span class="score">Score</span>
 					<span class="breakdown">Vote Breakdown</span>
 				</div>
-				
+
 				{#each results as result, index}
 					<div class="result-row" class:winner={index === 0}>
 						<div class="rank">
 							#{index + 1}
 						</div>
-						
+
 						<div class="movie">
 							<div class="movie-info">
 								<h5>
@@ -89,19 +95,21 @@
 									</a>
 								</h5>
 								<span class="release-year">
-									{result.content.release_date ? new Date(result.content.release_date).getFullYear() : "Unknown"}
+									{result.content.release_date
+										? new Date(result.content.release_date).getFullYear()
+										: "Unknown"}
 								</span>
 							</div>
 						</div>
-						
+
 						<div class="votes">
 							{result.totalVotes}
 						</div>
-						
+
 						<div class="score">
 							{result.weightedScore.toFixed(1)}
 						</div>
-						
+
 						<div class="breakdown">
 							<div class="vote-breakdown">
 								{#if result.firstChoice > 0}
@@ -134,7 +142,9 @@
 			<h4>Voting Summary</h4>
 			<div class="summary-stats">
 				<div class="summary-stat">
-					<span class="stat-value">{results.reduce((sum, r) => sum + r.totalVotes, 0)}</span>
+					<span class="stat-value"
+						>{results.reduce((sum, r) => sum + r.totalVotes, 0)}</span
+					>
 					<span class="stat-label">Total Votes Cast</span>
 				</div>
 				<div class="summary-stat">
@@ -142,7 +152,9 @@
 					<span class="stat-label">Movies Nominated</span>
 				</div>
 				<div class="summary-stat">
-					<span class="stat-value">{results.filter(r => r.totalVotes > 0).length}</span>
+					<span class="stat-value"
+						>{results.filter((r) => r.totalVotes > 0).length}</span
+					>
 					<span class="stat-label">Movies with Votes</span>
 				</div>
 			</div>
@@ -155,7 +167,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xl);
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -163,21 +175,25 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
 		--radius-full: 50%;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -219,7 +235,7 @@
 			opacity: 0.4;
 			color: var(--text-muted);
 		}
-		
+
 		p {
 			margin: 0;
 			line-height: 1.4;
@@ -271,16 +287,20 @@
 		box-shadow: var(--shadow-lg);
 		position: relative;
 		transition: all 0.3s ease;
-		
+
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
-			background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05));
+			background: linear-gradient(
+				135deg,
+				rgba(255, 215, 0, 0.1),
+				rgba(255, 237, 78, 0.05)
+			);
 			border-radius: inherit;
 			pointer-events: none;
 		}
-		
+
 		&:hover {
 			transform: translateY(-2px);
 			box-shadow: 0 12px 32px rgba(255, 215, 0, 0.3);
@@ -296,7 +316,7 @@
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		box-shadow: var(--shadow-lg);
-		
+
 		:global(li) {
 			list-style: none;
 			margin: 0;
@@ -304,13 +324,13 @@
 			width: 100%;
 			height: 100%;
 		}
-		
+
 		:global(.container) {
 			width: 100% !important;
 			height: 100% !important;
 			min-width: unset !important;
 		}
-		
+
 		// Disable the zoom/scale effect on hover for winner poster
 		:global(.active .container) {
 			transform: none !important;
@@ -346,7 +366,7 @@
 				box-shadow: var(--shadow-sm);
 				transition: all 0.2s ease;
 				min-width: 80px;
-				
+
 				&:hover {
 					transform: translateY(-2px);
 					box-shadow: var(--shadow-md);
@@ -389,7 +409,7 @@
 		border-radius: var(--radius-lg);
 		padding: var(--space-lg);
 		box-shadow: var(--shadow-md);
-		
+
 		h4 {
 			margin: 0 0 var(--space-md) 0;
 			padding-bottom: var(--space-sm);
@@ -447,16 +467,20 @@
 			border-color: #ffd700;
 			border-width: 2px;
 			box-shadow: var(--shadow-md);
-			
+
 			&::before {
-				content: '';
+				content: "";
 				position: absolute;
 				inset: 0;
-				background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05));
+				background: linear-gradient(
+					135deg,
+					rgba(255, 215, 0, 0.1),
+					rgba(255, 237, 78, 0.05)
+				);
 				border-radius: inherit;
 				pointer-events: none;
 			}
-			
+
 			&:hover {
 				transform: translateY(-2px);
 				box-shadow: var(--shadow-lg);
@@ -507,7 +531,7 @@
 						text-decoration: none;
 						transform: translateX(2px);
 					}
-					
+
 					&:focus {
 						outline: none;
 						box-shadow: 0 0 0 2px var(--primary);
@@ -522,7 +546,8 @@
 			}
 		}
 
-		.votes, .score {
+		.votes,
+		.score {
 			text-align: center;
 			font-weight: 600;
 			position: relative;
@@ -534,7 +559,7 @@
 		.breakdown {
 			position: relative;
 			z-index: 1;
-			
+
 			.vote-breakdown {
 				display: flex;
 				flex-wrap: wrap;
@@ -567,7 +592,7 @@
 						color: white;
 						box-shadow: var(--shadow-sm);
 					}
-					
+
 					&:hover {
 						transform: translateY(-1px);
 						box-shadow: var(--shadow-md);
@@ -616,7 +641,7 @@
 			border: 1px solid var(--border);
 			box-shadow: var(--shadow-sm);
 			transition: all 0.2s ease;
-			
+
 			&:hover {
 				transform: translateY(-2px);
 				box-shadow: var(--shadow-md);
@@ -645,29 +670,29 @@
 		.results-section {
 			gap: var(--space-lg);
 		}
-		
+
 		.section-header {
 			margin-bottom: var(--space-md);
-			
+
 			h3 {
 				font-size: 1.25rem;
 			}
-			
+
 			p {
 				font-size: 0.9rem;
 			}
 		}
-		
+
 		.winner-section {
 			margin-bottom: var(--space-lg);
 		}
-		
+
 		.winner-badge {
 			padding: var(--space-xs) var(--space-md);
 			font-size: 1rem;
 			margin-bottom: var(--space-md);
 		}
-		
+
 		.winner-card {
 			flex-direction: column;
 			text-align: center;
@@ -684,62 +709,65 @@
 				h2 {
 					font-size: 1.5rem;
 				}
-				
+
 				.winner-stats {
 					justify-content: center;
 					gap: var(--space-md);
-					
+
 					.stat {
 						min-width: 70px;
-						
+
 						.stat-value {
 							font-size: 1.25rem;
 						}
-						
+
 						.stat-label {
 							font-size: 0.8rem;
 						}
 					}
 				}
-				
+
 				.winner-overview {
 					padding: var(--space-sm);
 					font-size: 0.9rem;
 				}
 			}
 		}
-		
+
 		.full-results {
 			padding: var(--space-md);
-			
+
 			h4 {
 				font-size: 1rem;
 			}
 		}
 
-		.results-header, .result-row {
+		.results-header,
+		.result-row {
 			grid-template-columns: 1fr;
 			gap: var(--space-sm);
 			text-align: center;
 			padding: var(--space-sm);
-			
-			.rank, .votes, .score {
+
+			.rank,
+			.votes,
+			.score {
 				font-size: 0.85rem;
 			}
-			
+
 			.movie .movie-info {
 				h5 {
 					font-size: 0.85rem;
 				}
-				
+
 				.release-year {
 					font-size: 0.75rem;
 				}
 			}
-			
+
 			.breakdown .vote-breakdown {
 				justify-content: center;
-				
+
 				.choice {
 					font-size: 0.7rem;
 					padding: 2px var(--space-xs);
@@ -753,32 +781,32 @@
 
 		.voting-summary {
 			padding: var(--space-md);
-			
+
 			h4 {
 				font-size: 1rem;
 			}
-			
+
 			.summary-stats {
 				grid-template-columns: 1fr;
 				gap: var(--space-sm);
 			}
-			
+
 			.summary-stat {
 				padding: var(--space-sm);
-				
+
 				.stat-value {
 					font-size: 1.25rem;
 				}
-				
+
 				.stat-label {
 					font-size: 0.8rem;
 				}
 			}
 		}
-		
+
 		.no-votes {
 			padding: var(--space-xl) var(--space-sm);
-			
+
 			:global(svg) {
 				font-size: 2.5rem;
 			}

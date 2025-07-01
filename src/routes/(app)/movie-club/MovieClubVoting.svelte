@@ -10,7 +10,7 @@
 		return {
 			shouldCollapse: reason.length > maxLength,
 			truncated: reason.substring(0, maxLength) + "...",
-			full: reason
+			full: reason,
 		};
 	}
 
@@ -24,9 +24,9 @@
 
 	// Initialize selected votes from current user votes
 	$: {
-		selectedVotes = cycleData.userVotes.map(vote => ({
+		selectedVotes = cycleData.userVotes.map((vote) => ({
 			contentId: vote.contentId,
-			priority: vote.priority
+			priority: vote.priority,
 		}));
 	}
 
@@ -35,14 +35,18 @@
 	$: canVote = cycleData.canVote;
 
 	function toggleVote(contentId: number) {
-		const existingIndex = selectedVotes.findIndex(v => v.contentId === contentId);
-		
+		const existingIndex = selectedVotes.findIndex(
+			(v) => v.contentId === contentId,
+		);
+
 		if (existingIndex >= 0) {
 			// Remove vote
 			const removedPriority = selectedVotes[existingIndex].priority;
 			selectedVotes = selectedVotes
-				.filter(v => v.contentId !== contentId)
-				.map(v => v.priority > removedPriority ? { ...v, priority: v.priority - 1 } : v);
+				.filter((v) => v.contentId !== contentId)
+				.map((v) =>
+					v.priority > removedPriority ? { ...v, priority: v.priority - 1 } : v,
+				);
 		} else if (selectedVotes.length < maxVotes) {
 			// Add vote with next priority
 			const nextPriority = selectedVotes.length + 1;
@@ -51,24 +55,26 @@
 	}
 
 	function getVotePriority(contentId: number): number | null {
-		const vote = selectedVotes.find(v => v.contentId === contentId);
+		const vote = selectedVotes.find((v) => v.contentId === contentId);
 		return vote ? vote.priority : null;
 	}
 
-	function moveVotePriority(contentId: number, direction: 'up' | 'down') {
-		const currentVote = selectedVotes.find(v => v.contentId === contentId);
+	function moveVotePriority(contentId: number, direction: "up" | "down") {
+		const currentVote = selectedVotes.find((v) => v.contentId === contentId);
 		if (!currentVote) return;
 
-		const newPriority = direction === 'up' ? currentVote.priority - 1 : currentVote.priority + 1;
-		
+		const newPriority =
+			direction === "up" ? currentVote.priority - 1 : currentVote.priority + 1;
+
 		if (newPriority < 1 || newPriority > selectedVotes.length) return;
 
 		// Swap priorities
-		const otherVote = selectedVotes.find(v => v.priority === newPriority);
+		const otherVote = selectedVotes.find((v) => v.priority === newPriority);
 		if (otherVote) {
-			selectedVotes = selectedVotes.map(v => {
+			selectedVotes = selectedVotes.map((v) => {
 				if (v.contentId === contentId) return { ...v, priority: newPriority };
-				if (v.contentId === otherVote.contentId) return { ...v, priority: currentVote.priority };
+				if (v.contentId === otherVote.contentId)
+					return { ...v, priority: currentVote.priority };
 				return v;
 			});
 		}
@@ -78,8 +84,11 @@
 		if (submitting || selectedVotes.length === 0) return;
 
 		submitting = true;
-		const success = await voteForMovies({ votes: selectedVotes, cycleId: cycleData.cycle.id });
-		
+		const success = await voteForMovies({
+			votes: selectedVotes,
+			cycleId: cycleData.cycle.id,
+		});
+
 		if (success) {
 			dispatch("votesChanged");
 		}
@@ -91,7 +100,7 @@
 
 		submitting = true;
 		const success = await clearVotes(cycleData.cycle.id);
-		
+
 		if (success) {
 			selectedVotes = [];
 			dispatch("votesChanged");
@@ -101,10 +110,14 @@
 
 	function getPriorityLabel(priority: number): string {
 		switch (priority) {
-			case 1: return "1st Choice";
-			case 2: return "2nd Choice";
-			case 3: return "3rd Choice";
-			default: return `${priority}th Choice`;
+			case 1:
+				return "1st Choice";
+			case 2:
+				return "2nd Choice";
+			case 3:
+				return "3rd Choice";
+			default:
+				return `${priority}th Choice`;
 		}
 	}
 
@@ -124,7 +137,9 @@
 			<Icon icon="check" />
 			Vote for Movies
 		</h3>
-		<p>Choose your top {maxVotes} movies from the nominations. Order matters!</p>
+		<p>
+			Choose your top {maxVotes} movies from the nominations. Order matters!
+		</p>
 	</div>
 
 	{#if nominations.length === 0}
@@ -139,7 +154,7 @@
 					{selectedVotes.length}/{maxVotes} votes cast
 				</span>
 				{#if selectedVotes.length > 0}
-					<button 
+					<button
 						class="clear-votes-btn"
 						on:click={handleClearVotes}
 						disabled={submitting}
@@ -151,7 +166,7 @@
 			</div>
 
 			{#if selectedVotes.length > 0}
-				<button 
+				<button
 					class="submit-votes-btn"
 					on:click={submitVotes}
 					disabled={submitting}
@@ -166,8 +181,8 @@
 			{#each nominations as nomination}
 				{@const priority = getVotePriority(nomination.contentId)}
 				{@const isSelected = priority !== null}
-				
-				<div 
+
+				<div
 					class="nomination-card"
 					class:selected={isSelected}
 					on:click={() => toggleVote(nomination.contentId)}
@@ -179,16 +194,22 @@
 					{/if}
 
 					<div class="poster-container">
-						<Poster media={nomination.content} showRating={false} disableInteraction={true} />
+						<Poster
+							media={nomination.content}
+							showRating={false}
+							disableInteraction={true}
+						/>
 					</div>
 
 					<div class="nomination-details">
 						<h5>{nomination.content?.title}</h5>
 						<div class="nominators">
 							<p class="nominator-label">
-								Nominated by: 
+								Nominated by:
 								{#each nomination.nominators as nominator, i}
-									<span class="nominator">{nominator.username}</span>{#if i < nomination.nominators.length - 1}, {/if}
+									<span class="nominator">{nominator.username}</span
+									>{#if i < nomination.nominators.length - 1},
+									{/if}
 								{/each}
 							</p>
 						</div>
@@ -198,18 +219,23 @@
 									{@const reasonData = CollapsibleReason(reason)}
 									{@const reasonId = `vote-${nomination.contentId}-${i}`}
 									{@const isExpanded = expandedReasons.has(reasonId)}
-									
+
 									<div class="reason-container">
 										<p class="reason">
-											"{isExpanded ? reasonData.full : (reasonData.shouldCollapse ? reasonData.truncated : reasonData.full)}"
+											"{isExpanded
+												? reasonData.full
+												: reasonData.shouldCollapse
+													? reasonData.truncated
+													: reasonData.full}"
 										</p>
 										{#if reasonData.shouldCollapse}
-											<button 
-												class="expand-btn" 
-												on:click|stopPropagation={() => toggleReasonExpansion(reasonId)}
+											<button
+												class="expand-btn"
+												on:click|stopPropagation={() =>
+													toggleReasonExpansion(reasonId)}
 												type="button"
 											>
-												{isExpanded ? 'Show less' : 'Show more'}
+												{isExpanded ? "Show less" : "Show more"}
 											</button>
 										{/if}
 									</div>
@@ -219,19 +245,21 @@
 
 						{#if isSelected && selectedVotes.length > 1}
 							<div class="priority-controls">
-								<button 
+								<button
 									class="priority-btn"
 									class:disabled={priority === 1}
-									on:click|stopPropagation={() => moveVotePriority(nomination.contentId, 'up')}
+									on:click|stopPropagation={() =>
+										moveVotePriority(nomination.contentId, "up")}
 									disabled={priority === 1}
 								>
 									<Icon icon="chevron" />
 									Higher
 								</button>
-								<button 
+								<button
 									class="priority-btn"
 									class:disabled={priority === selectedVotes.length}
-									on:click|stopPropagation={() => moveVotePriority(nomination.contentId, 'down')}
+									on:click|stopPropagation={() =>
+										moveVotePriority(nomination.contentId, "down")}
 									disabled={priority === selectedVotes.length}
 								>
 									<Icon icon="chevron" />
@@ -249,7 +277,9 @@
 				<h4>Your Vote Summary</h4>
 				<div class="vote-list">
 					{#each selectedVotes.sort((a, b) => a.priority - b.priority) as vote}
-						{@const nomination = nominations.find(n => n.contentId === vote.contentId)}
+						{@const nomination = nominations.find(
+							(n) => n.contentId === vote.contentId,
+						)}
 						<div class="vote-item">
 							<span class="priority">{getPriorityLabel(vote.priority)}</span>
 							<span class="title">{nomination?.content?.title}</span>
@@ -266,7 +296,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xl);
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -274,21 +304,25 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
 		--radius-full: 50%;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -326,7 +360,7 @@
 		transition: all 0.2s ease;
 
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--text-muted);
@@ -337,7 +371,7 @@
 
 		&:hover {
 			border-color: var(--primary);
-			
+
 			&::before {
 				background: var(--primary);
 				opacity: 0.03;
@@ -350,7 +384,7 @@
 			opacity: 0.4;
 			color: var(--text-muted);
 		}
-		
+
 		p {
 			margin: 0;
 			line-height: 1.4;
@@ -385,9 +419,9 @@
 			border-radius: var(--radius-md);
 			border: 2px solid var(--primary);
 			position: relative;
-			
+
 			&::before {
-				content: '';
+				content: "";
 				position: absolute;
 				inset: 0;
 				background: var(--primary);
@@ -424,12 +458,14 @@
 				transform: none;
 				box-shadow: var(--shadow-sm);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 3px rgba(220, 53, 69, 0.2);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 3px rgba(220, 53, 69, 0.2);
 			}
-			
+
 			&:active:not(:disabled) {
 				transform: translateY(0);
 				box-shadow: var(--shadow-sm);
@@ -466,12 +502,14 @@
 			transform: none;
 			box-shadow: var(--shadow-sm);
 		}
-		
+
 		&:focus {
 			outline: none;
-			box-shadow: var(--shadow-lg), 0 0 0 3px rgba(40, 167, 69, 0.2);
+			box-shadow:
+				var(--shadow-lg),
+				0 0 0 3px rgba(40, 167, 69, 0.2);
 		}
-		
+
 		&:active:not(:disabled) {
 			transform: translateY(0);
 			box-shadow: var(--shadow-md);
@@ -505,9 +543,9 @@
 			border-width: 2px;
 			box-shadow: var(--shadow-md);
 			position: relative;
-			
+
 			&::before {
-				content: '';
+				content: "";
 				position: absolute;
 				inset: 0;
 				background: var(--primary);
@@ -541,7 +579,7 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			
+
 			:global(li) {
 				list-style: none;
 				margin: 0;
@@ -553,7 +591,7 @@
 				justify-content: center;
 				cursor: default !important;
 			}
-			
+
 			:global(.container) {
 				width: 100% !important;
 				height: 100% !important;
@@ -563,16 +601,16 @@
 				transform: none !important;
 				transition: none !important;
 			}
-			
+
 			:global(.active .container) {
 				transform: none !important;
 			}
-			
+
 			:global(.inner) {
 				opacity: 0 !important;
 				pointer-events: none !important;
 			}
-			
+
 			:global(img) {
 				max-width: 100%;
 				max-height: 100%;
@@ -624,9 +662,9 @@
 				border-left: 3px solid var(--primary);
 				border: 1px solid var(--border);
 				position: relative;
-				
+
 				&::before {
-					content: '';
+					content: "";
 					position: absolute;
 					inset: 0;
 					background: var(--primary);
@@ -659,11 +697,11 @@
 				font-family: inherit;
 				font-weight: 500;
 				transition: color 0.2s ease;
-				
+
 				&:hover {
 					color: var(--primary-dark, var(--primary));
 				}
-				
+
 				&:focus {
 					outline: none;
 					text-decoration: none;
@@ -708,15 +746,18 @@
 						box-shadow: var(--shadow-md);
 					}
 
-					&:disabled, &.disabled {
+					&:disabled,
+					&.disabled {
 						opacity: 0.5;
 						cursor: not-allowed;
 						box-shadow: var(--shadow-sm);
 					}
-					
+
 					&:focus {
 						outline: none;
-						box-shadow: var(--shadow-md), 0 0 0 2px var(--primary);
+						box-shadow:
+							var(--shadow-md),
+							0 0 0 2px var(--primary);
 					}
 				}
 			}
@@ -753,9 +794,9 @@
 			border: 1px solid var(--border);
 			transition: all 0.2s ease;
 			position: relative;
-			
+
 			&::before {
-				content: '';
+				content: "";
 				position: absolute;
 				inset: 0;
 				background: var(--primary);
@@ -763,10 +804,10 @@
 				border-radius: inherit;
 				pointer-events: none;
 			}
-			
+
 			&:hover {
 				border-color: var(--primary);
-				
+
 				&::before {
 					opacity: 0.04;
 				}
@@ -797,19 +838,19 @@
 		.voting-section {
 			gap: var(--space-lg);
 		}
-		
+
 		.section-header {
 			margin-bottom: var(--space-md);
-			
+
 			h3 {
 				font-size: 1.25rem;
 			}
-			
+
 			p {
 				font-size: 0.9rem;
 			}
 		}
-		
+
 		.voting-controls {
 			flex-direction: column;
 			align-items: stretch;
@@ -820,17 +861,17 @@
 		.vote-status {
 			justify-content: space-between;
 			gap: var(--space-sm);
-			
+
 			.votes-count {
 				font-size: 0.9rem;
 			}
-			
+
 			.clear-votes-btn {
 				padding: var(--space-xs) var(--space-sm);
 				font-size: 0.8rem;
 			}
 		}
-		
+
 		.submit-votes-btn {
 			padding: var(--space-xs) var(--space-md);
 			font-size: 0.9rem;
@@ -849,7 +890,7 @@
 				padding: var(--space-xs);
 				font-size: 0.7rem;
 			}
-			
+
 			.nomination-details {
 				padding: var(--space-sm);
 
@@ -857,17 +898,18 @@
 					font-size: 0.85rem;
 				}
 
-				.reason, .nominator-label {
+				.reason,
+				.nominator-label {
 					font-size: 0.75rem;
 				}
-				
+
 				.reason-container {
 					padding: var(--space-xs);
 				}
-				
+
 				.priority-controls {
 					gap: var(--space-xs);
-					
+
 					.priority-btn {
 						padding: var(--space-xs);
 						font-size: 0.7rem;
@@ -875,23 +917,23 @@
 				}
 			}
 		}
-		
+
 		.vote-summary {
 			padding: var(--space-md);
-			
+
 			h4 {
 				font-size: 1rem;
 			}
-			
+
 			.vote-item {
 				padding: var(--space-xs) var(--space-sm);
 				gap: var(--space-sm);
-				
+
 				.priority {
 					min-width: 70px;
 					font-size: 0.75rem;
 				}
-				
+
 				.title {
 					font-size: 0.85rem;
 				}

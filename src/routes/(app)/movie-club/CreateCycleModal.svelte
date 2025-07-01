@@ -22,11 +22,11 @@
 		try {
 			const response = await axios.post("/movie-club/cycle", {
 				name: name.trim(),
-				description: description.trim()
+				description: description.trim(),
 			});
 
 			notify({ id: nid, text: "Cycle created successfully!", type: "success" });
-			
+
 			// Small delay to ensure database consistency
 			setTimeout(() => {
 				dispatch("cycleCreated");
@@ -84,24 +84,27 @@
 		<div class="cycle-info">
 			<h4>Cycle Information</h4>
 			<p>
-				This cycle will start immediately in the <strong>nomination phase</strong>.
-				Users will be able to nominate movies, then vote, and finally see the results.
+				This cycle will start immediately in the <strong
+					>nomination phase</strong
+				>. Users will be able to nominate movies, then vote, and finally see the
+				results.
 			</p>
 			<p>
-				Phase durations and user limits can be configured in the server settings.
+				Phase durations and user limits can be configured in the server
+				settings.
 			</p>
 		</div>
 
 		<div class="action-buttons">
-			<button 
-				class="cancel-btn" 
+			<button
+				class="cancel-btn"
 				on:click={() => dispatch("close")}
 				disabled={submitting}
 			>
 				Cancel
 			</button>
-			<button 
-				class="create-btn" 
+			<button
+				class="create-btn"
 				on:click={createCycle}
 				disabled={submitting || !name.trim()}
 			>
@@ -123,7 +126,7 @@
 		border: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -131,21 +134,25 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
 		--radius-full: 50%;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -183,10 +190,12 @@
 				border-color: var(--border);
 				box-shadow: var(--shadow-sm);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 2px var(--primary);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--primary);
 			}
 		}
 	}
@@ -212,7 +221,8 @@
 			font-size: 0.95rem;
 		}
 
-		input, textarea {
+		input,
+		textarea {
 			padding: var(--space-md);
 			border: 2px solid var(--border);
 			border-radius: var(--radius-lg);
@@ -226,7 +236,9 @@
 			&:focus {
 				outline: none;
 				border-color: var(--primary);
-				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.1);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 3px rgba(59, 130, 246, 0.1);
 			}
 
 			&:disabled {
@@ -238,7 +250,7 @@
 				color: var(--text-muted);
 				font-weight: 400;
 			}
-			
+
 			&:hover:not(:focus):not(:disabled) {
 				border-color: var(--primary);
 				box-shadow: var(--shadow-md);
@@ -258,9 +270,9 @@
 		border: 1px solid var(--border);
 		border-left: 3px solid var(--primary);
 		position: relative;
-		
+
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--primary);
@@ -301,7 +313,9 @@
 		background: var(--background);
 		border-top: 1px solid var(--border);
 		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-		margin: var(--space-md) -#{var(--space-lg)} -#{var(--space-lg)} -#{var(--space-lg)};
+		margin: var(--space-md) -#{var(--space-lg)} -#{var(--space-lg)} -#{var(
+				--space-lg
+			)};
 
 		button {
 			display: inline-flex;
@@ -336,10 +350,12 @@
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 2px var(--text-muted);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--text-muted);
 			}
 		}
 
@@ -353,12 +369,14 @@
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
 			}
-			
+
 			&:focus {
 				outline: none;
-				box-shadow: var(--shadow-md), 0 0 0 3px rgba(59, 130, 246, 0.2);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 3px rgba(59, 130, 246, 0.2);
 			}
-			
+
 			&:active:not(:disabled) {
 				transform: translateY(0);
 				box-shadow: var(--shadow-sm);
@@ -373,11 +391,11 @@
 
 		.modal-header {
 			padding: var(--space-md);
-			
+
 			h3 {
 				font-size: 1.125rem;
 			}
-			
+
 			.close-btn {
 				width: 28px;
 				height: 28px;
@@ -393,12 +411,13 @@
 			label {
 				font-size: 0.9rem;
 			}
-			
-			input, textarea {
+
+			input,
+			textarea {
 				padding: var(--space-sm) var(--space-md);
 				font-size: 0.95rem;
 			}
-			
+
 			textarea {
 				min-height: 80px;
 			}
@@ -406,11 +425,11 @@
 
 		.cycle-info {
 			padding: var(--space-sm);
-			
+
 			h4 {
 				font-size: 0.95rem;
 			}
-			
+
 			p {
 				font-size: 0.85rem;
 			}
@@ -420,7 +439,9 @@
 			flex-direction: column;
 			gap: var(--space-sm);
 			padding: var(--space-sm);
-			margin: var(--space-sm) -#{var(--space-md)} -#{var(--space-md)} -#{var(--space-md)};
+			margin: var(--space-sm) -#{var(--space-md)} -#{var(--space-md)} -#{var(
+					--space-md
+				)};
 
 			button {
 				width: 100%;

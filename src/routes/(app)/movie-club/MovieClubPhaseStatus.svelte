@@ -9,7 +9,7 @@
 			month: "short",
 			day: "numeric",
 			hour: "2-digit",
-			minute: "2-digit"
+			minute: "2-digit",
 		});
 	}
 
@@ -31,19 +31,27 @@
 
 	function getPhaseIcon(phase: string): string {
 		switch (phase) {
-			case "nomination": return "add";
-			case "voting": return "check";
-			case "watching": return "play";
-			default: return "film";
+			case "nomination":
+				return "add";
+			case "voting":
+				return "check";
+			case "watching":
+				return "play";
+			default:
+				return "film";
 		}
 	}
 
 	function getPhaseColorClass(phase: string): string {
 		switch (phase) {
-			case "nomination": return "phase-nomination";
-			case "voting": return "phase-voting"; 
-			case "watching": return "phase-watching";
-			default: return "phase-default";
+			case "nomination":
+				return "phase-nomination";
+			case "voting":
+				return "phase-voting";
+			case "watching":
+				return "phase-watching";
+			default:
+				return "phase-default";
 		}
 	}
 
@@ -82,13 +90,21 @@
 
 	<div class="phase-progress">
 		<div class="progress-steps">
-			<div class="step" class:active={cycle.phase === "nomination"} class:completed={["voting", "watching"].includes(cycle.phase)}>
+			<div
+				class="step"
+				class:active={cycle.phase === "nomination"}
+				class:completed={["voting", "watching"].includes(cycle.phase)}
+			>
 				<div class="step-icon">
 					<Icon icon="add" />
 				</div>
 				<span>Nomination</span>
 			</div>
-			<div class="step" class:active={cycle.phase === "voting"} class:completed={cycle.phase === "watching"}>
+			<div
+				class="step"
+				class:active={cycle.phase === "voting"}
+				class:completed={cycle.phase === "watching"}
+			>
 				<div class="step-icon">
 					<Icon icon="check" />
 				</div>
@@ -111,7 +127,7 @@
 		border-radius: var(--radius-lg);
 		padding: var(--space-lg);
 		box-shadow: var(--shadow-md);
-		
+
 		// CSS custom properties for consistent design system
 		--space-xs: 0.25rem;
 		--space-sm: 0.5rem;
@@ -119,21 +135,25 @@
 		--space-lg: 1.5rem;
 		--space-xl: 2rem;
 		--space-2xl: 3rem;
-		
+
 		--radius-sm: 4px;
 		--radius-md: 8px;
 		--radius-lg: 12px;
 		--radius-xl: 16px;
 		--radius-full: 50%;
-		
+
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-		
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
 		@media (prefers-color-scheme: dark) {
 			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -2px rgba(0, 0, 0, 0.4);
 		}
 	}
 
@@ -162,23 +182,23 @@
 		color: white;
 		font-size: 1.25rem;
 		transition: transform 0.2s ease;
-		
+
 		&:hover {
 			transform: scale(1.05);
 		}
-		
+
 		&.phase-nomination {
 			background: var(--info, #3b82f6);
 		}
-		
+
 		&.phase-voting {
 			background: var(--warning, #f59e0b);
 		}
-		
+
 		&.phase-watching {
 			background: var(--success, #10b981);
 		}
-		
+
 		&.phase-default {
 			background: var(--text-muted, #6b7280);
 		}
@@ -234,9 +254,9 @@
 		border-radius: var(--radius-md);
 		border-left: 3px solid var(--primary);
 		position: relative;
-		
+
 		&::before {
-			content: '';
+			content: "";
 			position: absolute;
 			inset: 0;
 			background: var(--primary);

@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Frontend (SvelteKit)
+
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
@@ -14,12 +15,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run format` - Format code with Prettier
 
 ### Backend (Go)
+
 - `npm run server` - Start Go server in development mode (equivalent to `cd ./server && MODE=DEV go run .`)
 - `cd server && go run .` - Run Go server directly
 - `cd server && go build` - Build Go binary
 - `cd server && go test ./...` - Run Go tests
 
 ### Docker
+
 - `docker-compose up` - Start full application stack
 - `docker-compose -f docker-compose.dev.yml up` - Start development stack
 
@@ -28,6 +31,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Watcharr is a full-stack web application for tracking watched movies, TV shows, and games. The architecture consists of:
 
 ### Frontend (SvelteKit)
+
 - **Framework**: SvelteKit with TypeScript
 - **Styling**: SCSS with custom mixins and variables
 - **Structure**: File-based routing in `src/routes/`
@@ -36,11 +40,13 @@ Watcharr is a full-stack web application for tracking watched movies, TV shows, 
 - **API**: Axios-based HTTP client in `src/lib/util/api.ts`
 
 Key directories:
+
 - `src/routes/` - SvelteKit file-based routing
 - `src/lib/` - Reusable components organized by feature
 - `src/lib/util/` - Utility functions and API client
 
 ### Backend (Go)
+
 - **Framework**: Gin web framework
 - **Database**: SQLite with GORM ORM
 - **Authentication**: JWT-based with proxy auth support
@@ -48,6 +54,7 @@ Key directories:
 - **Structure**: Single package with feature-based files
 
 Key files:
+
 - `server/watcharr.go` - Main application entry point
 - `server/routes.go` - HTTP route definitions
 - `server/auth.go` - Authentication logic
@@ -55,6 +62,7 @@ Key files:
 - `server/watched.go` - Watch tracking functionality
 
 ### Key Features
+
 - **Content Tracking**: Movies, TV shows, anime, and games
 - **External Integrations**: Plex/Jellyfin sync, Trakt import, Sonarr/Radarr requests
 - **User Management**: Multi-user support with different permission levels
@@ -72,6 +80,7 @@ Key files:
 ## Database Schema
 
 The Go backend uses GORM with SQLite. Key models are defined inline in the Go files:
+
 - Users and authentication
 - Watched content with ratings and status
 - Tags and lists
