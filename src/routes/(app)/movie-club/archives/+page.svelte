@@ -185,7 +185,7 @@
 	}
 
 	.back-btn {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
 		padding: var(--space-sm) var(--space-md);
@@ -201,10 +201,11 @@
 		box-shadow: var(--shadow-sm);
 		margin: 0 auto var(--space-xl) auto;
 		max-width: 800px;
+		width: fit-content;
 
 		&:hover {
 			background: var(--background-secondary);
-			transform: translateX(-2px);
+			transform: translateY(-1px);
 			box-shadow: var(--shadow-md);
 		}
 
