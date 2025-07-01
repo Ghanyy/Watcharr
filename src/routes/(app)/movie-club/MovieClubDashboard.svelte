@@ -94,7 +94,6 @@
 		}
 
 		&:hover {
-			border-color: var(--primary);
 			box-shadow: var(--shadow-sm);
 
 			&::before {

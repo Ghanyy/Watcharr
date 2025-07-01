@@ -355,7 +355,6 @@
 			}
 
 			&:hover:not(:focus) {
-				border-color: var(--primary);
 				box-shadow: var(--shadow-md);
 			}
 		}
@@ -433,7 +432,6 @@
 
 		&:hover {
 			background: var(--background);
-			border-color: var(--primary);
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
 
@@ -584,7 +582,6 @@
 
 		&:hover {
 			background: var(--background);
-			border-color: var(--primary);
 			color: var(--primary);
 			transform: translateX(-2px);
 			box-shadow: var(--shadow-md);
@@ -619,7 +616,6 @@
 
 		&:hover {
 			box-shadow: var(--shadow-lg);
-			border-color: var(--primary);
 		}
 
 		.poster-large {
@@ -765,7 +761,6 @@
 			}
 
 			&:hover:not(:focus) {
-				border-color: var(--primary);
 				box-shadow: var(--shadow-md);
 			}
 		}

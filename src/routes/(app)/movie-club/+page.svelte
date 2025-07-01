@@ -547,7 +547,6 @@
 			box-shadow:
 				var(--shadow-lg),
 				0 8px 25px rgba(0, 0, 0, 0.15);
-			border-color: var(--primary);
 		}
 
 		&.watching-phase {

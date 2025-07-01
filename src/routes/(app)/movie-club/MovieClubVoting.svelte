@@ -370,8 +370,6 @@
 		}
 
 		&:hover {
-			border-color: var(--primary);
-
 			&::before {
 				background: var(--primary);
 				opacity: 0.03;
@@ -535,7 +533,6 @@
 		&:hover {
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
-			border-color: var(--primary);
 		}
 
 		&.selected {
@@ -741,7 +738,6 @@
 
 					&:hover:not(:disabled) {
 						background: var(--background);
-						border-color: var(--primary);
 						color: var(--primary);
 						box-shadow: var(--shadow-md);
 					}
@@ -806,8 +802,6 @@
 			}
 
 			&:hover {
-				border-color: var(--primary);
-
 				&::before {
 					opacity: 0.04;
 				}

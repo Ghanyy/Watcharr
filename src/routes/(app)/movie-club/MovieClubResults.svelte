@@ -457,7 +457,6 @@
 
 		&:hover {
 			background: var(--background-secondary);
-			border-color: var(--primary);
 			transform: translateY(-1px);
 			box-shadow: var(--shadow-md);
 		}
@@ -645,7 +644,6 @@
 			&:hover {
 				transform: translateY(-2px);
 				box-shadow: var(--shadow-md);
-				border-color: var(--primary);
 			}
 
 			.stat-value {

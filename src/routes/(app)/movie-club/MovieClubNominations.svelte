@@ -311,8 +311,6 @@
 		}
 
 		&:hover {
-			border-color: var(--primary);
-
 			&::before {
 				background: var(--primary);
 				opacity: 0.03;
@@ -368,7 +366,6 @@
 		&:hover {
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
-			border-color: var(--primary);
 		}
 
 		.poster-container {

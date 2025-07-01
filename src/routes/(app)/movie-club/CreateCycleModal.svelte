@@ -252,7 +252,6 @@
 			}
 
 			&:hover:not(:focus):not(:disabled) {
-				border-color: var(--primary);
 				box-shadow: var(--shadow-md);
 			}
 		}
