@@ -820,7 +820,7 @@
 		text-align: center;
 		border-top: 1px solid var(--border);
 		margin-top: var(--space-xl);
-		background: var(--background-secondary);
+		background: var(--background);
 	}
 
 	.view-archives-btn {

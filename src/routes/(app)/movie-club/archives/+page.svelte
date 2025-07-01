@@ -84,7 +84,40 @@
 						<p class="cycle-description">{cycle.cycle.description}</p>
 					{/if}
 
-					{#if cycle.cycle.winnerContent}
+					{#if cycle.voteResults && cycle.voteResults.length > 0}
+						<div class="results-section">
+							<h4>🏆 Final Results</h4>
+							<div class="results-list">
+								{#each cycle.voteResults as result, index}
+									<div class="result-item" class:winner={index === 0}>
+										<div class="place">
+											{#if index === 0}
+												🏆
+											{:else if index === 1}
+												🥈
+											{:else if index === 2}
+												🥉
+											{:else}
+												{index + 1}.
+											{/if}
+										</div>
+										<div class="movie-info">
+											<strong>{result.content.title}</strong>
+											{#if result.content.release_date}
+												<span class="release-year">
+													({new Date(result.content.release_date).getFullYear()})
+												</span>
+											{/if}
+										</div>
+										<div class="score-info">
+											<span class="weighted-score">{result.weightedScore} pts</span>
+											<span class="vote-details">{result.totalVotes} votes</span>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{:else if cycle.cycle.winnerContent}
 						<div class="winner-section">
 							<h4>🏆 Winner</h4>
 							<div class="winner-movie">
@@ -153,13 +186,15 @@
 	header {
 		text-align: center;
 		margin-bottom: var(--space-2xl);
+		max-width: 800px;
+		margin-left: auto;
+		margin-right: auto;
 		position: relative;
 
 		.back-btn {
 			position: absolute;
 			left: 0;
-			top: 50%;
-			transform: translateY(-50%);
+			top: 0;
 			display: inline-flex;
 			align-items: center;
 			gap: var(--space-sm);
@@ -194,7 +229,7 @@
 		}
 
 		h1 {
-			margin: 0 0 var(--space-sm) 0;
+			margin: var(--space-lg) 0 var(--space-sm) 0;
 			font-size: 2.5rem;
 			font-weight: 700;
 			color: var(--text);
@@ -319,6 +354,91 @@
 		font-size: 0.95rem;
 	}
 
+	.results-section {
+		margin: var(--space-md) 0;
+		padding: var(--space-md);
+		background: var(--background-secondary);
+		border-radius: var(--radius-md);
+		border-left: 4px solid var(--warning, #f59e0b);
+
+		h4 {
+			margin: 0 0 var(--space-md) 0;
+			font-size: 0.9rem;
+			font-weight: 600;
+			color: var(--text);
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
+		}
+
+		.results-list {
+			display: flex;
+			flex-direction: column;
+			gap: var(--space-sm);
+		}
+
+		.result-item {
+			display: flex;
+			align-items: center;
+			gap: var(--space-md);
+			padding: var(--space-sm);
+			background: var(--background);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border);
+			transition: all 0.2s ease;
+
+			&.winner {
+				border-color: var(--warning, #f59e0b);
+				background: var(--background);
+				box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1);
+			}
+
+			.place {
+				font-size: 1.1rem;
+				font-weight: 700;
+				min-width: 2rem;
+				text-align: center;
+				color: var(--text);
+			}
+
+			.movie-info {
+				flex: 1;
+				min-width: 0;
+
+				strong {
+					color: var(--text);
+					font-weight: 600;
+					display: block;
+					line-height: 1.2;
+				}
+
+				.release-year {
+					color: var(--text-muted);
+					font-size: 0.85rem;
+					margin-top: var(--space-xs);
+					display: block;
+				}
+			}
+
+			.score-info {
+				text-align: right;
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+
+				.weighted-score {
+					font-weight: 600;
+					color: var(--primary);
+					font-size: 0.9rem;
+				}
+
+				.vote-details {
+					font-size: 0.8rem;
+					color: var(--text-muted);
+				}
+			}
+		}
+	}
+
 	.winner-section {
 		margin: var(--space-md) 0;
 		padding: var(--space-md);
@@ -411,6 +531,52 @@
 
 		.cycle-stats {
 			justify-content: space-around;
+		}
+
+		.results-section {
+			.result-item {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: var(--space-sm);
+				text-align: left;
+
+				.place {
+					align-self: flex-start;
+					min-width: auto;
+				}
+
+				.movie-info {
+					order: 1;
+					width: 100%;
+
+					strong {
+						font-size: 0.95rem;
+					}
+
+					.release-year {
+						font-size: 0.8rem;
+						margin-top: 2px;
+					}
+				}
+
+				.score-info {
+					order: 2;
+					align-self: flex-start;
+					text-align: left;
+					flex-direction: row;
+					gap: var(--space-sm);
+					width: 100%;
+					justify-content: space-between;
+
+					.weighted-score {
+						font-size: 0.85rem;
+					}
+
+					.vote-details {
+						font-size: 0.75rem;
+					}
+				}
+			}
 		}
 	}
 </style>

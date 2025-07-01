@@ -357,13 +357,14 @@
 
 	.nomination-card {
 		background: var(--background);
-		border: 1px solid var(--border);
+		border: 2px solid var(--border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		transition: all 0.3s ease;
 		box-shadow: var(--shadow-sm);
 
 		&:hover {
+			border-color: var(--primary);
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
 		}
@@ -374,13 +375,6 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			border: 2px solid transparent;
-			border-radius: var(--radius-md);
-			transition: border-color 0.3s ease;
-
-			&:hover {
-				border-color: var(--primary);
-			}
 
 			:global(li) {
 				list-style: none;
