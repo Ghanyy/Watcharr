@@ -199,10 +199,8 @@
 		cursor: pointer;
 		transition: all 0.2s ease;
 		box-shadow: var(--shadow-sm);
-		margin-bottom: var(--space-xl);
+		margin: 0 auto var(--space-xl) auto;
 		max-width: 800px;
-		margin-left: auto;
-		margin-right: auto;
 
 		&:hover {
 			background: var(--background-secondary);
