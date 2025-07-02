@@ -10,6 +10,7 @@
 	$: hasVotes = results.some((r) => r.totalVotes > 0);
 	$: cycleRatings = cycleData.cycleRatings || [];
 	$: validRatings = cycleRatings.filter(rating => rating.rating > 0);
+	$: thoughtsOnlyEntries = cycleRatings.filter(rating => rating.rating <= 0 && rating.thoughts && rating.thoughts.trim());
 	$: hasCycleRatings = cycleRatings.length > 0;
 	$: shouldShowClubAverage = validRatings.length >= 2;
 	$: clubAverageRating = shouldShowClubAverage 
@@ -89,7 +90,7 @@
 				<details class="cycle-ratings-list">
 					<summary class="ratings-header">
 						<Icon icon="star" />
-						<span>Member Ratings ({validRatings.length}{cycleRatings.length > validRatings.length ? ` + ${cycleRatings.length - validRatings.length} thoughts` : ''})</span>
+						<span>Member Ratings ({validRatings.length}{thoughtsOnlyEntries.length > 0 ? ` + ${thoughtsOnlyEntries.length} thoughts` : ''})</span>
 						<Icon icon="chevron" />
 					</summary>
 
@@ -423,10 +424,13 @@
 			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 
 			.golden-asterisk {
-				color: #ffd700;
-				font-weight: 700;
+				font-family: Rampart One;
+				-webkit-text-stroke: 1px gold;
+				font-size: 40px;
+				line-height: .7;
+				margin-top: 7px;
 				margin-right: 0.1em;
-				text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+				color: #ffd700;
 			}
 		}
 	}
@@ -1079,6 +1083,8 @@
 				font-size: 1.25rem;
 
 				.golden-asterisk {
+					font-size: 32px;
+					margin-top: 5px;
 					margin-right: 0.05em;
 				}
 			}
