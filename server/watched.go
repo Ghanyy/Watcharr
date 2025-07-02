@@ -282,7 +282,17 @@ func updateWatched(db *gorm.DB, userId uint, id uint, ar WatchedUpdateRequest) (
 				finalThoughts = ""
 			}
 			
-			if err := ProcessPotentialCycleRating(db, userId, *upwat.ContentID, upwat.Rating, finalThoughts); err != nil {
+			// Determine what rating to pass: 
+			// - If ar.Rating != 0, use the updated rating (upwat.Rating)
+			// - If only updating thoughts (ar.Rating == 0), pass 0 to indicate no rating update
+			var ratingToProcess float64
+			if ar.Rating != 0 {
+				ratingToProcess = upwat.Rating // Use the updated rating from the watched entry
+			} else {
+				ratingToProcess = 0 // Only updating thoughts, don't update the rating
+			}
+			
+			if err := ProcessPotentialCycleRating(db, userId, *upwat.ContentID, ratingToProcess, finalThoughts); err != nil {
 				slog.Error("Failed to process potential cycle rating update", "error", err, "userId", userId, "contentId", *upwat.ContentID)
 				// Don't fail the entire watched entry update if cycle rating fails
 			}

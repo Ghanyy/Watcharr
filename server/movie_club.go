@@ -1476,6 +1476,7 @@ func GetActiveWatchingCyclesByWinnerContent(db *gorm.DB, contentID int) ([]Movie
 }
 
 // CreateOrUpdateCycleRating creates or updates a cycle rating for a user
+// Only creates new ratings if rating > 0, but can update thoughts on existing ratings
 func CreateOrUpdateCycleRating(db *gorm.DB, userID uint, cycleID uint, contentID int, rating float64, thoughts string) error {
 	// Try to find existing rating using Take to avoid "record not found" logs
 	var existingRating MovieClubCycleRating
@@ -1484,6 +1485,12 @@ func CreateOrUpdateCycleRating(db *gorm.DB, userID uint, cycleID uint, contentID
 	
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// Only create new rating if there's actually a rating value > 0
+			if rating <= 0 {
+				slog.Debug("Skipping cycle rating creation - no rating provided", "userID", userID, "cycleID", cycleID, "contentID", contentID)
+				return nil
+			}
+			
 			// Create new rating
 			newRating := MovieClubCycleRating{
 				CycleID:   cycleID,
@@ -1503,14 +1510,19 @@ func CreateOrUpdateCycleRating(db *gorm.DB, userID uint, cycleID uint, contentID
 		return fmt.Errorf("failed to check existing cycle rating: %w", result.Error)
 	}
 	
-	// Update existing rating
-	existingRating.Rating = rating
+	// Update existing rating - update rating only if new rating > 0, always update thoughts
+	if rating > 0 {
+		existingRating.Rating = rating
+		slog.Debug("Updated existing cycle rating and thoughts", "userID", userID, "cycleID", cycleID, "contentID", contentID, "rating", rating)
+	} else {
+		slog.Debug("Updated existing cycle thoughts only", "userID", userID, "cycleID", cycleID, "contentID", contentID)
+	}
 	existingRating.Thoughts = thoughts
+	
 	if err := db.Save(&existingRating).Error; err != nil {
 		return fmt.Errorf("failed to update cycle rating: %w", err)
 	}
 	
-	slog.Debug("Updated existing cycle rating", "userID", userID, "cycleID", cycleID, "contentID", contentID, "rating", rating)
 	return nil
 }
 

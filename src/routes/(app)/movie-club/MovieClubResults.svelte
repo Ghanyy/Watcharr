@@ -9,10 +9,11 @@
 	$: winner = results.length > 0 ? results[0] : null;
 	$: hasVotes = results.some((r) => r.totalVotes > 0);
 	$: cycleRatings = cycleData.cycleRatings || [];
+	$: validRatings = cycleRatings.filter(rating => rating.rating > 0);
 	$: hasCycleRatings = cycleRatings.length > 0;
-	$: shouldShowClubAverage = cycleRatings.length >= 2;
+	$: shouldShowClubAverage = validRatings.length >= 2;
 	$: clubAverageRating = shouldShowClubAverage 
-		? (cycleRatings.reduce((sum, rating) => sum + rating.rating, 0) / cycleRatings.length).toFixed(1)
+		? (validRatings.reduce((sum, rating) => sum + rating.rating, 0) / validRatings.length).toFixed(1)
 		: null;
 </script>
 
@@ -81,14 +82,14 @@
 				{#if shouldShowClubAverage}
 					<div class="club-average-rating">
 						<span class="average-label">Club rate:</span>
-						<span class="average-value">{clubAverageRating}/10</span>
+						<span class="average-value"><span class="golden-asterisk">*</span>{clubAverageRating}/10</span>
 					</div>
 				{/if}
 
 				<details class="cycle-ratings-list">
 					<summary class="ratings-header">
 						<Icon icon="star" />
-						<span>Member Ratings ({cycleRatings.length})</span>
+						<span>Member Ratings ({validRatings.length}{cycleRatings.length > validRatings.length ? ` + ${cycleRatings.length - validRatings.length} thoughts` : ''})</span>
 						<Icon icon="chevron" />
 					</summary>
 
@@ -97,7 +98,11 @@
 							<div class="rating-item">
 								<div class="rating-user">
 									<span class="username">{rating.user?.username || 'Unknown User'}</span>
-									<span class="rating-score">{rating.rating}/10</span>
+									{#if rating.rating > 0}
+										<span class="rating-score">{rating.rating}/10</span>
+									{:else}
+										<span class="thoughts-only">Thoughts only</span>
+									{/if}
 								</div>
 								{#if rating.thoughts && rating.thoughts.trim()}
 									<details class="thoughts-details">
@@ -416,6 +421,13 @@
 			font-size: 1.5rem;
 			color: var(--warning, #f59e0b);
 			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+			.golden-asterisk {
+				color: #ffd700;
+				font-weight: 700;
+				margin-right: 0.1em;
+				text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+			}
 		}
 	}
 
@@ -515,6 +527,17 @@
 			border-radius: var(--radius-md);
 			border: 1px solid var(--warning, #f59e0b);
 			font-size: 0.875rem;
+		}
+
+		.thoughts-only {
+			font-weight: 600;
+			color: var(--text-muted);
+			background: var(--background-secondary);
+			padding: var(--space-xs) var(--space-sm);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border);
+			font-size: 0.875rem;
+			font-style: italic;
 		}
 	}
 
@@ -1054,6 +1077,10 @@
 
 			.average-value {
 				font-size: 1.25rem;
+
+				.golden-asterisk {
+					margin-right: 0.05em;
+				}
 			}
 		}
 
@@ -1077,6 +1104,11 @@
 			}
 
 			.rating-score {
+				font-size: 0.8rem;
+				padding: 2px var(--space-xs);
+			}
+
+			.thoughts-only {
 				font-size: 0.8rem;
 				padding: 2px var(--space-xs);
 			}
