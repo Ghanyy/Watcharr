@@ -396,8 +396,8 @@
 	}
 
 	.club-average-rating {
-		background: var(--background-secondary);
-		border: 1px solid var(--border);
+		background: var(--background);
+		border: 1px solid var(--warning, #f59e0b);
 		border-radius: var(--radius-lg);
 		padding: var(--space-md);
 		margin-bottom: var(--space-md);
@@ -422,7 +422,7 @@
 	.cycle-ratings-list {
 		border-radius: var(--radius-md);
 		border: 1px solid var(--border);
-		background: var(--background-secondary);
+		background: var(--background);
 		overflow: hidden;
 		transition: all 0.2s ease;
 
@@ -446,7 +446,7 @@
 		align-items: center;
 		gap: var(--space-sm);
 		padding: var(--space-md);
-		background: var(--background-secondary);
+		background: var(--background);
 		cursor: pointer;
 		font-weight: 600;
 		color: var(--text);
@@ -455,7 +455,7 @@
 		list-style: none;
 
 		&:hover {
-			background: var(--background);
+			background: var(--background-secondary);
 		}
 
 		:global(svg) {
@@ -483,7 +483,7 @@
 
 	.rating-item {
 		padding: var(--space-md);
-		background: var(--background-secondary);
+		background: var(--background);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 		transition: all 0.2s ease;
@@ -491,6 +491,7 @@
 		&:hover {
 			transform: translateY(-1px);
 			box-shadow: var(--shadow-sm);
+			background: var(--background-secondary);
 		}
 	}
 
@@ -509,10 +510,10 @@
 		.rating-score {
 			font-weight: 700;
 			color: var(--warning, #f59e0b);
-			background: var(--background);
+			background: var(--background-secondary);
 			padding: var(--space-xs) var(--space-sm);
 			border-radius: var(--radius-md);
-			border: 1px solid var(--border);
+			border: 1px solid var(--warning, #f59e0b);
 			font-size: 0.875rem;
 		}
 	}
