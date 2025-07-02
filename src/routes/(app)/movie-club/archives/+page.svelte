@@ -134,6 +134,59 @@
 						</div>
 					{/if}
 
+					<!-- Cycle Ratings Section -->
+					{#if cycle.cycleRatings && cycle.cycleRatings.length > 0}
+						{@const validRatings = cycle.cycleRatings.filter(rating => rating.rating > 0)}
+						{@const thoughtsOnlyEntries = cycle.cycleRatings.filter(rating => rating.rating <= 0 && rating.thoughts && rating.thoughts.trim())}
+						{@const shouldShowClubAverage = validRatings.length >= 2}
+						{@const clubAverageRating = shouldShowClubAverage 
+							? (validRatings.reduce((sum, rating) => sum + rating.rating, 0) / validRatings.length).toFixed(1)
+							: null}
+						
+						<div class="cycle-ratings-section">
+							{#if shouldShowClubAverage}
+								<div class="club-average-rating">
+									<span class="average-label">Club rate:</span>
+									<span class="average-value"><span class="golden-asterisk">*</span>{clubAverageRating}/10</span>
+								</div>
+							{/if}
+
+							<details class="cycle-ratings-list">
+								<summary class="ratings-header">
+									<Icon icon="star" />
+									<span>Member Ratings ({validRatings.length}{thoughtsOnlyEntries.length > 0 ? ` + ${thoughtsOnlyEntries.length} thoughts` : ''})</span>
+									<Icon icon="chevron" />
+								</summary>
+
+								<div class="ratings-content">
+									{#each cycle.cycleRatings as rating}
+										<div class="rating-item">
+											<div class="rating-user">
+												<span class="username">{rating.user?.username || 'Unknown User'}</span>
+												{#if rating.rating > 0}
+													<span class="rating-score">{rating.rating}/10</span>
+												{:else}
+													<span class="thoughts-only">Thoughts only</span>
+												{/if}
+											</div>
+											{#if rating.thoughts && rating.thoughts.trim()}
+												<details class="thoughts-details">
+													<summary class="thoughts-toggle">
+														<Icon icon="document" />
+														<span>View thoughts</span>
+													</summary>
+													<div class="thoughts-content">
+														<p>{rating.thoughts}</p>
+													</div>
+												</details>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							</details>
+						</div>
+					{/if}
+
 					<div class="cycle-stats">
 						<div class="stat">
 							<span class="stat-value">{cycle.cycle.nominations?.length || 0}</span>
@@ -574,6 +627,281 @@
 						font-size: 0.75rem;
 					}
 				}
+			}
+		}
+	}
+
+	/* Cycle Ratings Section - Same styles as MovieClubResults */
+	.cycle-ratings-section {
+		background: var(--background);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-lg);
+		box-shadow: var(--shadow-md);
+		border-left: 4px solid var(--warning, #f59e0b);
+		margin: var(--space-md) 0;
+	}
+
+	.club-average-rating {
+		background: var(--background);
+		border: 1px solid var(--warning, #f59e0b);
+		border-radius: var(--radius-lg);
+		padding: var(--space-md);
+		margin-bottom: var(--space-md);
+		text-align: center;
+		box-shadow: var(--shadow-sm);
+
+		.average-label {
+			font-weight: 600;
+			color: var(--text);
+			margin-right: var(--space-sm);
+			font-size: 1.1rem;
+		}
+
+		.average-value {
+			font-weight: 700;
+			font-size: 1.5rem;
+			color: var(--warning, #f59e0b);
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+			.golden-asterisk {
+				font-family: Rampart One;
+				-webkit-text-stroke: 1px var(--warning, #f59e0b);
+				font-size: 40px;
+				line-height: .7;
+				margin-right: 0.1em;
+				color: var(--warning, #f59e0b);
+				vertical-align: baseline;
+				transform: translateY(0.4em);
+			}
+		}
+	}
+
+	.cycle-ratings-list {
+		border-radius: var(--radius-md);
+		border: 1px solid var(--border);
+		background: var(--background);
+		overflow: hidden;
+		transition: all 0.2s ease;
+
+		&:hover {
+			box-shadow: var(--shadow-md);
+		}
+
+		&[open] {
+			.ratings-header {
+				border-bottom: 1px solid var(--border);
+
+				:global(.chevron) {
+					transform: rotate(180deg);
+				}
+			}
+		}
+	}
+
+	.ratings-header {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-md);
+		background: var(--background);
+		cursor: pointer;
+		font-weight: 600;
+		color: var(--text);
+		border: none;
+		transition: all 0.2s ease;
+		list-style: none;
+
+		&:hover {
+			background: var(--background-secondary);
+		}
+
+		:global(svg) {
+			color: var(--warning, #f59e0b);
+			transition: transform 0.2s ease;
+		}
+
+		:global(.chevron) {
+			margin-left: auto;
+			font-size: 0.875rem;
+		}
+
+		span {
+			font-size: 1rem;
+		}
+	}
+
+	.ratings-content {
+		padding: var(--space-md);
+		background: var(--background);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-md);
+	}
+
+	.rating-item {
+		padding: var(--space-md);
+		background: var(--background);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		transition: all 0.2s ease;
+
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: var(--shadow-sm);
+			background: var(--background-secondary);
+		}
+	}
+
+	.rating-user {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-sm);
+
+		.username {
+			font-weight: 600;
+			color: var(--text);
+			font-size: 0.95rem;
+		}
+
+		.rating-score {
+			font-weight: 700;
+			color: var(--warning, #f59e0b);
+			background: var(--background-secondary);
+			padding: var(--space-xs) var(--space-sm);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--warning, #f59e0b);
+			font-size: 0.875rem;
+		}
+
+		.thoughts-only {
+			font-weight: 600;
+			color: var(--text-muted);
+			background: var(--background-secondary);
+			padding: var(--space-xs) var(--space-sm);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border);
+			font-size: 0.875rem;
+			font-style: italic;
+		}
+	}
+
+	.thoughts-details {
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border);
+		background: var(--background);
+		overflow: hidden;
+		transition: all 0.2s ease;
+
+		&[open] {
+			.thoughts-toggle {
+				border-bottom: 1px solid var(--border);
+			}
+		}
+	}
+
+	.thoughts-toggle {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		padding: var(--space-sm);
+		background: var(--background);
+		cursor: pointer;
+		font-size: 0.875rem;
+		color: var(--text-muted);
+		border: none;
+		transition: all 0.2s ease;
+		list-style: none;
+
+		&:hover {
+			background: var(--background-secondary);
+			color: var(--text);
+		}
+
+		:global(svg) {
+			font-size: 0.875rem;
+			color: var(--text-muted);
+		}
+	}
+
+	.thoughts-content {
+		padding: var(--space-sm);
+		background: var(--background);
+
+		p {
+			margin: 0;
+			line-height: 1.5;
+			color: var(--text);
+			font-size: 0.9rem;
+			white-space: pre-wrap;
+		}
+	}
+
+	/* Mobile responsive styles for cycle ratings */
+	@media (max-width: 768px) {
+		.cycle-ratings-section {
+			padding: var(--space-md);
+		}
+
+		.club-average-rating {
+			padding: var(--space-sm);
+
+			.average-label {
+				font-size: 1rem;
+			}
+
+			.average-value {
+				font-size: 1.25rem;
+
+				.golden-asterisk {
+					font-size: 32px;
+					margin-right: 0.05em;
+					transform: translateY(0.32em);
+				}
+			}
+		}
+
+		.ratings-header {
+			padding: var(--space-sm);
+			font-size: 0.9rem;
+		}
+
+		.ratings-content {
+			padding: var(--space-sm);
+			gap: var(--space-sm);
+		}
+
+		.rating-item {
+			padding: var(--space-sm);
+		}
+
+		.rating-user {
+			.username {
+				font-size: 0.85rem;
+			}
+
+			.rating-score {
+				font-size: 0.8rem;
+				padding: 2px var(--space-xs);
+			}
+
+			.thoughts-only {
+				font-size: 0.8rem;
+				padding: 2px var(--space-xs);
+			}
+		}
+
+		.thoughts-toggle {
+			padding: 6px var(--space-xs);
+			font-size: 0.8rem;
+		}
+
+		.thoughts-content {
+			padding: var(--space-xs);
+
+			p {
+				font-size: 0.85rem;
 			}
 		}
 	}

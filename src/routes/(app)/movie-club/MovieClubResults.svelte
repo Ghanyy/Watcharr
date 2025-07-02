@@ -431,7 +431,7 @@
 				margin-right: 0.1em;
 				color: var(--warning, #f59e0b);
 				vertical-align: baseline;
-				transform: translateY(0.1em);
+				transform: translateY(0.4em);
 			}
 		}
 	}
@@ -1086,7 +1086,7 @@
 				.golden-asterisk {
 					font-size: 32px;
 					margin-right: 0.05em;
-					transform: translateY(0.08em);
+					transform: translateY(0.32em);
 				}
 			}
 		}
