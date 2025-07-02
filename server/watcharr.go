@@ -86,6 +86,7 @@ func main() {
 		&MovieClubCycle{},
 		&MovieClubNomination{},
 		&MovieClubVote{},
+		&MovieClubCycleRating{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto migrate database:", err)
