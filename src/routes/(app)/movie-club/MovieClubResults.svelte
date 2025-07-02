@@ -425,12 +425,13 @@
 
 			.golden-asterisk {
 				font-family: Rampart One;
-				-webkit-text-stroke: 1px gold;
+				-webkit-text-stroke: 1px var(--warning, #f59e0b);
 				font-size: 40px;
 				line-height: .7;
-				margin-top: 7px;
 				margin-right: 0.1em;
-				color: #ffd700;
+				color: var(--warning, #f59e0b);
+				vertical-align: baseline;
+				transform: translateY(0.1em);
 			}
 		}
 	}
@@ -1084,8 +1085,8 @@
 
 				.golden-asterisk {
 					font-size: 32px;
-					margin-top: 5px;
 					margin-right: 0.05em;
+					transform: translateY(0.08em);
 				}
 			}
 		}
