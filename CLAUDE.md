@@ -44,6 +44,12 @@ Key directories:
 - `src/routes/` - SvelteKit file-based routing
 - `src/lib/` - Reusable components organized by feature
 - `src/lib/util/` - Utility functions and API client
+- `src/types.ts` - TypeScript interfaces and type definitions
+
+**Movie Club TypeScript Types:**
+- `MovieClubCycleRating` - Interface for user ratings and thoughts
+- `MovieClubCycleResponse` - Enhanced to include `cycleRatings` array
+- Type safety across frontend/backend communication
 
 ### Backend (Go)
 
@@ -55,15 +61,21 @@ Key directories:
 
 Key files:
 
-- `server/watcharr.go` - Main application entry point
+- `server/watcharr.go` - Main application entry point and database migrations
 - `server/routes.go` - HTTP route definitions
 - `server/auth.go` - Authentication logic
 - `server/content.go` - Content management
-- `server/watched.go` - Watch tracking functionality
+- `server/watched.go` - Watch tracking functionality with movie club integration
+- `server/movie_club.go` - Movie club cycles, voting, and rating management
 
 ### Key Features
 
 - **Content Tracking**: Movies, TV shows, anime, and games
+- **Movie Club**: Collaborative movie selection with nomination, voting, and watching phases
+  - **Cycle Ratings**: Persistent user ratings and thoughts for winning movies during watching phase
+  - **Club Averages**: Aggregate ratings displayed when 2+ members have rated
+  - **Eligibility System**: Only users who participated (nominated or voted) can rate cycle movies
+  - **Real-time Updates**: Rating and thoughts updates during active cycles, locked when cycle ends
 - **External Integrations**: Plex/Jellyfin sync, Trakt import, Sonarr/Radarr requests
 - **User Management**: Multi-user support with different permission levels
 - **Import/Export**: CSV and Trakt data import
@@ -83,9 +95,21 @@ The Go backend uses GORM with SQLite. Key models are defined inline in the Go fi
 
 - Users and authentication
 - Watched content with ratings and status
+- Movie club cycles and nominations
+- Movie club cycle ratings (user ratings/thoughts for winning movies)
 - Tags and lists
 - Activity tracking
 - Integration configurations
+
+### Movie Club Database Models
+
+- **MovieClubCycle**: Defines nomination/voting/watching phases with dates and winner
+- **MovieClubNomination**: User movie nominations for cycles
+- **MovieClubVote**: User voting preferences (1st, 2nd, 3rd choice)
+- **MovieClubCycleRating**: User ratings and thoughts for winning movies during watching phase
+  - Composite unique index on (user_id, cycle_id) prevents duplicate ratings
+  - Only eligible users (who nominated or voted) can create ratings
+  - Supports ratings-only, thoughts-only, or combined entries
 
 ## External Services
 
@@ -94,6 +118,49 @@ The Go backend uses GORM with SQLite. Key models are defined inline in the Go fi
 - **Plex/Jellyfin**: Media server integration for automatic tracking
 - **Trakt**: Import existing watch data
 - **Sonarr/Radarr**: Request missing content
+
+## Movie Club Feature Architecture
+
+The movie club feature enables collaborative movie selection through structured cycles with three phases:
+
+### Backend Implementation (`server/movie_club.go`)
+
+**Core Functions:**
+- `IsUserEligibleForCycleRating()` - Checks if user participated (nominated or voted) in cycle
+- `GetActiveWatchingCyclesByWinnerContent()` - Finds active cycles for specific movie content
+- `ProcessPotentialCycleRating()` - Handles rating capture with eligibility validation
+- `CreateOrUpdateCycleRating()` - Creates or updates user ratings with proper error handling
+
+**Integration Points:**
+- `addWatched()` in `watched.go` - Automatically captures ratings when users rate winning movies
+- `updateWatched()` in `watched.go` - Updates cycle ratings when watch entries are modified
+- Auto-migration system in `watcharr.go` includes `MovieClubCycleRating` model
+
+### Frontend Implementation
+
+**Key Components:**
+- `src/routes/(app)/movie-club/MovieClubResults.svelte` - Displays cycle ratings in active cycles
+- `src/routes/(app)/movie-club/archives/+page.svelte` - Shows cycle ratings in completed cycles
+- Both components share identical cycle ratings UI and styling
+
+**Features:**
+- Club average rating calculation (requires 2+ ratings)
+- Golden asterisk styling matching TMDB ratings (`font-family: Rampart One`)
+- Collapsible member ratings list with expandable thoughts
+- Responsive design with mobile-optimized spacing
+- Real-time updates during active cycles
+
+### Performance Optimizations
+
+**Staged Filtering Approach:**
+1. Filter content by type (movies only)
+2. Check user eligibility (participated in cycle)
+3. Process rating updates for eligible combinations
+
+**Database Efficiency:**
+- Composite unique indexes prevent duplicate ratings
+- Preloaded relationships reduce N+1 queries
+- Conditional processing only when movie club is enabled
 
 ## Common File Patterns
 
