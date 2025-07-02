@@ -103,6 +103,19 @@ type MovieClubVoteItem struct {
 	Priority  int `json:"priority" binding:"required,min=1"`
 }
 
+// MovieClubCycleRating represents a user's rating and thoughts for a winning movie in a specific cycle
+type MovieClubCycleRating struct {
+	GormModel
+	CycleID     uint            `json:"cycleId" gorm:"index;uniqueIndex:cycle_user_content"`
+	Cycle       MovieClubCycle  `json:"cycle,omitempty" gorm:"foreignKey:CycleID"`
+	UserID      uint            `json:"userId" gorm:"index;uniqueIndex:cycle_user_content"`
+	User        User            `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	ContentID   int             `json:"contentId" gorm:"index;uniqueIndex:cycle_user_content"`
+	Content     Content         `json:"content,omitempty" gorm:"foreignKey:ContentID;references:ID"`
+	Rating      float64         `json:"rating" gorm:"type:numeric(2,1)"`
+	Thoughts    string          `json:"thoughts" gorm:"type:text"`
+}
+
 // MovieClubNominationGroup represents a movie with all its nominations grouped together
 type MovieClubNominationGroup struct {
 	ContentID   int                     `json:"contentId"`
@@ -118,6 +131,7 @@ type MovieClubCycleResponse struct {
 	UserNominations []MovieClubNomination `json:"userNominations"`
 	UserVotes      []MovieClubVote      `json:"userVotes"`
 	VoteResults    []MovieClubVoteCount `json:"voteResults,omitempty"`
+	CycleRatings   []MovieClubCycleRating `json:"cycleRatings,omitempty"`
 	CanNominate    bool                 `json:"canNominate"`
 	CanVote        bool                 `json:"canVote"`
 }
@@ -589,11 +603,21 @@ func (b *BaseRouter) getCurrentMovieClubCycle(c *gin.Context) {
 		}
 	}
 	
+	// Get cycle ratings if in watching phase
+	var cycleRatings []MovieClubCycleRating
+	if cycle.IsWatchingPhase() {
+		cycleRatings, err = GetCycleRatingsForCycle(b.db, cycle.ID)
+		if err != nil {
+			slog.Error("Failed to get cycle ratings", "error", err)
+		}
+	}
+	
 	response := MovieClubCycleResponse{
 		Cycle:           *cycle,
 		UserNominations: userNominations,
 		UserVotes:       userVotes,
 		VoteResults:     voteResults,
+		CycleRatings:    cycleRatings,
 		CanNominate:     canNominate,
 		CanVote:         canVote,
 	}
@@ -656,11 +680,21 @@ func (b *BaseRouter) getActiveMovieClubCycles(c *gin.Context) {
 			}
 		}
 		
+		// Get cycle ratings if in watching phase
+		var cycleRatings []MovieClubCycleRating
+		if cycle.IsWatchingPhase() {
+			cycleRatings, err = GetCycleRatingsForCycle(b.db, cycle.ID)
+			if err != nil {
+				slog.Error("Failed to get cycle ratings", "error", err, "cycleId", cycle.ID)
+			}
+		}
+		
 		response := MovieClubCycleResponse{
 			Cycle:           cycle,
 			UserNominations: userNominations,
 			UserVotes:       userVotes,
 			VoteResults:     voteResults,
+			CycleRatings:    cycleRatings,
 			CanNominate:     canNominate,
 			CanVote:         canVote,
 		}
@@ -718,6 +752,16 @@ func (b *BaseRouter) getArchivedMovieClubCycles(c *gin.Context) {
 			}
 		}
 		
+		// Get cycle ratings for archived cycles
+		var cycleRatings []MovieClubCycleRating
+		if cycle.Phase == PHASE_WATCHING {
+			cycleRatings, err = GetCycleRatingsForCycle(b.db, cycle.ID)
+			if err != nil {
+				slog.Error("Failed to get cycle ratings", "error", err, "cycleId", cycle.ID)
+				cycleRatings = []MovieClubCycleRating{}
+			}
+		}
+		
 		// Check if user can nominate/vote (always false for archived cycles)
 		canNominate := false
 		canVote := false
@@ -728,6 +772,7 @@ func (b *BaseRouter) getArchivedMovieClubCycles(c *gin.Context) {
 			UserNominations: userNominations,
 			UserVotes:       userVotes,
 			VoteResults:     voteResults,
+			CycleRatings:    cycleRatings,
 			CanNominate:     canNominate,
 			CanVote:         canVote,
 		}
@@ -1391,4 +1436,117 @@ func checkMovieClubTransition(db *gorm.DB) {
 			slog.Info("Successfully transitioned cycle phase", "cycleId", cycle.ID, "newPhase", cycle.Phase)
 		}
 	}
+}
+
+// Cycle Rating Helper Functions
+
+// IsUserEligibleForCycleRating checks if a user is eligible to have their rating saved for a cycle
+// A user is eligible if they nominated any movie OR voted in the cycle
+func IsUserEligibleForCycleRating(db *gorm.DB, userID uint, cycleID uint) bool {
+	// Check nomination participation using EXISTS for performance
+	var nominationCount int64
+	db.Model(&MovieClubNomination{}).
+		Where("cycle_id = ? AND user_id = ?", cycleID, userID).
+		Count(&nominationCount)
+	
+	if nominationCount > 0 {
+		return true
+	}
+	
+	// Check voting participation using EXISTS for performance
+	var voteCount int64
+	db.Model(&MovieClubVote{}).
+		Where("cycle_id = ? AND user_id = ?", cycleID, userID).
+		Count(&voteCount)
+	
+	return voteCount > 0
+}
+
+// GetActiveWatchingCyclesByWinnerContent returns active watching cycles where the given content won
+func GetActiveWatchingCyclesByWinnerContent(db *gorm.DB, contentID int) ([]MovieClubCycle, error) {
+	var cycles []MovieClubCycle
+	result := db.Where("active = ? AND phase = ? AND winner_content_id = ?", 
+		true, PHASE_WATCHING, contentID).Find(&cycles)
+	
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	
+	return cycles, nil
+}
+
+// CreateOrUpdateCycleRating creates or updates a cycle rating for a user
+func CreateOrUpdateCycleRating(db *gorm.DB, userID uint, cycleID uint, contentID int, rating float64, thoughts string) error {
+	// Check if rating already exists
+	var existingRating MovieClubCycleRating
+	result := db.Where("cycle_id = ? AND user_id = ? AND content_id = ?", 
+		cycleID, userID, contentID).First(&existingRating)
+	
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return result.Error
+	}
+	
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// Create new rating
+		newRating := MovieClubCycleRating{
+			CycleID:   cycleID,
+			UserID:    userID,
+			ContentID: contentID,
+			Rating:    rating,
+			Thoughts:  thoughts,
+		}
+		
+		return db.Create(&newRating).Error
+	} else {
+		// Update existing rating
+		existingRating.Rating = rating
+		existingRating.Thoughts = thoughts
+		return db.Save(&existingRating).Error
+	}
+}
+
+// GetCycleRatingsForCycle returns all cycle ratings for a specific cycle
+func GetCycleRatingsForCycle(db *gorm.DB, cycleID uint) ([]MovieClubCycleRating, error) {
+	var ratings []MovieClubCycleRating
+	result := db.Where("cycle_id = ?", cycleID).
+		Preload("User").
+		Preload("Content").
+		Order("created_at ASC").
+		Find(&ratings)
+	
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	
+	return ratings, nil
+}
+
+// ProcessPotentialCycleRating processes a watched entry to see if it should be saved as a cycle rating
+// This is the main entry point for the automatic rating capture system
+func ProcessPotentialCycleRating(db *gorm.DB, userID uint, contentID int, rating float64, thoughts string) error {
+	// Performance optimization: Stage 1 - Quick check for winning content in active watching cycles
+	winningCycles, err := GetActiveWatchingCyclesByWinnerContent(db, contentID)
+	if err != nil {
+		return err
+	}
+	
+	// Early exit if content is not a winner in any active watching cycle
+	if len(winningCycles) == 0 {
+		return nil
+	}
+	
+	// Performance optimization: Stage 2 - Check user eligibility for each cycle
+	for _, cycle := range winningCycles {
+		if IsUserEligibleForCycleRating(db, userID, cycle.ID) {
+			// Performance optimization: Stage 3 - Process the rating (lowest frequency operation)
+			if err := CreateOrUpdateCycleRating(db, userID, cycle.ID, contentID, rating, thoughts); err != nil {
+				slog.Error("Failed to save cycle rating", "error", err, "userID", userID, "cycleID", cycle.ID, "contentID", contentID)
+				continue // Continue processing other cycles even if one fails
+			}
+			
+			slog.Debug("Saved cycle rating", "userID", userID, "cycleID", cycle.ID, "contentID", contentID, "rating", rating)
+		}
+	}
+	
+	return nil
 }

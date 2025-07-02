@@ -214,6 +214,15 @@ func addWatched(db *gorm.DB, userId uint, ar WatchedAddRequest, at ActivityType)
 	}
 	watched.Activity = append(watched.Activity, activity)
 	watched.Content = &content
+	
+	// Movie Club Integration: Process potential cycle rating if this is a rated movie
+	if ar.Rating > 0 && ar.ContentType == "movie" && Config.MOVIE_CLUB.Enabled {
+		if err := ProcessPotentialCycleRating(db, userId, content.ID, ar.Rating, ar.Thoughts); err != nil {
+			slog.Error("Failed to process potential cycle rating", "error", err, "userId", userId, "contentId", content.ID)
+			// Don't fail the entire watched entry creation if cycle rating fails
+		}
+	}
+	
 	return watched, nil
 }
 
@@ -259,6 +268,27 @@ func updateWatched(db *gorm.DB, userId uint, id uint, ar WatchedUpdateRequest) (
 	if ar.RemoveThoughts {
 		addedActivity, _ = addActivity(db, userId, ActivityAddRequest{WatchedID: id, Type: THOUGHTS_REMOVED, Data: originalThoughts})
 	}
+	
+	// Movie Club Integration: Process potential cycle rating if rating or thoughts were updated for a movie
+	if Config.MOVIE_CLUB.Enabled && upwat.ContentID != nil && (ar.Rating != 0 || ar.Thoughts != "" || ar.RemoveThoughts) {
+		// Load content to check if it's a movie
+		if upwat.Content == nil {
+			db.Model(&upwat).Preload("Content").First(&upwat)
+		}
+		
+		if upwat.Content != nil && upwat.Content.Type == "movie" {
+			finalThoughts := upwat.Thoughts
+			if ar.RemoveThoughts {
+				finalThoughts = ""
+			}
+			
+			if err := ProcessPotentialCycleRating(db, userId, *upwat.ContentID, upwat.Rating, finalThoughts); err != nil {
+				slog.Error("Failed to process potential cycle rating update", "error", err, "userId", userId, "contentId", *upwat.ContentID)
+				// Don't fail the entire watched entry update if cycle rating fails
+			}
+		}
+	}
+	
 	return WatchedUpdateResponse{NewActivity: addedActivity}, nil
 }
 

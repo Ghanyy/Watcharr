@@ -1364,11 +1364,26 @@ export interface MovieClubVoteCount {
 	weightedScore: number;
 }
 
+export interface MovieClubCycleRating {
+	id: number;
+	cycleId: number;
+	cycle?: MovieClubCycle;
+	userId: number;
+	user?: User;
+	contentId: number;
+	content?: Content;
+	rating: number;
+	thoughts: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export interface MovieClubCycleResponse {
 	cycle: MovieClubCycle;
 	userNominations: MovieClubNomination[];
 	userVotes: MovieClubVote[];
 	voteResults?: MovieClubVoteCount[];
+	cycleRatings?: MovieClubCycleRating[];
 	canNominate: boolean;
 	canVote: boolean;
 	maxNominations?: number;
