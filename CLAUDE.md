@@ -47,6 +47,7 @@ Key directories:
 - `src/types.ts` - TypeScript interfaces and type definitions
 
 **Movie Club TypeScript Types:**
+
 - `MovieClubCycleRating` - Interface for user ratings and thoughts
 - `MovieClubCycleResponse` - Enhanced to include `cycleRatings` array
 - Type safety across frontend/backend communication
@@ -126,12 +127,14 @@ The movie club feature enables collaborative movie selection through structured 
 ### Backend Implementation (`server/movie_club.go`)
 
 **Core Functions:**
+
 - `IsUserEligibleForCycleRating()` - Checks if user participated (nominated or voted) in cycle
 - `GetActiveWatchingCyclesByWinnerContent()` - Finds active cycles for specific movie content
 - `ProcessPotentialCycleRating()` - Handles rating capture with eligibility validation
 - `CreateOrUpdateCycleRating()` - Creates or updates user ratings with proper error handling
 
 **Integration Points:**
+
 - `addWatched()` in `watched.go` - Automatically captures ratings when users rate winning movies
 - `updateWatched()` in `watched.go` - Updates cycle ratings when watch entries are modified
 - Auto-migration system in `watcharr.go` includes `MovieClubCycleRating` model
@@ -139,11 +142,13 @@ The movie club feature enables collaborative movie selection through structured 
 ### Frontend Implementation
 
 **Key Components:**
+
 - `src/routes/(app)/movie-club/MovieClubResults.svelte` - Displays cycle ratings in active cycles
 - `src/routes/(app)/movie-club/archives/+page.svelte` - Shows cycle ratings in completed cycles
 - Both components share identical cycle ratings UI and styling
 
 **Features:**
+
 - Club average rating calculation (requires 2+ ratings)
 - Golden asterisk styling matching TMDB ratings (`font-family: Rampart One`)
 - Collapsible member ratings list with expandable thoughts
@@ -153,11 +158,13 @@ The movie club feature enables collaborative movie selection through structured 
 ### Performance Optimizations
 
 **Staged Filtering Approach:**
+
 1. Filter content by type (movies only)
 2. Check user eligibility (participated in cycle)
 3. Process rating updates for eligible combinations
 
 **Database Efficiency:**
+
 - Composite unique indexes prevent duplicate ratings
 - Preloaded relationships reduce N+1 queries
 - Conditional processing only when movie club is enabled

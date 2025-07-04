@@ -106,13 +106,18 @@
 											<strong>{result.content.title}</strong>
 											{#if result.content.release_date}
 												<span class="release-year">
-													({new Date(result.content.release_date).getFullYear()})
+													({new Date(
+														result.content.release_date,
+													).getFullYear()})
 												</span>
 											{/if}
 										</div>
 										<div class="score-info">
-											<span class="weighted-score">{result.weightedScore} pts</span>
-											<span class="vote-details">{result.totalVotes} votes</span>
+											<span class="weighted-score"
+												>{result.weightedScore} pts</span
+											>
+											<span class="vote-details">{result.totalVotes} votes</span
+											>
 										</div>
 									</div>
 								{/each}
@@ -136,25 +141,41 @@
 
 					<!-- Cycle Ratings Section -->
 					{#if cycle.cycleRatings && cycle.cycleRatings.length > 0}
-						{@const validRatings = cycle.cycleRatings.filter(rating => rating.rating > 0)}
-						{@const thoughtsOnlyEntries = cycle.cycleRatings.filter(rating => rating.rating <= 0 && rating.thoughts && rating.thoughts.trim())}
+						{@const validRatings = cycle.cycleRatings.filter(
+							(rating) => rating.rating > 0,
+						)}
+						{@const thoughtsOnlyEntries = cycle.cycleRatings.filter(
+							(rating) =>
+								rating.rating <= 0 && rating.thoughts && rating.thoughts.trim(),
+						)}
 						{@const shouldShowClubAverage = validRatings.length >= 2}
-						{@const clubAverageRating = shouldShowClubAverage 
-							? (validRatings.reduce((sum, rating) => sum + rating.rating, 0) / validRatings.length).toFixed(1)
+						{@const clubAverageRating = shouldShowClubAverage
+							? (
+									validRatings.reduce((sum, rating) => sum + rating.rating, 0) /
+									validRatings.length
+								).toFixed(1)
 							: null}
-						
+
 						<div class="cycle-ratings-section">
 							{#if shouldShowClubAverage}
 								<div class="club-average-rating">
 									<span class="average-label">Club rate:</span>
-									<span class="average-value"><span class="golden-asterisk">*</span>{clubAverageRating}/10</span>
+									<span class="average-value"
+										><span class="golden-asterisk">*</span
+										>{clubAverageRating}/10</span
+									>
 								</div>
 							{/if}
 
 							<details class="cycle-ratings-list">
 								<summary class="ratings-header">
 									<Icon icon="star" />
-									<span>Member Ratings ({validRatings.length}{thoughtsOnlyEntries.length > 0 ? ` + ${thoughtsOnlyEntries.length} thoughts` : ''})</span>
+									<span
+										>Member Ratings ({validRatings.length}{thoughtsOnlyEntries.length >
+										0
+											? ` + ${thoughtsOnlyEntries.length} thoughts`
+											: ""})</span
+									>
 									<Icon icon="chevron" />
 								</summary>
 
@@ -162,7 +183,15 @@
 									{#each cycle.cycleRatings as rating}
 										<div class="rating-item">
 											<div class="rating-user">
-												<span class="username">{rating.user?.username || 'Unknown User'}</span>
+												{#if rating.user?.id && rating.user?.username}
+													<a
+														href="/lists/{rating.user.id}/{rating.user
+															.username}"
+														class="username">{rating.user.username}</a
+													>
+												{:else}
+													<span class="username">Unknown User</span>
+												{/if}
 												{#if rating.rating > 0}
 													<span class="rating-score">{rating.rating}/10</span>
 												{:else}
@@ -189,7 +218,9 @@
 
 					<div class="cycle-stats">
 						<div class="stat">
-							<span class="stat-value">{cycle.cycle.nominations?.length || 0}</span>
+							<span class="stat-value"
+								>{cycle.cycle.nominations?.length || 0}</span
+							>
 							<span class="stat-label">Nominations</span>
 						</div>
 						<div class="stat">
@@ -668,7 +699,7 @@
 				font-family: Rampart One;
 				-webkit-text-stroke: 1px var(--warning, #f59e0b);
 				font-size: 40px;
-				line-height: .7;
+				line-height: 0.7;
 				margin-right: 0.1em;
 				color: var(--warning, #f59e0b);
 				vertical-align: baseline;
@@ -763,6 +794,23 @@
 			font-weight: 600;
 			color: var(--text);
 			font-size: 0.95rem;
+			text-decoration: none;
+			transition: all 0.2s ease;
+			padding: var(--space-xs) var(--space-sm);
+			border-radius: var(--radius-sm);
+			margin: -var(--space-xs) -var(--space-sm);
+
+			&:hover {
+				color: var(--primary);
+				background: var(--background-secondary);
+				text-decoration: none;
+				transform: translateX(1px);
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow: 0 0 0 2px var(--primary);
+			}
 		}
 
 		.rating-score {

@@ -118,7 +118,18 @@
 			{:else if searchResults.length > 0}
 				<div class="search-results">
 					{#each searchResults as movie}
-						<div class="movie-result" on:click={() => selectMovie(movie)}>
+						<div
+							class="movie-result"
+							role="button"
+							tabindex="0"
+							on:click={() => selectMovie(movie)}
+							on:keydown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									selectMovie(movie);
+								}
+							}}
+						>
 							<div class="poster-small">
 								<Poster
 									media={movie}

@@ -40,11 +40,12 @@
 	onMount(async () => {
 		try {
 			// Fetch cycle data, settings, and archived cycles
-			const [cyclesResult, settingsResult, archivedResult] = await Promise.allSettled([
-				getActiveMovieClubCycles(),
-				getMovieClubSettings(),
-				getArchivedMovieClubCycles(),
-			]);
+			const [cyclesResult, settingsResult, archivedResult] =
+				await Promise.allSettled([
+					getActiveMovieClubCycles(),
+					getMovieClubSettings(),
+					getArchivedMovieClubCycles(),
+				]);
 
 			// Handle cycles data
 			if (cyclesResult.status === "fulfilled") {
@@ -94,10 +95,7 @@
 			if (archivedResult.status === "fulfilled") {
 				archivedCycles = archivedResult.value;
 			} else {
-				console.warn(
-					"Failed to load archived cycles:",
-					archivedResult.reason,
-				);
+				console.warn("Failed to load archived cycles:", archivedResult.reason);
 			}
 		} catch (err: any) {
 			error = "Failed to load movie club data";
@@ -305,7 +303,7 @@
 		<div class="bottom-user-controls">
 			<button
 				class="view-archives-btn"
-				on:click={() => window.location.href = '/movie-club/archives'}
+				on:click={() => (window.location.href = "/movie-club/archives")}
 				disabled={loading}
 				title="View archived movie club cycles"
 			>

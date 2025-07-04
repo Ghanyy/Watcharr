@@ -185,7 +185,15 @@
 				<div
 					class="nomination-card"
 					class:selected={isSelected}
+					role="button"
+					tabindex="0"
 					on:click={() => toggleVote(nomination.contentId)}
+					on:keydown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							toggleVote(nomination.contentId);
+						}
+					}}
 				>
 					{#if isSelected}
 						<div class="priority-badge">
@@ -207,7 +215,9 @@
 							<p class="nominator-label">
 								Nominated by:
 								{#each nomination.nominators as nominator, i}
-									<span class="nominator">{nominator.username}</span
+									<a
+										href="/lists/{nominator.id}/{nominator.username}"
+										class="nominator">{nominator.username}</a
 									>{#if i < nomination.nominators.length - 1},
 									{/if}
 								{/each}
@@ -647,6 +657,23 @@
 			.nominator {
 				color: var(--primary);
 				font-weight: 600;
+				text-decoration: none;
+				transition: all 0.2s ease;
+				padding: var(--space-xs) var(--space-sm);
+				border-radius: var(--radius-sm);
+				margin: -var(--space-xs) -var(--space-sm);
+
+				&:hover {
+					color: var(--primary-dark, var(--primary));
+					background: var(--background-secondary);
+					text-decoration: none;
+					transform: translateX(1px);
+				}
+
+				&:focus {
+					outline: none;
+					box-shadow: 0 0 0 2px var(--primary);
+				}
 			}
 
 			.reasons {
