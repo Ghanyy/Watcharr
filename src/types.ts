@@ -1352,6 +1352,7 @@ export interface MovieClubSettings {
 	votesPerUser: number;
 	phaseDurationDays: number;
 	enabled: boolean;
+	communityEnabled: boolean;
 }
 
 export interface MovieClubVoteCount {

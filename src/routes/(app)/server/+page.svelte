@@ -47,6 +47,7 @@
 	let useEmbyDisabled = $state(false);
 	// Movie Club disabled vars
 	let movieClubEnabledDisabled = $state(false);
+	let movieClubCommunityDisabled = $state(false);
 	let movieClubNominationsDisabled = $state(false);
 	let movieClubVotesDisabled = $state(false);
 	let movieClubDurationDisabled = $state(false);
@@ -332,6 +333,25 @@
 							}}
 						/>
 					</Setting>
+					{#if serverConfig.MOVIE_CLUB.enabled}
+						<Setting
+							title="Enable Movie Club Community"
+							desc="Enable community features for movie club including advanced navigation menu."
+							row
+						>
+							<Checkbox
+								name="MOVIE_CLUB_COMMUNITY_ENABLED"
+								disabled={movieClubCommunityDisabled}
+								value={serverConfig.MOVIE_CLUB.communityEnabled}
+								toggled={(on) => {
+									movieClubCommunityDisabled = true;
+									updateMovieClubConfig("communityEnabled", on, () => {
+										movieClubCommunityDisabled = false;
+									});
+								}}
+							/>
+						</Setting>
+					{/if}
 					<Setting
 						title="Nominations Per User"
 						desc="Number of movies each user can nominate per cycle."

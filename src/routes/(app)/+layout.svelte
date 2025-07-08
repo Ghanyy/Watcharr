@@ -9,6 +9,7 @@
 	import FaceMenu from "@/lib/nav/FaceMenu.svelte";
 	import FilterMenu from "@/lib/nav/FilterMenu.svelte";
 	import FollowingMenu from "@/lib/nav/FollowingMenu.svelte";
+	import MovieClubMenu from "@/lib/nav/MovieClubMenu.svelte";
 	import SortMenu from "@/lib/nav/SortMenu.svelte";
 	import TagMenu from "@/lib/tag/TagMenu.svelte";
 	import { isTouch } from "@/lib/util/helpers";
@@ -28,6 +29,7 @@
 	let filterMenuShown = $state(false);
 	let sortMenuShown = $state(false);
 	let followingMenuShown = $state(false);
+	let movieClubMenuShown = $state(false);
 	let detailedMenuShown = $state(false);
 	let tagMenuShown = $state(false);
 	let scroll = window.scrollY;
@@ -133,6 +135,7 @@
 		if (except !== "filter") filterMenuShown = false;
 		if (except !== "sort") sortMenuShown = false;
 		if (except !== "following") followingMenuShown = false;
+		if (except !== "movieclub") movieClubMenuShown = false;
 		if (except !== "detailed") detailedMenuShown = false;
 		if (except !== "tag") tagMenuShown = false;
 	}
@@ -334,11 +337,25 @@
 			</button>
 			<button
 				class="plain other movie-club"
-				onclick={() => goto("/movie-club")}
-				use:tooltip={{ text: "Movie Club", pos: "bot" }}
+				onclick={() => {
+					if (store.config?.MOVIE_CLUB?.communityEnabled) {
+						closeAllSubMenus("movieclub");
+						movieClubMenuShown = !movieClubMenuShown;
+					} else {
+						goto("/movie-club");
+					}
+				}}
+				use:tooltip={{
+					text: "Movie Club",
+					pos: "bot",
+					condition: !movieClubMenuShown,
+				}}
 			>
 				<Icon i="film" wh={26} />
 			</button>
+			{#if movieClubMenuShown}
+				<MovieClubMenu close={() => (movieClubMenuShown = false)} />
+			{/if}
 			<button
 				class="plain other following"
 				onclick={() => {

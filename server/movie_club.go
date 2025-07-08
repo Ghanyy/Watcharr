@@ -72,6 +72,7 @@ type MovieClubSettings struct {
 	VotesPerUser       int `json:"votesPerUser"`       // Default: 2
 	PhaseDurationDays  int `json:"phaseDurationDays"`  // Default: 7 (1 week)
 	Enabled            bool `json:"enabled"`           // Default: false
+	CommunityEnabled   bool `json:"communityEnabled"`  // Default: false
 }
 
 // MovieClubVoteCount represents vote tallies for a content item
@@ -1389,6 +1390,7 @@ func InitializeMovieClubSettings() MovieClubSettings {
 		VotesPerUser:       2,
 		PhaseDurationDays:  7,
 		Enabled:            false,
+		CommunityEnabled:   false,
 	}
 }
 
