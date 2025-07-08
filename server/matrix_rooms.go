@@ -16,7 +16,7 @@ import (
 // Room creation and management functions
 
 // CreateCycleRoom creates a Matrix room for a movie club cycle
-func CreateCycleRoom(cycle *MovieClubCycle) (*MatrixRoom, error) {
+func CreateCycleRoom(db *gorm.DB, cycle *MovieClubCycle) (*MatrixRoom, error) {
 	if matrixClient == nil {
 		return nil, errors.New("matrix client not initialized")
 	}
@@ -27,7 +27,7 @@ func CreateCycleRoom(cycle *MovieClubCycle) (*MatrixRoom, error) {
 
 	// Check if room already exists for this cycle
 	var existingRoom MatrixRoom
-	if err := DB.Where("cycle_id = ?", cycle.ID).First(&existingRoom).Error; err == nil {
+	if err := db.Where("cycle_id = ?", cycle.ID).First(&existingRoom).Error; err == nil {
 		slog.Debug("Room already exists for cycle", "cycle_id", cycle.ID, "room_id", existingRoom.RoomID)
 		return &existingRoom, nil
 	}
@@ -78,7 +78,7 @@ func CreateCycleRoom(cycle *MovieClubCycle) (*MatrixRoom, error) {
 		RoomAlias: fmt.Sprintf("#%s:%s", alias, Config.MOVIE_CLUB.Matrix.ServerName),
 	}
 
-	if err := DB.Create(matrixRoom).Error; err != nil {
+	if err := db.Create(matrixRoom).Error; err != nil {
 		return nil, fmt.Errorf("failed to store Matrix room: %w", err)
 	}
 
@@ -89,12 +89,12 @@ func CreateCycleRoom(cycle *MovieClubCycle) (*MatrixRoom, error) {
 		"movie", cycle.WinnerContent.Title)
 
 	// Add room to Movie Club space
-	if err := AddRoomToMovieClubSpace(resp.RoomID.String()); err != nil {
+	if err := AddRoomToMovieClubSpace(db, resp.RoomID.String()); err != nil {
 		slog.Warn("Failed to add room to Movie Club space", "error", err, "room_id", resp.RoomID)
 	}
 
 	// Invite eligible users to the room
-	if err := InviteUsersToRoom(cycle.ID); err != nil {
+	if err := InviteUsersToRoom(db, cycle.ID); err != nil {
 		slog.Warn("Failed to invite users to room", "error", err, "room_id", resp.RoomID)
 	}
 
@@ -102,19 +102,19 @@ func CreateCycleRoom(cycle *MovieClubCycle) (*MatrixRoom, error) {
 }
 
 // InviteUsersToRoom invites all eligible users to a cycle room
-func InviteUsersToRoom(cycleID uint) error {
+func InviteUsersToRoom(db *gorm.DB, cycleID uint) error {
 	if matrixClient == nil {
 		return errors.New("matrix client not initialized")
 	}
 
 	// Get the room
 	var room MatrixRoom
-	if err := DB.Where("cycle_id = ?", cycleID).First(&room).Error; err != nil {
+	if err := db.Where("cycle_id = ?", cycleID).First(&room).Error; err != nil {
 		return fmt.Errorf("room not found for cycle %d: %w", cycleID, err)
 	}
 
 	// Get eligible users (those who nominated or voted in this cycle)
-	eligibleUsers, err := GetEligibleUsersForCycle(cycleID)
+	eligibleUsers, err := GetEligibleUsersForCycle(db, cycleID)
 	if err != nil {
 		return fmt.Errorf("failed to get eligible users: %w", err)
 	}
@@ -125,7 +125,7 @@ func InviteUsersToRoom(cycleID uint) error {
 
 	for _, user := range eligibleUsers {
 		// Get Matrix user for this Watcharr user
-		matrixUser, err := GetOrCreateMatrixUser(user.ID, user.Username)
+		matrixUser, err := GetOrCreateMatrixUser(db, user.ID, user.Username)
 		if err != nil {
 			slog.Warn("Failed to get Matrix user for invitation",
 				"watcharr_user_id", user.ID,
@@ -156,7 +156,7 @@ func InviteUsersToRoom(cycleID uint) error {
 			JoinedAt: time.Now(),
 		}
 
-		if err := DB.Create(membership).Error; err != nil {
+		if err := db.Create(membership).Error; err != nil {
 			slog.Warn("Failed to record room membership", "error", err)
 		}
 
@@ -176,11 +176,11 @@ func InviteUsersToRoom(cycleID uint) error {
 }
 
 // GetEligibleUsersForCycle returns users who participated in a cycle (nominated or voted)
-func GetEligibleUsersForCycle(cycleID uint) ([]User, error) {
+func GetEligibleUsersForCycle(db *gorm.DB, cycleID uint) ([]User, error) {
 	var users []User
 
 	// Get users who nominated in this cycle
-	err := DB.Raw(`
+	err := db.Raw(`
 		SELECT DISTINCT u.* FROM users u
 		INNER JOIN movie_club_nominations mcn ON u.id = mcn.user_id
 		WHERE mcn.cycle_id = ?
@@ -200,14 +200,14 @@ func GetEligibleUsersForCycle(cycleID uint) ([]User, error) {
 // Movie Club Space Management
 
 // EnsureMovieClubSpace creates or gets the Movie Club space
-func EnsureMovieClubSpace() (*MatrixSpace, error) {
+func EnsureMovieClubSpace(db *gorm.DB) (*MatrixSpace, error) {
 	if matrixClient == nil {
 		return nil, errors.New("matrix client not initialized")
 	}
 
 	// Check if space already exists
 	var existingSpace MatrixSpace
-	if err := DB.First(&existingSpace).Error; err == nil {
+	if err := db.First(&existingSpace).Error; err == nil {
 		return &existingSpace, nil
 	}
 
@@ -245,7 +245,7 @@ func EnsureMovieClubSpace() (*MatrixSpace, error) {
 		SpaceName: spaceName,
 	}
 
-	if err := DB.Create(space).Error; err != nil {
+	if err := db.Create(space).Error; err != nil {
 		return nil, fmt.Errorf("failed to store Movie Club space: %w", err)
 	}
 
@@ -254,13 +254,13 @@ func EnsureMovieClubSpace() (*MatrixSpace, error) {
 }
 
 // AddRoomToMovieClubSpace adds a room to the Movie Club space
-func AddRoomToMovieClubSpace(roomID string) error {
+func AddRoomToMovieClubSpace(db *gorm.DB, roomID string) error {
 	if matrixClient == nil {
 		return errors.New("matrix client not initialized")
 	}
 
 	// Ensure Movie Club space exists
-	space, err := EnsureMovieClubSpace()
+	space, err := EnsureMovieClubSpace(db)
 	if err != nil {
 		return fmt.Errorf("failed to ensure Movie Club space: %w", err)
 	}
@@ -302,10 +302,10 @@ func ArchiveOldRooms() error {
 }
 
 // GetUserRooms returns Matrix rooms that a user has access to
-func GetUserRooms(userID uint) ([]MatrixRoom, error) {
+func GetUserRooms(db *gorm.DB, userID uint) ([]MatrixRoom, error) {
 	var rooms []MatrixRoom
 
-	err := DB.Raw(`
+	err := db.Raw(`
 		SELECT mr.* FROM matrix_rooms mr
 		INNER JOIN matrix_room_members mrm ON mr.id = mrm.room_id
 		WHERE mrm.user_id = ?
@@ -318,7 +318,7 @@ func GetUserRooms(userID uint) ([]MatrixRoom, error) {
 
 	// Preload cycle and content information
 	for i := range rooms {
-		DB.Preload("Cycle.WinnerContent").Find(&rooms[i], rooms[i].ID)
+		db.Preload("Cycle.WinnerContent").Find(&rooms[i], rooms[i].ID)
 	}
 
 	return rooms, nil
