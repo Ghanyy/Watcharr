@@ -14,7 +14,7 @@
 	}
 </script>
 
-<Menu conf={{ width: "140px", arrowRight: "53px" }}>
+<Menu conf={{ width: "140px", arrowRight: "96px" }}>
 	<div class="list">
 		<a href="/movie-club" onclick={() => navigateAndClose("/movie-club")}>
 			Dashboard

@@ -357,9 +357,6 @@
 			>
 				<Icon i="film" wh={26} />
 			</button>
-			{#if movieClubMenuShown}
-				<MovieClubMenu close={() => (movieClubMenuShown = false)} />
-			{/if}
 			<button
 				class="plain other following"
 				onclick={() => {
@@ -376,6 +373,9 @@
 			</button>
 			{#if followingMenuShown}
 				<FollowingMenu close={() => (followingMenuShown = false)} />
+			{/if}
+			{#if movieClubMenuShown}
+				<MovieClubMenu close={() => (movieClubMenuShown = false)} />
 			{/if}
 			<button class="plain face" onclick={handleProfileClick}>:)</button>
 			{#if subMenuShown}
