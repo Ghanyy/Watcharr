@@ -99,13 +99,14 @@
 
 	async function getInitialData() {
 		if (localStorage.getItem("token")) {
-			const [w, u, s, f, fo, ts] = await Promise.all([
+			const [w, u, s, f, fo, ts, c] = await Promise.all([
 				axios.get("/watched"),
 				axios.get("/user"),
 				axios.get("/user/settings"),
 				axios.get("/features"),
 				axios.get("/follow"),
 				axios.get("/tag"),
+				axios.get("/server/config"),
 			]);
 			if (w?.data?.length > 0) {
 				store.watchedList = w.data;
@@ -124,6 +125,9 @@
 			}
 			if (ts?.data) {
 				store.tags = ts.data;
+			}
+			if (c?.data) {
+				store.config = c.data;
 			}
 		} else {
 			goto("/login?again=1");

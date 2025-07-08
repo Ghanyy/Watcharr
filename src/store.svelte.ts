@@ -3,6 +3,7 @@ import type {
 	Follow,
 	ImportedList,
 	PrivateUser,
+	ServerConfig,
 	ServerFeatures,
 	Tag,
 	Theme,
@@ -41,6 +42,7 @@ interface Store {
 	parsedImportedList: ImportedList[] | undefined;
 	searchQuery: string;
 	serverFeatures: ServerFeatures | undefined;
+	config: ServerConfig | undefined;
 	follows: Follow[];
 	wlDetailedView: WLDetailedViewOption[];
 	tags: Tag[];
@@ -61,6 +63,7 @@ const _store: Store = $state({
 	userInfo: undefined,
 	userSettings: undefined,
 	serverFeatures: undefined,
+	config: undefined,
 	follows: [],
 	wlDetailedView: [],
 	tags: [],
@@ -148,6 +151,12 @@ export const store = {
 	},
 	set serverFeatures(v) {
 		_store.serverFeatures = v;
+	},
+	get config() {
+		return _store.config;
+	},
+	set config(v) {
+		_store.config = v;
 	},
 	get follows() {
 		return _store.follows;

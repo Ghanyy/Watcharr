@@ -947,6 +947,7 @@ export interface ServerConfig {
 	RADARR: RadarrSettings[];
 	TWITCH: TwitchSettings;
 	DEBUG: boolean;
+	MOVIE_CLUB: MovieClubSettings;
 }
 
 export interface ServerConfigByName<T> {

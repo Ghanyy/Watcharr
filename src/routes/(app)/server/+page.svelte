@@ -18,6 +18,7 @@
 	import SettingButton from "@/lib/settings/SettingButton.svelte";
 	import RadarrModal from "./modals/RadarrModal.svelte";
 	import { getServerFeatures } from "@/lib/util/api";
+	import { store } from "@/store.svelte";
 	import Stats from "@/lib/stats/Stats.svelte";
 	import Error from "@/lib/Error.svelte";
 	import Stat from "@/lib/stats/Stat.svelte";
@@ -78,6 +79,10 @@
 			.then((r) => {
 				if (r.status === 200) {
 					serverConfig![name] = value;
+					// Update store config as well
+					if (store.config) {
+						store.config = { ...store.config, [name]: value };
+					}
 					notify({ id: nid, type: "success", text: "Updated" });
 					if (typeof done !== "undefined") done(r?.data);
 				}
@@ -327,9 +332,18 @@
 							value={serverConfig.MOVIE_CLUB.enabled}
 							toggled={(on) => {
 								movieClubEnabledDisabled = true;
-								updateMovieClubConfig("enabled", on, () => {
-									movieClubEnabledDisabled = false;
-								});
+								// If disabling Movie Club, also disable community
+								if (!on && serverConfig.MOVIE_CLUB.communityEnabled) {
+									updateMovieClubConfig("communityEnabled", false, () => {
+										updateMovieClubConfig("enabled", on, () => {
+											movieClubEnabledDisabled = false;
+										});
+									});
+								} else {
+									updateMovieClubConfig("enabled", on, () => {
+										movieClubEnabledDisabled = false;
+									});
+								}
 							}}
 						/>
 					</Setting>
