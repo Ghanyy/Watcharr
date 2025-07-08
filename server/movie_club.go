@@ -1370,7 +1370,7 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 			} else {
 				// Create Matrix room asynchronously to avoid blocking cycle transition
 				go func(cycleData *MovieClubCycle) {
-					if _, err := CreateCycleRoom(cycleData); err != nil {
+					if _, err := CreateCycleRoom(db, cycleData); err != nil {
 						slog.Error("Failed to create Matrix room for cycle", "error", err, "cycle_id", cycleData.ID)
 					}
 				}(cycle)

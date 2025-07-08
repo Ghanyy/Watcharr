@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -46,15 +47,9 @@ func CreateCycleRoom(db *gorm.DB, cycle *MovieClubCycle) (*MatrixRoom, error) {
 		Preset:        "private_chat",
 		Visibility:    "private",
 		IsDirect:      false,
-		Federate:      false, // Local-only as specified
-		PowerLevelContentOverride: &event.PowerLevelsEventContent{
-			UsersDefault: 0, // Regular users
-			Users: map[id.UserID]int{
-				id.UserID(Config.MOVIE_CLUB.Matrix.AdminUserID): 100, // Watcharr admin
-			},
-		},
-		InitialState: []event.Event{
-			{
+		// Note: Federate and PowerLevelContentOverride fields removed in SDK v0.21.0
+		InitialState: []*event.Event{
+			&event.Event{
 				Type: event.StateTopic,
 				Content: event.Content{
 					Parsed: &event.TopicEventContent{
@@ -66,7 +61,7 @@ func CreateCycleRoom(db *gorm.DB, cycle *MovieClubCycle) (*MatrixRoom, error) {
 	}
 
 	// Create the room
-	resp, err := matrixClient.CreateRoom(createReq)
+	resp, err := matrixClient.CreateRoom(context.Background(), createReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Matrix room: %w", err)
 	}
@@ -136,7 +131,7 @@ func InviteUsersToRoom(db *gorm.DB, cycleID uint) error {
 		}
 
 		// Invite user to room
-		_, err = matrixClient.InviteUser(roomID, &mautrix.ReqInviteUser{
+		_, err = matrixClient.InviteUser(context.Background(), roomID, &mautrix.ReqInviteUser{
 			UserID: id.UserID(matrixUser.MatrixUserID),
 		})
 
@@ -222,19 +217,13 @@ func EnsureMovieClubSpace(db *gorm.DB) (*MatrixSpace, error) {
 		Topic:      "Movie Club discussions and activities",
 		Preset:     "private_chat",
 		Visibility: "private",
-		Federate:   false,
 		CreationContent: map[string]interface{}{
 			"type": "m.space",
 		},
-		PowerLevelContentOverride: &event.PowerLevelsEventContent{
-			UsersDefault: 0,
-			Users: map[id.UserID]int{
-				id.UserID(Config.MOVIE_CLUB.Matrix.AdminUserID): 100,
-			},
-		},
+		// Note: Federate and PowerLevelContentOverride fields removed in SDK v0.21.0
 	}
 
-	resp, err := matrixClient.CreateRoom(createReq)
+	resp, err := matrixClient.CreateRoom(context.Background(), createReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Movie Club space: %w", err)
 	}
@@ -270,18 +259,20 @@ func AddRoomToMovieClubSpace(db *gorm.DB, roomID string) error {
 
 	// Add room as child of space
 	stateKey := roomID
-	_, err = matrixClient.SendStateEvent(spaceID, event.StateSpaceChild, stateKey, map[string]interface{}{
+	content := map[string]interface{}{
 		"via": []string{Config.MOVIE_CLUB.Matrix.ServerName},
-	})
+	}
+	_, err = matrixClient.SendStateEvent(context.Background(), spaceID, event.StateSpaceChild, stateKey, content)
 
 	if err != nil {
 		return fmt.Errorf("failed to add room to space: %w", err)
 	}
 
 	// Add space as parent of room
-	_, err = matrixClient.SendStateEvent(childRoomID, event.StateSpaceParent, space.SpaceID, map[string]interface{}{
+	parentContent := map[string]interface{}{
 		"via": []string{Config.MOVIE_CLUB.Matrix.ServerName},
-	})
+	}
+	_, err = matrixClient.SendStateEvent(context.Background(), childRoomID, event.StateSpaceParent, space.SpaceID, parentContent)
 
 	if err != nil {
 		slog.Warn("Failed to set space as parent of room", "error", err)
