@@ -14,6 +14,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/sqlite v1.5.7
 	gorm.io/gorm v1.25.12
+	maunium.net/go/mautrix v0.21.0
 )
 
 require (

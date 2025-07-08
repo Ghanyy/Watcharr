@@ -1354,6 +1354,16 @@ export interface MovieClubSettings {
 	phaseDurationDays: number;
 	enabled: boolean;
 	communityEnabled: boolean;
+	matrix: MatrixSettings;
+}
+
+export interface MatrixSettings {
+	enabled: boolean;
+	serverUrl: string;
+	adminToken: string;
+	serverName: string;
+	spaceName: string;
+	adminUserId: string;
 }
 
 export interface MovieClubVoteCount {

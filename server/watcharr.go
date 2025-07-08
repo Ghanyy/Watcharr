@@ -87,9 +87,18 @@ func main() {
 		&MovieClubNomination{},
 		&MovieClubVote{},
 		&MovieClubCycleRating{},
+		&MatrixUser{},
+		&MatrixRoom{},
+		&MatrixRoomMember{},
+		&MatrixSpace{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto migrate database:", err)
+	}
+
+	// Initialize Matrix client if configured
+	if err := InitializeMatrixClient(); err != nil {
+		slog.Warn("Failed to initialize Matrix client", "error", err)
 	}
 
 	if isProd {
@@ -164,6 +173,7 @@ func main() {
 	br.addTaskRoutes()
 	br.addTagRoutes()
 	br.addMovieClubRoutes()
+	br.setupMatrixRoutes()
 	br.rg.Static("/img", path.Join(DataPath, "img"))
 
 	go setupTasks(db)

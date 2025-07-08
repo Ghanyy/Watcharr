@@ -10,6 +10,7 @@
 		SonarrSettings,
 		DropDownItem,
 		MovieClubSettings,
+		MatrixSettings,
 	} from "@/types";
 	import axios from "axios";
 	import SonarrModal from "./modals/SonarrModal.svelte";
@@ -26,6 +27,7 @@
 	import RegionDropDown from "@/lib/RegionDropDown.svelte";
 	import TaskScheduleModal from "./modals/TaskScheduleModal.svelte";
 	import TrustedHeaderAuthModal from "./modals/TrustedHeaderAuthModal.svelte";
+	import MatrixValidation from "@/lib/matrix/MatrixValidation.svelte";
 
 	let serverConfig: ServerConfig | undefined = $state();
 	let jellyfinOrEmby = $derived(serverConfig?.USE_EMBY ? "Emby" : "Jellyfin");
@@ -52,6 +54,16 @@
 	let movieClubNominationsDisabled = $state(false);
 	let movieClubVotesDisabled = $state(false);
 	let movieClubDurationDisabled = $state(false);
+	
+	// Matrix disabled vars
+	let matrixEnabledDisabled = $state(false);
+	let matrixServerUrlDisabled = $state(false);
+	let matrixServerNameDisabled = $state(false);
+	let matrixAdminTokenDisabled = $state(false);
+	let matrixAdminUserIdDisabled = $state(false);
+	let matrixSpaceNameDisabled = $state(false);
+	let matrixTestLoading = $state(false);
+	let matrixValidationModalOpen = $state(false);
 
 	async function getServerConfig() {
 		serverConfig = (await axios.get(`/server/config`)).data as ServerConfig;
@@ -123,6 +135,50 @@
 		};
 
 		updateServerConfig("MOVIE_CLUB", updatedSettings, done);
+	}
+
+	function updateMatrixConfig<K extends keyof MatrixSettings>(
+		field: K,
+		value: MatrixSettings[K],
+		done?: () => void,
+	) {
+		if (!serverConfig) return;
+
+		const updatedMatrixSettings = {
+			...serverConfig.MOVIE_CLUB.matrix,
+			[field]: value,
+		};
+
+		const updatedMovieClubSettings = {
+			...serverConfig.MOVIE_CLUB,
+			matrix: updatedMatrixSettings,
+		};
+
+		updateServerConfig("MOVIE_CLUB", updatedMovieClubSettings, done);
+	}
+
+	async function testMatrixConnection() {
+		if (!serverConfig?.MOVIE_CLUB?.matrix) return;
+
+		matrixTestLoading = true;
+		try {
+			const response = await axios.post("/api/matrix/test-connection", {
+				serverUrl: serverConfig.MOVIE_CLUB.matrix.serverUrl,
+				adminToken: serverConfig.MOVIE_CLUB.matrix.adminToken,
+			});
+
+			if (response.status === 200) {
+				notify({ type: "success", text: "Matrix connection successful!" });
+			}
+		} catch (error) {
+			console.error("Matrix connection test failed:", error);
+			notify({ 
+				type: "error", 
+				text: "Matrix connection failed. Check server URL and admin token." 
+			});
+		} finally {
+			matrixTestLoading = false;
+		}
 	}
 </script>
 
@@ -365,6 +421,137 @@
 								}}
 							/>
 						</Setting>
+						
+						{#if serverConfig.MOVIE_CLUB.communityEnabled}
+							<h3>Matrix Chat Integration</h3>
+							<Setting
+								title="Enable Matrix Chat"
+								desc="Enable Matrix/Dendrite integration for community chats during watching phases."
+								row
+							>
+								<Checkbox
+									name="MATRIX_ENABLED"
+									disabled={matrixEnabledDisabled}
+									value={serverConfig.MOVIE_CLUB.matrix.enabled}
+									toggled={(on) => {
+										matrixEnabledDisabled = true;
+										updateMatrixConfig("enabled", on, () => {
+											matrixEnabledDisabled = false;
+										});
+									}}
+								/>
+							</Setting>
+							
+							{#if serverConfig.MOVIE_CLUB.matrix.enabled}
+								<Setting
+									title="Matrix Server URL"
+									desc="URL of your Dendrite/Matrix server (e.g., https://matrix.example.com)"
+								>
+									<input
+										type="url"
+										placeholder="https://matrix.example.com"
+										bind:value={serverConfig.MOVIE_CLUB.matrix.serverUrl}
+										onblur={() => {
+											matrixServerUrlDisabled = true;
+											updateMatrixConfig("serverUrl", serverConfig.MOVIE_CLUB.matrix.serverUrl, () => {
+												matrixServerUrlDisabled = false;
+											});
+										}}
+										disabled={matrixServerUrlDisabled}
+									/>
+								</Setting>
+								
+								<Setting
+									title="Matrix Server Name"
+									desc="Matrix server domain name (e.g., example.com)"
+								>
+									<input
+										type="text"
+										placeholder="example.com"
+										bind:value={serverConfig.MOVIE_CLUB.matrix.serverName}
+										onblur={() => {
+											matrixServerNameDisabled = true;
+											updateMatrixConfig("serverName", serverConfig.MOVIE_CLUB.matrix.serverName, () => {
+												matrixServerNameDisabled = false;
+											});
+										}}
+										disabled={matrixServerNameDisabled}
+									/>
+								</Setting>
+								
+								<Setting
+									title="Admin Access Token"
+									desc="Matrix admin access token for managing users and rooms"
+								>
+									<input
+										type="password"
+										placeholder="Enter admin token"
+										bind:value={serverConfig.MOVIE_CLUB.matrix.adminToken}
+										onblur={() => {
+											matrixAdminTokenDisabled = true;
+											updateMatrixConfig("adminToken", serverConfig.MOVIE_CLUB.matrix.adminToken, () => {
+												matrixAdminTokenDisabled = false;
+											});
+										}}
+										disabled={matrixAdminTokenDisabled}
+									/>
+								</Setting>
+								
+								<Setting
+									title="Admin User ID"
+									desc="Matrix user ID for Watcharr admin (e.g., @watcharr:example.com)"
+								>
+									<input
+										type="text"
+										placeholder="@watcharr:example.com"
+										bind:value={serverConfig.MOVIE_CLUB.matrix.adminUserId}
+										onblur={() => {
+											matrixAdminUserIdDisabled = true;
+											updateMatrixConfig("adminUserId", serverConfig.MOVIE_CLUB.matrix.adminUserId, () => {
+												matrixAdminUserIdDisabled = false;
+											});
+										}}
+										disabled={matrixAdminUserIdDisabled}
+									/>
+								</Setting>
+								
+								<Setting
+									title="Space Name"
+									desc="Name for the Movie Club space in Matrix"
+								>
+									<input
+										type="text"
+										placeholder="Movie Club"
+										bind:value={serverConfig.MOVIE_CLUB.matrix.spaceName}
+										onblur={() => {
+											matrixSpaceNameDisabled = true;
+											updateMatrixConfig("spaceName", serverConfig.MOVIE_CLUB.matrix.spaceName, () => {
+												matrixSpaceNameDisabled = false;
+											});
+										}}
+										disabled={matrixSpaceNameDisabled}
+									/>
+								</Setting>
+								
+								<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch;">
+									<SettingButton
+										title="Test Matrix Connection"
+										desc="Quick connection test to Matrix server"
+										action="Test Connection"
+										loading={matrixTestLoading}
+										disabled={!serverConfig.MOVIE_CLUB.matrix.serverUrl || !serverConfig.MOVIE_CLUB.matrix.adminToken}
+										onclick={() => testMatrixConnection()}
+									/>
+									
+									<SettingButton
+										title="Matrix Setup Validation"
+										desc="Comprehensive validation of Matrix configuration and capabilities"
+										action="Run Validation"
+										onclick={() => { matrixValidationModalOpen = true; }}
+									/>
+								</div>
+							{/if}
+						{/if}
 					{/if}
 					<Setting
 						title="Nominations Per User"
@@ -563,6 +750,12 @@
 								radarrModalOpen = false;
 								radarrServerEditing = undefined;
 							}}
+						/>
+					{/if}
+
+					{#if matrixValidationModalOpen}
+						<MatrixValidation
+							onClose={() => { matrixValidationModalOpen = false; }}
 						/>
 					{/if}
 				{/if}

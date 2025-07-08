@@ -68,11 +68,22 @@ type MovieClubVote struct {
 
 // MovieClubSettings holds configurable parameters for the movie club system
 type MovieClubSettings struct {
-	NominationsPerUser int `json:"nominationsPerUser"` // Default: 1
-	VotesPerUser       int `json:"votesPerUser"`       // Default: 2
-	PhaseDurationDays  int `json:"phaseDurationDays"`  // Default: 7 (1 week)
-	Enabled            bool `json:"enabled"`           // Default: false
-	CommunityEnabled   bool `json:"communityEnabled"`  // Default: false
+	NominationsPerUser int           `json:"nominationsPerUser"` // Default: 1
+	VotesPerUser       int           `json:"votesPerUser"`       // Default: 2
+	PhaseDurationDays  int           `json:"phaseDurationDays"`  // Default: 7 (1 week)
+	Enabled            bool          `json:"enabled"`            // Default: false
+	CommunityEnabled   bool          `json:"communityEnabled"`   // Default: false
+	Matrix             MatrixSettings `json:"matrix"`            // Matrix/Dendrite configuration
+}
+
+// MatrixSettings holds Matrix/Dendrite server configuration
+type MatrixSettings struct {
+	Enabled     bool   `json:"enabled"`     // Default: false
+	ServerURL   string `json:"serverUrl"`   // Dendrite server URL (e.g., "https://matrix.example.com")
+	AdminToken  string `json:"adminToken"`  // Admin access token for Matrix operations
+	ServerName  string `json:"serverName"`  // Matrix server name (e.g., "example.com")
+	SpaceName   string `json:"spaceName"`   // Default: "Movie Club"
+	AdminUserID string `json:"adminUserId"` // Watcharr admin user ID (e.g., "@watcharr:example.com")
 }
 
 // MovieClubVoteCount represents vote tallies for a content item
@@ -1350,6 +1361,21 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 		if len(results) > 0 {
 			cycle.WinnerContentID = &results[0].ContentID
 		}
+		
+		// Create Matrix room for the watching phase if Matrix is enabled
+		if Config.MOVIE_CLUB.Matrix.Enabled && cycle.WinnerContentID != nil {
+			// Load winner content information
+			if err := db.Preload("WinnerContent").Find(cycle, cycle.ID).Error; err != nil {
+				slog.Warn("Failed to load winner content for Matrix room creation", "error", err, "cycle_id", cycle.ID)
+			} else {
+				// Create Matrix room asynchronously to avoid blocking cycle transition
+				go func(cycleData *MovieClubCycle) {
+					if _, err := CreateCycleRoom(cycleData); err != nil {
+						slog.Error("Failed to create Matrix room for cycle", "error", err, "cycle_id", cycleData.ID)
+					}
+				}(cycle)
+			}
+		}
 	}
 	
 	// Update cycle
@@ -1391,6 +1417,14 @@ func InitializeMovieClubSettings() MovieClubSettings {
 		PhaseDurationDays:  7,
 		Enabled:            false,
 		CommunityEnabled:   false,
+		Matrix: MatrixSettings{
+			Enabled:     false,
+			ServerURL:   "",
+			AdminToken:  "",
+			ServerName:  "",
+			SpaceName:   "Movie Club",
+			AdminUserID: "",
+		},
 	}
 }
 
