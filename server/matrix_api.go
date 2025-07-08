@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -50,7 +51,7 @@ func (b *BaseRouter) testMatrixConnection(c *gin.Context) {
 	client.AccessToken = req.AdminToken
 
 	// Test connection with whoami request
-	resp, err := client.Whoami()
+	resp, err := client.Whoami(context.Background())
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Failed to authenticate with Matrix server"})
 		return
@@ -239,7 +240,7 @@ func validateMatrixConnection(settings MatrixSettings) []MatrixValidationResult 
 	client.AccessToken = settings.AdminToken
 
 	// Test connection with whoami request
-	resp, err := client.Whoami()
+	resp, err := client.Whoami(context.Background())
 	if err != nil {
 		results = append(results, MatrixValidationResult{
 			Check:   "Server Connection",
@@ -278,7 +279,7 @@ func validateMatrixPermissions(settings MatrixSettings) []MatrixValidationResult
 	client.AccessToken = settings.AdminToken
 
 	// Test admin permissions by checking server version (should be available to admins)
-	_, err = client.Versions()
+	_, err = client.Versions(context.Background())
 	if err != nil {
 		results = append(results, MatrixValidationResult{
 			Check:   "Admin Permissions",
@@ -322,11 +323,10 @@ func validateRoomCreation(settings MatrixSettings) []MatrixValidationResult {
 		Topic:      "Temporary test room created by Watcharr for validation",
 		Preset:     "private_chat",
 		Visibility: "private",
-		Federate:   false,
 		RoomAliasName: testRoomName,
 	}
 
-	createResp, err := client.CreateRoom(createReq)
+	createResp, err := client.CreateRoom(context.Background(), createReq)
 	if err != nil {
 		results = append(results, MatrixValidationResult{
 			Check:   "Room Creation",
@@ -338,9 +338,10 @@ func validateRoomCreation(settings MatrixSettings) []MatrixValidationResult {
 	}
 
 	// Clean up test room
-	_, leaveErr := client.LeaveRoom(createResp.RoomID)
+	_, leaveErr := client.LeaveRoom(context.Background(), createResp.RoomID)
 	if leaveErr != nil {
-		slog.Warn("Failed to clean up test room", "room_id", createResp.RoomID, "error", leaveErr)
+		// Note: slog needs to be imported if not already available
+		fmt.Printf("Failed to clean up test room %s: %v\n", createResp.RoomID, leaveErr)
 	}
 
 	results = append(results, MatrixValidationResult{
@@ -355,8 +356,10 @@ func validateRoomCreation(settings MatrixSettings) []MatrixValidationResult {
 
 // getUserMatrixInfo gets Matrix information for a user
 func (b *BaseRouter) getUserMatrixInfo(c *gin.Context) {
-	user := AuthRequired(c)
-	if user == nil {
+	// AuthRequired middleware should already be applied to this route
+	userID := c.GetUint("userId")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User not authenticated"})
 		return
 	}
 
@@ -368,7 +371,7 @@ func (b *BaseRouter) getUserMatrixInfo(c *gin.Context) {
 
 	// Get user's Matrix account
 	var matrixUser MatrixUser
-	if err := b.db.Where("user_id = ?", user.ID).First(&matrixUser).Error; err != nil {
+	if err := b.db.Where("user_id = ?", userID).First(&matrixUser).Error; err != nil {
 		// No Matrix user found - this is okay, they can create one
 		c.JSON(http.StatusOK, gin.H{
 			"hasMatrixAccount": false,
@@ -387,8 +390,9 @@ func (b *BaseRouter) getUserMatrixInfo(c *gin.Context) {
 
 // createUserMatrixAccount creates a Matrix account for a user
 func (b *BaseRouter) createUserMatrixAccount(c *gin.Context) {
-	user := AuthRequired(c)
-	if user == nil {
+	userID := c.GetUint("userId")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User not authenticated"})
 		return
 	}
 
@@ -398,15 +402,22 @@ func (b *BaseRouter) createUserMatrixAccount(c *gin.Context) {
 		return
 	}
 
+	// Get user info from database to get username
+	var user User
+	if err := b.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "User not found"})
+		return
+	}
+
 	// Check if user already has Matrix account
 	var existingMatrixUser MatrixUser
-	if err := b.db.Where("user_id = ?", user.ID).First(&existingMatrixUser).Error; err == nil {
+	if err := b.db.Where("user_id = ?", userID).First(&existingMatrixUser).Error; err == nil {
 		c.JSON(http.StatusConflict, ErrorResponse{Error: "User already has a Matrix account"})
 		return
 	}
 
 	// Create Matrix user
-	matrixUser, err := CreateMatrixUser(user.ID, user.Username)
+	matrixUser, err := CreateMatrixUser(b.db, userID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create Matrix user"})
 		return
@@ -427,8 +438,9 @@ type LinkCustomMatrixAccountRequest struct {
 
 // linkCustomMatrixAccount links a custom Matrix account to a user
 func (b *BaseRouter) linkCustomMatrixAccount(c *gin.Context) {
-	user := AuthRequired(c)
-	if user == nil {
+	userID := c.GetUint("userId")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User not authenticated"})
 		return
 	}
 
@@ -445,7 +457,7 @@ func (b *BaseRouter) linkCustomMatrixAccount(c *gin.Context) {
 	}
 
 	// Link custom Matrix user
-	if err := LinkCustomMatrixUser(user.ID, req.MatrixUserID, req.AccessToken); err != nil {
+	if err := LinkCustomMatrixUser(b.db, userID, req.MatrixUserID, req.AccessToken); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Failed to link Matrix account: " + err.Error()})
 		return
 	}
@@ -471,8 +483,9 @@ type MatrixRoomResponse struct {
 
 // getUserMatrixRooms gets Matrix rooms that a user has access to
 func (b *BaseRouter) getUserMatrixRooms(c *gin.Context) {
-	user := AuthRequired(c)
-	if user == nil {
+	userID := c.GetUint("userId")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User not authenticated"})
 		return
 	}
 
@@ -483,7 +496,7 @@ func (b *BaseRouter) getUserMatrixRooms(c *gin.Context) {
 	}
 
 	// Get user's rooms
-	rooms, err := GetUserRooms(user.ID)
+	rooms, err := GetUserRooms(b.db, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to get user rooms"})
 		return
@@ -537,8 +550,8 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix := b.rg.Group("/matrix")
 	
 	// Admin routes
-	matrix.POST("/test-connection", AdminRequired, b.testMatrixConnection)
-	matrix.GET("/validate", AdminRequired, b.validateMatrixSetup)
+	matrix.POST("/test-connection", AdminRequired(), b.testMatrixConnection)
+	matrix.GET("/validate", AdminRequired(), b.validateMatrixSetup)
 	
 	// User routes
 	matrix.GET("/info", b.getUserMatrixInfo)
