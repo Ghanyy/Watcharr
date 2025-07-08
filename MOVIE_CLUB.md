@@ -26,6 +26,9 @@ Movie Club is disabled by default. To enable it:
    - **Nominations per user**: How many movies each user can nominate (default: 1)
    - **Votes per user**: How many votes each user can cast (default: 2)
    - **Phase duration**: How long each phase lasts in days (default: 7)
+4. Optionally enable **Community Features** for chat integration:
+   - **Enable Movie Club Community**: Advanced navigation and community features
+   - **Matrix Chat Integration**: Self-hosted chat rooms for cycle discussions
 
 #### 2. Start Your First Cycle
 
@@ -46,6 +49,9 @@ Movie Club is disabled by default. To enable it:
 
 - Click the **🎬 Film** icon in the navigation bar
 - Or navigate directly to `/movie-club`
+- If community features are enabled, use the **Movie Club** dropdown menu to access:
+  - **Dashboard**: Main movie club interface for nominations, voting, and results
+  - **Community**: Chat rooms and community discussions for active cycles
 
 ## How to Use Movie Club
 
@@ -133,6 +139,13 @@ The results are revealed! This phase shows the winner and complete voting breakd
 
 This is when your group watches the winning movie! Results remain visible while new cycles can be started, enabling continuous movie club activity.
 
+**Community Features (if enabled):**
+
+- **Chat Rooms**: Dedicated Matrix chat rooms are automatically created for the winning movie
+- **Community Access**: Only users who participated (nominated or voted) can access the cycle's chat room
+- **Persistent Discussions**: Chat rooms remain available even after the cycle ends
+- **Real-time Communication**: Discuss the movie, coordinate watch parties, share reactions
+
 ## Features and Benefits
 
 ### Multi-Cycle Support
@@ -169,6 +182,72 @@ This is when your group watches the winning movie! Results remain visible while 
 - **Cycle Management**: Create, monitor, and manage multiple cycles
 - **User Oversight**: Monitor participation and voting patterns
 - **Feature Toggle**: Enable/disable entire feature as needed
+- **Community Settings**: Configure Matrix chat integration and validation tools
+- **Matrix Management**: Comprehensive setup validation and troubleshooting guides
+
+### Community Features (Matrix Integration)
+
+Movie Club can integrate with self-hosted Matrix/Dendrite servers to provide dedicated chat rooms for cycle discussions.
+
+#### Setup Requirements
+
+- **Self-hosted Matrix server**: Dendrite recommended for local deployments
+- **Admin configuration**: Matrix server URL, admin token, and user credentials
+- **Community enablement**: Both Movie Club and Community features must be enabled
+
+#### How Community Features Work
+
+**Automatic Room Creation:**
+- Chat rooms are created automatically when cycles enter the watching phase
+- Room names include the date and movie title for easy identification
+- Only users who participated (nominated or voted) are invited to the room
+
+**Access Control:**
+- **Participation-based access**: Only users who engaged with the cycle can join
+- **Persistent access**: Rooms remain available even after cycles end
+- **Local-only federation**: Rooms are private to your Dendrite instance
+- **Admin moderation**: Watcharr administrators have full room management
+
+**User Experience:**
+- **Profile setup**: Users can create auto-generated Matrix accounts or link existing ones
+- **Community page**: Centralized access to all available chat rooms
+- **Mobile-friendly**: Responsive design works across all devices
+- **External clients**: Rooms can be accessed through standard Matrix clients
+
+#### Matrix Account Management
+
+Users have two options for Matrix accounts:
+
+**Auto-generated Accounts:**
+- Watcharr creates Matrix accounts automatically
+- Secure credentials managed by the system
+- No external setup required
+
+**Custom Account Linking:**
+- Link existing Matrix accounts to Watcharr profiles
+- Requires Matrix user ID and access token
+- Full control over Matrix client and settings
+
+#### Administrator Tools
+
+**Setup Validation:**
+- Comprehensive validation of Matrix server configuration
+- Real-time testing of connectivity, permissions, and room creation
+- Detailed troubleshooting guide with step-by-step solutions
+- Connection testing tools for quick diagnostics
+
+**Configuration Options:**
+- Matrix server URL and admin credentials
+- Server name and space organization settings
+- Admin user ID for room management
+- Customizable space names for room organization
+
+#### Privacy and Security
+
+- **Local-only federation**: Rooms don't federate with external Matrix servers
+- **Encrypted storage**: Matrix credentials are securely stored
+- **Access logging**: Room access and membership tracked
+- **Graceful degradation**: Movie Club works normally if Matrix is disabled
 
 ## Understanding the Voting System
 
@@ -225,6 +304,8 @@ If "The Matrix" receives:
 - **Plan watch parties**: Coordinate viewing of winning movies
 - **Respect the results**: Give winning movies a fair chance even if they weren't your choice
 - **Share reactions**: Discuss movies after watching to build community
+- **Use community chats**: Take advantage of Matrix rooms for real-time discussions
+- **Coordinate viewing**: Use chat rooms to plan watch parties and viewing schedules
 
 ## Advanced Features
 
@@ -284,6 +365,24 @@ If "The Matrix" receives:
 - Priority can only be adjusted when you have 2 or more active votes
 - Try refreshing the page if controls become unresponsive
 
+**"Community features not available"**
+
+- Administrator must enable both Movie Club and Community features
+- Matrix integration requires additional server setup and configuration
+- Check with administrator about Matrix server availability
+
+**"Can't access community chats"**
+
+- You must have participated in the cycle (nominated or voted) to access its chat room
+- Set up your Matrix account in your profile settings first
+- Chat rooms are only created when cycles reach the watching phase
+
+**"Matrix connection issues"**
+
+- Administrators can use the Matrix Setup Validation tool in server settings
+- Check the troubleshooting guide accessible from the validation modal
+- Verify Matrix server is running and accessible from Watcharr server
+
 ### Getting Help
 
 If you encounter issues:
@@ -309,6 +408,8 @@ If you encounter issues:
 - **Activity Tracking**: All movie club actions are logged in the main activity feed
 - **User Preferences**: Voting patterns and participation history are tracked
 - **Cross-feature Compatibility**: Nominated movies link to full Watcharr movie pages
+- **Matrix Integration**: Community chat data stored separately with secure credentials
+- **Room Management**: Chat room memberships and access tracked independently
 
 ### Security and Validation
 
@@ -316,7 +417,11 @@ If you encounter issues:
 - **Frontend Prevention**: UI prevents invalid actions before server requests
 - **Session Management**: Voting and nomination sessions persist across browser sessions
 - **Data Integrity**: Comprehensive error handling prevents data corruption
+- **Matrix Security**: Encrypted credential storage and secure room management
+- **Access Control**: Participation-based chat access with automatic user management
 
 ---
 
-Ready to start your movie club? Contact your administrator to enable the feature and create your first cycle. With support for multiple concurrent cycles, your community can always have something new to discover and vote on! 🍿
+Ready to start your movie club? Contact your administrator to enable the feature and create your first cycle. With support for multiple concurrent cycles and optional community chat integration, your community can always have something new to discover, vote on, and discuss together! 🍿
+
+**New to Matrix/Dendrite?** Community features are completely optional - Movie Club works perfectly without them. But if you want to add real-time chat discussions to your movie club experience, administrators can easily set up Matrix integration with comprehensive validation tools and troubleshooting guides.
