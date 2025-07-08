@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 	"time"
+	"unicode"
 
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
@@ -54,6 +60,303 @@ type MatrixSpace struct {
 	SpaceName string `json:"spaceName"`
 }
 
+// Matrix token encryption utilities
+
+var encryptionKey []byte
+
+// initializeEncryptionKey generates or retrieves the encryption key for Matrix tokens
+func initializeEncryptionKey() error {
+	// For now, generate a new key each time
+	// In production, this should be stored securely and persisted
+	key := make([]byte, 32) // 256-bit key
+	_, err := rand.Read(key)
+	if err != nil {
+		return fmt.Errorf("failed to generate encryption key: %w", err)
+	}
+	encryptionKey = key
+	return nil
+}
+
+// encryptToken encrypts a Matrix access token
+func encryptToken(plaintext string) (string, error) {
+	if encryptionKey == nil {
+		if err := initializeEncryptionKey(); err != nil {
+			return "", err
+		}
+	}
+
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher: %w", err)
+	}
+
+	// Create a GCM cipher mode
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	// Generate nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	// Encrypt the token
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	
+	// Return base64 encoded encrypted token
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// decryptToken decrypts a Matrix access token
+func decryptToken(encryptedToken string) (string, error) {
+	if encryptionKey == nil {
+		return "", errors.New("encryption key not initialized")
+	}
+
+	// Decode base64
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode encrypted token: %w", err)
+	}
+
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	if len(ciphertext) < gcm.NonceSize() {
+		return "", errors.New("ciphertext too short")
+	}
+
+	// Extract nonce and encrypted data
+	nonce, ciphertext := ciphertext[:gcm.NonceSize()], ciphertext[gcm.NonceSize():]
+	
+	// Decrypt
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt token: %w", err)
+	}
+
+	return string(plaintext), nil
+}
+
+// getDecryptedAccessToken retrieves and decrypts an access token for a Matrix user
+func getDecryptedAccessToken(db *gorm.DB, watcharrUserID uint) (string, error) {
+	var matrixUser MatrixUser
+	if err := db.Where("user_id = ?", watcharrUserID).First(&matrixUser).Error; err != nil {
+		return "", fmt.Errorf("failed to find Matrix user: %w", err)
+	}
+
+	// Decrypt the access token
+	accessToken, err := decryptToken(matrixUser.AccessToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt access token: %w", err)
+	}
+
+	return accessToken, nil
+}
+
+// Matrix error handling utilities
+
+// MatrixError represents a Matrix-specific error with context
+type MatrixError struct {
+	Operation string
+	Err       error
+	Context   map[string]interface{}
+}
+
+func (e *MatrixError) Error() string {
+	return fmt.Sprintf("Matrix %s failed: %v", e.Operation, e.Err)
+}
+
+func (e *MatrixError) Unwrap() error {
+	return e.Err
+}
+
+// newMatrixError creates a new MatrixError with context
+func newMatrixError(operation string, err error, context map[string]interface{}) *MatrixError {
+	return &MatrixError{
+		Operation: operation,
+		Err:       err,
+		Context:   context,
+	}
+}
+
+// logAndReturnError logs an error with context and returns a MatrixError
+func logAndReturnError(operation string, err error, context map[string]interface{}) error {
+	matrixErr := newMatrixError(operation, err, context)
+	
+	// Log with structured context
+	logArgs := []interface{}{"operation", operation, "error", err}
+	for k, v := range context {
+		logArgs = append(logArgs, k, v)
+	}
+	slog.Error("Matrix operation failed", logArgs...)
+	
+	return matrixErr
+}
+
+// logAndReturnErrorf logs an error with formatted message and returns a MatrixError
+func logAndReturnErrorf(operation string, format string, args ...interface{}) error {
+	err := fmt.Errorf(format, args...)
+	return logAndReturnError(operation, err, nil)
+}
+
+// Matrix input validation utilities
+
+var (
+	// Matrix ID patterns
+	matrixUserIDRegex  = regexp.MustCompile(`^@[a-z0-9._=-]+:[a-z0-9.-]+\.[a-z]{2,}$`)
+	matrixRoomIDRegex  = regexp.MustCompile(`^![a-zA-Z0-9]{18}:[a-z0-9.-]+\.[a-z]{2,}$`)
+	matrixAliasRegex   = regexp.MustCompile(`^#[a-z0-9._=-]+:[a-z0-9.-]+\.[a-z]{2,}$`)
+	
+	// Safe characters for usernames and room names
+	safeUsernameRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+	safeRoomNameRegex = regexp.MustCompile(`^[a-zA-Z0-9\s._-]+$`)
+)
+
+// validateMatrixUserID validates Matrix user ID format
+func validateMatrixUserID(userID string) error {
+	if userID == "" {
+		return errors.New("Matrix user ID cannot be empty")
+	}
+	
+	if len(userID) > 255 {
+		return errors.New("Matrix user ID too long")
+	}
+	
+	if !matrixUserIDRegex.MatchString(strings.ToLower(userID)) {
+		return errors.New("invalid Matrix user ID format")
+	}
+	
+	return nil
+}
+
+// validateAccessToken validates Matrix access token format
+func validateAccessToken(token string) error {
+	if token == "" {
+		return errors.New("access token cannot be empty")
+	}
+	
+	if len(token) < 10 {
+		return errors.New("access token too short")
+	}
+	
+	if len(token) > 500 {
+		return errors.New("access token too long")
+	}
+	
+	// Check for obviously malicious content
+	if strings.Contains(token, "\n") || strings.Contains(token, "\r") {
+		return errors.New("access token contains invalid characters")
+	}
+	
+	return nil
+}
+
+// sanitizeUsername sanitizes username for Matrix user creation
+func sanitizeUsername(username string) (string, error) {
+	if username == "" {
+		return "", errors.New("username cannot be empty")
+	}
+	
+	// Remove whitespace and convert to lowercase
+	username = strings.TrimSpace(strings.ToLower(username))
+	
+	if len(username) == 0 {
+		return "", errors.New("username cannot be empty after sanitization")
+	}
+	
+	if len(username) > 32 {
+		return "", errors.New("username too long")
+	}
+	
+	// Replace unsafe characters with underscores
+	var sanitized strings.Builder
+	for _, r := range username {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '_' || r == '-' {
+			sanitized.WriteRune(r)
+		} else {
+			sanitized.WriteRune('_')
+		}
+	}
+	
+	result := sanitized.String()
+	
+	// Ensure it doesn't start or end with special characters
+	result = strings.Trim(result, "._-")
+	
+	if len(result) == 0 {
+		return "", errors.New("username contains no valid characters")
+	}
+	
+	return result, nil
+}
+
+// sanitizeRoomName sanitizes room name for Matrix room creation
+func sanitizeRoomName(name string) (string, error) {
+	if name == "" {
+		return "", errors.New("room name cannot be empty")
+	}
+	
+	name = strings.TrimSpace(name)
+	
+	if len(name) == 0 {
+		return "", errors.New("room name cannot be empty after sanitization")
+	}
+	
+	if len(name) > 100 {
+		return "", errors.New("room name too long")
+	}
+	
+	// Remove control characters and other dangerous content
+	var sanitized strings.Builder
+	for _, r := range name {
+		if unicode.IsPrint(r) && !unicode.IsControl(r) {
+			sanitized.WriteRune(r)
+		} else {
+			sanitized.WriteRune(' ')
+		}
+	}
+	
+	result := strings.TrimSpace(sanitized.String())
+	
+	// Replace multiple spaces with single spaces
+	spaceRegex := regexp.MustCompile(`\s+`)
+	result = spaceRegex.ReplaceAllString(result, " ")
+	
+	return result, nil
+}
+
+// validateServerURL validates Matrix server URL format
+func validateServerURL(url string) error {
+	if url == "" {
+		return errors.New("server URL cannot be empty")
+	}
+	
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		return errors.New("server URL must start with http:// or https://")
+	}
+	
+	if len(url) > 255 {
+		return errors.New("server URL too long")
+	}
+	
+	// Basic URL safety check
+	if strings.Contains(url, " ") || strings.Contains(url, "\n") || strings.Contains(url, "\r") {
+		return errors.New("server URL contains invalid characters")
+	}
+	
+	return nil
+}
+
 // Matrix client management
 
 var matrixClient *mautrix.Client
@@ -65,15 +368,34 @@ func InitializeMatrixClient() error {
 		return nil
 	}
 
+	// Initialize encryption key for Matrix tokens
+	if err := initializeEncryptionKey(); err != nil {
+		return logAndReturnError("encryption_key_init", err, nil)
+	}
+
 	settings := Config.MOVIE_CLUB.Matrix
 	if settings.ServerURL == "" || settings.AdminToken == "" {
-		return errors.New("matrix configuration incomplete: missing server URL or admin token")
+		return logAndReturnError("configuration_validation", 
+			errors.New("missing server URL or admin token"), 
+			map[string]interface{}{
+				"server_url_empty": settings.ServerURL == "",
+				"admin_token_empty": settings.AdminToken == "",
+			})
+	}
+
+	// Validate server URL format
+	if err := validateServerURL(settings.ServerURL); err != nil {
+		return logAndReturnError("server_url_validation", err, map[string]interface{}{
+			"server_url": settings.ServerURL,
+		})
 	}
 
 	// Create Matrix client
 	client, err := mautrix.NewClient(settings.ServerURL, "", "")
 	if err != nil {
-		return fmt.Errorf("failed to create Matrix client: %w", err)
+		return logAndReturnError("client_creation", err, map[string]interface{}{
+			"server_url": settings.ServerURL,
+		})
 	}
 
 	// Set admin access token
@@ -83,23 +405,30 @@ func InitializeMatrixClient() error {
 	
 	// Test connection
 	if err := testMatrixConnection(); err != nil {
-		return fmt.Errorf("matrix connection test failed: %w", err)
+		return logAndReturnError("connection_test", err, map[string]interface{}{
+			"server_url": settings.ServerURL,
+		})
 	}
 
-	slog.Info("Matrix client initialized successfully", "server", settings.ServerURL)
+	slog.Info("Matrix client initialized successfully", 
+		"server_url", settings.ServerURL,
+		"server_name", settings.ServerName)
 	return nil
 }
 
 // testMatrixConnection verifies the Matrix connection and admin permissions
 func testMatrixConnection() error {
 	if matrixClient == nil {
-		return errors.New("matrix client not initialized")
+		return logAndReturnError("connection_test", 
+			errors.New("matrix client not initialized"), nil)
 	}
 
 	// Test with a simple whoami request
 	resp, err := matrixClient.Whoami(context.Background())
 	if err != nil {
-		return fmt.Errorf("failed to authenticate with Matrix server: %w", err)
+		return logAndReturnError("authentication_test", err, map[string]interface{}{
+			"server_url": Config.MOVIE_CLUB.Matrix.ServerURL,
+		})
 	}
 
 	slog.Debug("Matrix connection test successful", "user_id", resp.UserID)
@@ -110,13 +439,27 @@ func testMatrixConnection() error {
 
 // CreateMatrixUser creates a new Matrix user for a Watcharr user
 func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*MatrixUser, error) {
-	if matrixClient == nil {
-		return nil, errors.New("matrix client not initialized")
+	errContext := map[string]interface{}{
+		"watcharr_user_id": watcharrUserID,
+		"username": username,
 	}
+
+	if matrixClient == nil {
+		return nil, logAndReturnError("user_creation", 
+			errors.New("matrix client not initialized"), errContext)
+	}
+
+	// Sanitize username for Matrix compatibility
+	sanitizedUsername, err := sanitizeUsername(username)
+	if err != nil {
+		return nil, logAndReturnError("username_sanitization", err, errContext)
+	}
+	errContext["sanitized_username"] = sanitizedUsername
 
 	// Generate Matrix user ID
 	serverName := Config.MOVIE_CLUB.Matrix.ServerName
-	matrixUserID := fmt.Sprintf("@watcharr_%d_%s:%s", watcharrUserID, username, serverName)
+	matrixUserID := fmt.Sprintf("@watcharr_%d_%s:%s", watcharrUserID, sanitizedUsername, serverName)
+	errContext["matrix_user_id"] = matrixUserID
 
 	// For now, we'll create a user record without actually creating on Matrix server
 	// This requires manual user creation or a different Matrix server setup
@@ -129,17 +472,23 @@ func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*Matri
 		"matrix_user_id", matrixUserID,
 		"note", "User must be created manually on Matrix server")
 
+	// Encrypt the access token before storing
+	encryptedToken, err := encryptToken(accessToken)
+	if err != nil {
+		return nil, logAndReturnError("token_encryption", err, errContext)
+	}
+
 	// Store in database
 	matrixUser := &MatrixUser{
 		UserID:          watcharrUserID,
 		MatrixUserID:    matrixUserID,
 		IsAutoGenerated: true,
-		AccessToken:     accessToken, // TODO: Encrypt this
+		AccessToken:     encryptedToken,
 		DeviceID:        "placeholder_device",
 	}
 
 	if err := db.Create(matrixUser).Error; err != nil {
-		return nil, fmt.Errorf("failed to store Matrix user: %w", err)
+		return nil, logAndReturnError("database_create", err, errContext)
 	}
 
 	slog.Info("Created Matrix user", "watcharr_user_id", watcharrUserID, "matrix_user_id", matrixUserID)
@@ -148,14 +497,37 @@ func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*Matri
 
 // LinkCustomMatrixUser validates and links a custom Matrix user
 func LinkCustomMatrixUser(db *gorm.DB, watcharrUserID uint, matrixUserID string, accessToken string) error {
+	errContext := map[string]interface{}{
+		"watcharr_user_id": watcharrUserID,
+		"matrix_user_id": matrixUserID,
+	}
+
+	// Validate Matrix user ID format
+	if err := validateMatrixUserID(matrixUserID); err != nil {
+		return logAndReturnError("user_id_validation", err, errContext)
+	}
+
+	// Validate access token format
+	if err := validateAccessToken(accessToken); err != nil {
+		return logAndReturnError("access_token_validation", err, errContext)
+	}
+
 	// Validate Matrix user exists and token works
 	if err := ValidateMatrixUser(matrixUserID, accessToken); err != nil {
-		return fmt.Errorf("matrix user validation failed: %w", err)
+		return logAndReturnError("user_validation", err, errContext)
 	}
 
 	// Remove auto-generated user if exists
 	if err := RemoveAutoGeneratedUser(db, watcharrUserID); err != nil {
-		slog.Warn("Failed to remove auto-generated user", "error", err)
+		slog.Warn("Failed to remove auto-generated user", 
+			"watcharr_user_id", watcharrUserID, 
+			"error", err)
+	}
+
+	// Encrypt the access token before storing
+	encryptedToken, err := encryptToken(accessToken)
+	if err != nil {
+		return logAndReturnError("token_encryption", err, errContext)
 	}
 
 	// Store custom user mapping
@@ -163,11 +535,11 @@ func LinkCustomMatrixUser(db *gorm.DB, watcharrUserID uint, matrixUserID string,
 		UserID:          watcharrUserID,
 		MatrixUserID:    matrixUserID,
 		IsAutoGenerated: false,
-		AccessToken:     accessToken, // TODO: Encrypt this
+		AccessToken:     encryptedToken,
 	}
 
 	if err := db.Create(matrixUser).Error; err != nil {
-		return fmt.Errorf("failed to store custom Matrix user: %w", err)
+		return logAndReturnError("database_create", err, errContext)
 	}
 
 	slog.Info("Linked custom Matrix user", "watcharr_user_id", watcharrUserID, "matrix_user_id", matrixUserID)
@@ -176,18 +548,24 @@ func LinkCustomMatrixUser(db *gorm.DB, watcharrUserID uint, matrixUserID string,
 
 // RemoveAutoGeneratedUser removes an auto-generated Matrix user
 func RemoveAutoGeneratedUser(db *gorm.DB, watcharrUserID uint) error {
+	errContext := map[string]interface{}{
+		"watcharr_user_id": watcharrUserID,
+	}
+
 	var matrixUser MatrixUser
 	if err := db.Where("user_id = ? AND is_auto_generated = true", watcharrUserID).First(&matrixUser).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil // No auto-generated user to remove
 		}
-		return err
+		return logAndReturnError("database_find", err, errContext)
 	}
+
+	errContext["matrix_user_id"] = matrixUser.MatrixUserID
 
 	// TODO: Deactivate user on Matrix server
 	// For now, just remove from our database
 	if err := db.Delete(&matrixUser).Error; err != nil {
-		return fmt.Errorf("failed to remove Matrix user from database: %w", err)
+		return logAndReturnError("database_delete", err, errContext)
 	}
 
 	slog.Info("Removed auto-generated Matrix user", "watcharr_user_id", watcharrUserID, "matrix_user_id", matrixUser.MatrixUserID)
@@ -196,10 +574,15 @@ func RemoveAutoGeneratedUser(db *gorm.DB, watcharrUserID uint) error {
 
 // ValidateMatrixUser checks if a Matrix user exists and token is valid
 func ValidateMatrixUser(matrixUserID, accessToken string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+		"server_url": Config.MOVIE_CLUB.Matrix.ServerURL,
+	}
+
 	// Create temporary client with user's token
 	tempClient, err := mautrix.NewClient(Config.MOVIE_CLUB.Matrix.ServerURL, id.UserID(matrixUserID), "")
 	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
+		return logAndReturnError("client_creation", err, errContext)
 	}
 
 	tempClient.AccessToken = accessToken
@@ -207,11 +590,16 @@ func ValidateMatrixUser(matrixUserID, accessToken string) error {
 	// Test with whoami
 	resp, err := tempClient.Whoami(context.Background())
 	if err != nil {
-		return fmt.Errorf("failed to validate user: %w", err)
+		return logAndReturnError("user_validation", err, errContext)
 	}
 
 	if resp.UserID.String() != matrixUserID {
-		return errors.New("user ID mismatch")
+		return logAndReturnError("user_id_mismatch", 
+			errors.New("user ID mismatch"), 
+			map[string]interface{}{
+				"expected": matrixUserID,
+				"actual": resp.UserID.String(),
+			})
 	}
 
 	return nil
@@ -219,6 +607,11 @@ func ValidateMatrixUser(matrixUserID, accessToken string) error {
 
 // GetOrCreateMatrixUser gets existing Matrix user or creates one if needed
 func GetOrCreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*MatrixUser, error) {
+	errContext := map[string]interface{}{
+		"watcharr_user_id": watcharrUserID,
+		"username": username,
+	}
+
 	// Check if user already has Matrix account
 	var matrixUser MatrixUser
 	if err := db.Where("user_id = ?", watcharrUserID).First(&matrixUser).Error; err != nil {
@@ -226,7 +619,7 @@ func GetOrCreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*
 			// Create new Matrix user
 			return CreateMatrixUser(db, watcharrUserID, username)
 		}
-		return nil, err
+		return nil, logAndReturnError("database_find", err, errContext)
 	}
 
 	return &matrixUser, nil
