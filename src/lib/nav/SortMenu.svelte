@@ -28,7 +28,7 @@
 	}
 </script>
 
-<Menu conf={{ width: "180px", right: "90px", arrowLeft: "61px" }}>
+<Menu conf={{ width: "180px", right: "90px", arrowLeft: "21px" }}>
 	<button
 		class={`plain ${store.activeSort[0] == "DATEADDED" ? store.activeSort[1].toLowerCase() : ""}`}
 		onclick={() => sortClicked("DATEADDED")}
