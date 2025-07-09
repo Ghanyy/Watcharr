@@ -53,7 +53,7 @@
 			text: "Saving..",
 		});
 		try {
-			await axios.post("/server/config", headerCfg, {
+			await axios.post("/server/admin/config", headerCfg, {
 				params: { s: "HEADER_AUTH" },
 			});
 			notify({

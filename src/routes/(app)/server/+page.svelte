@@ -66,7 +66,7 @@
 	let matrixValidationModalOpen = $state(false);
 
 	async function getServerConfig() {
-		serverConfig = (await axios.get(`/server/config`)).data as ServerConfig;
+		serverConfig = (await axios.get(`/server/admin/config`)).data as ServerConfig;
 	}
 
 	export function updateServerConfig<K extends keyof ServerConfig>(
@@ -82,9 +82,9 @@
 		console.log("Updating server setting", name, "to", value);
 		const originalValue = serverConfig[name];
 		const nid = notify({ type: "loading", text: "Updating" });
-		let ep = "/server/config";
+		let ep = "/server/admin/config";
 		if (name === "PLEX_HOST") {
-			ep = "/server/config/plex_host";
+			ep = "/server/admin/config/plex_host";
 		}
 		axios
 			.post(ep, { key: name, value: value })

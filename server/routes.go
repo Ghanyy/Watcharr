@@ -1175,7 +1175,7 @@ func (b *BaseRouter) addImportRoutes() {
 }
 
 func (b *BaseRouter) addServerRoutes() {
-	server := b.rg.Group("/server").Use(AuthRequired(b.db), AdminRequired())
+	server := b.rg.Group("/server/admin").Use(AuthRequired(b.db), AdminRequired())
 
 	// Get server config (minus very sensitive fields, like JWT_SECRET)
 	server.GET("/config", func(c *gin.Context) {
@@ -1294,6 +1294,13 @@ func (b *BaseRouter) addFeatureRoutes() {
 	// Get enabled features (aka functionality)
 	feature.GET("", func(c *gin.Context) {
 		c.JSON(http.StatusOK, getEnabledFeatures(c.GetInt("userPermissions")))
+	})
+}
+
+func (b *BaseRouter) addPublicConfigRoutes() {
+	// Public config endpoint for all authenticated users
+	b.rg.GET("/server/config", AuthRequired(b.db), func(c *gin.Context) {
+		c.JSON(http.StatusOK, Config.GetPublic())
 	})
 }
 

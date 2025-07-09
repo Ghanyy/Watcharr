@@ -165,6 +165,7 @@ func main() {
 	br.addFollowRoutes()
 	br.addImportRoutes()
 	br.addServerRoutes()
+	br.addPublicConfigRoutes()
 	br.addFeatureRoutes()
 	br.addSonarrRoutes()
 	br.addRadarrRoutes()

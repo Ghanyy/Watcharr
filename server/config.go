@@ -101,6 +101,13 @@ func (c *ServerConfig) GetSafe() ServerConfig {
 	}
 }
 
+// Public config for all authenticated users (non-sensitive data only)
+func (c *ServerConfig) GetPublic() ServerConfig {
+	return ServerConfig{
+		MOVIE_CLUB: c.MOVIE_CLUB,
+	}
+}
+
 type ServerConfigGetByName struct {
 	Value any `json:"value"`
 }
