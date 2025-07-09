@@ -298,7 +298,7 @@
 	}
 
 	.modal {
-		background: var(--card-bg);
+		background: var(--bg-color);
 		border-radius: 12px;
 		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 		width: 90%;
@@ -314,7 +314,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 20px;
-		border-bottom: 1px solid var(--border-color);
+		border-bottom: 1px solid var(--accent-color);
 
 		h2 {
 			margin: 0;
@@ -336,7 +336,7 @@
 			justify-content: center;
 
 			&:hover {
-				background: var(--border-color);
+				background: var(--accent-color);
 			}
 		}
 	}
@@ -350,7 +350,7 @@
 	.guide-intro {
 		margin-bottom: 25px;
 		padding: 15px;
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.1));
+		background: var(--bg-color);
 		border-radius: 8px;
 		border-left: 4px solid var(--accent-color);
 
@@ -367,13 +367,13 @@
 	}
 
 	.section {
-		border: 1px solid var(--border-color);
+		border: 1px solid var(--accent-color);
 		border-radius: 8px;
 		overflow: hidden;
 	}
 
 	.section-header {
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+		background: var(--bg-color);
 		padding: 15px;
 		cursor: pointer;
 		display: flex;
@@ -382,7 +382,7 @@
 		transition: background-color 0.2s ease;
 
 		&:hover {
-			background: var(--card-bg-tertiary, rgba(0, 0, 0, 0.1));
+			background: var(--accent-color);
 		}
 
 		h3 {
@@ -393,7 +393,7 @@
 
 		.toggle-icon {
 			font-size: 1.1em;
-			color: var(--text-color-secondary);
+			color: var(--text-color-accent);
 		}
 	}
 
@@ -402,7 +402,7 @@
 	}
 
 	.problem {
-		border-top: 1px solid var(--border-color);
+		border-top: 1px solid var(--accent-color);
 
 		&:first-child {
 			border-top: none;
@@ -418,7 +418,7 @@
 		transition: background-color 0.2s ease;
 
 		&:hover {
-			background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+			background: var(--bg-color);
 		}
 
 		h4 {
@@ -429,14 +429,14 @@
 
 		.toggle-icon {
 			font-size: 0.9em;
-			color: var(--text-color-secondary);
+			color: var(--text-color-accent);
 		}
 	}
 
 	.problem-content {
 		padding: 15px;
-		background: var(--card-bg);
-		border-top: 1px solid var(--border-color);
+		background: var(--bg-color);
+		border-top: 1px solid var(--accent-color);
 
 		h5 {
 			margin: 0 0 8px 0;
@@ -487,7 +487,7 @@
 	.additional-help {
 		margin-top: 30px;
 		padding: 20px;
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+		background: var(--bg-color);
 		border-radius: 8px;
 		border-left: 4px solid var(--warning-color, #f59e0b);
 
@@ -525,8 +525,8 @@
 
 	.modal-footer {
 		padding: 20px;
-		border-top: 1px solid var(--border-color);
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+		border-top: 1px solid var(--accent-color);
+		background: var(--bg-color);
 		display: flex;
 		justify-content: flex-end;
 

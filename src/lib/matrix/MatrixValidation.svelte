@@ -230,7 +230,7 @@
 	.validation-intro {
 		margin-bottom: 25px;
 		padding: 15px;
-		background: var(--bg-color-accent);
+		background: var(--bg-color);
 		border-radius: 8px;
 		border-left: 4px solid var(--accent-color);
 
@@ -260,7 +260,7 @@
 
 	.overall-status {
 		padding: 20px;
-		background: var(--bg-color-accent);
+		background: var(--bg-color);
 		border-radius: 8px;
 
 		.status-header {
@@ -351,7 +351,7 @@
 
 	.check-details {
 		border-top: 1px solid var(--accent-color);
-		background: var(--bg-color-accent);
+		background: var(--bg-color);
 	}
 
 	.details-content {
@@ -411,7 +411,7 @@
 	.modal-footer {
 		padding: 20px;
 		border-top: 1px solid var(--accent-color);
-		background: var(--bg-color-accent);
+		background: var(--bg-color);
 	}
 
 	.footer-actions {
