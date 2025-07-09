@@ -582,7 +582,6 @@
 			button.other {
 				padding-top: 2px;
 				width: 28px;
-				position: relative;
 				transition:
 					fill 150ms ease,
 					stroke 150ms ease,

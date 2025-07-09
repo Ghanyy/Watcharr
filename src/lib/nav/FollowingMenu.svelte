@@ -9,7 +9,7 @@
 	let { close }: Props = $props();
 </script>
 
-<Menu conf={{ width: "180px", right: "-76px", arrowLeft: "90px" }}>
+<Menu conf={{ width: "180px", arrowRight: "53px" }}>
 	{#if store.follows?.length > 0}
 		<h4 class="norm sm-caps">following</h4>
 		<div class="list">
