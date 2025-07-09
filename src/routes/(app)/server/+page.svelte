@@ -162,7 +162,7 @@
 
 		matrixTestLoading = true;
 		try {
-			const response = await axios.post("/api/matrix/test-connection", {
+			const response = await axios.post("/matrix/test-connection", {
 				serverUrl: serverConfig.MOVIE_CLUB.matrix.serverUrl,
 				adminToken: serverConfig.MOVIE_CLUB.matrix.adminToken,
 			});
