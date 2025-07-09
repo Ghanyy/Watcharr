@@ -550,12 +550,12 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix := b.rg.Group("/matrix")
 	
 	// Admin routes
-	matrix.POST("/test-connection", AdminRequired(), b.testMatrixConnection)
-	matrix.GET("/validate", AdminRequired(), b.validateMatrixSetup)
+	matrix.POST("/test-connection", AuthRequired(b.db), AdminRequired(), b.testMatrixConnection)
+	matrix.GET("/validate", AuthRequired(b.db), AdminRequired(), b.validateMatrixSetup)
 	
 	// User routes
-	matrix.GET("/info", b.getUserMatrixInfo)
-	matrix.POST("/create-account", b.createUserMatrixAccount)
-	matrix.POST("/link-account", b.linkCustomMatrixAccount)
-	matrix.GET("/rooms", b.getUserMatrixRooms)
+	matrix.GET("/info", AuthRequired(b.db), b.getUserMatrixInfo)
+	matrix.POST("/create-account", AuthRequired(b.db), b.createUserMatrixAccount)
+	matrix.POST("/link-account", AuthRequired(b.db), b.linkCustomMatrixAccount)
+	matrix.GET("/rooms", AuthRequired(b.db), b.getUserMatrixRooms)
 }

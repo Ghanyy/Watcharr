@@ -178,7 +178,7 @@
 	}
 
 	.modal {
-		background: var(--card-bg);
+		background: var(--bg-color);
 		border-radius: 12px;
 		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 		width: 90%;
@@ -194,7 +194,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 20px;
-		border-bottom: 1px solid var(--border-color);
+		border-bottom: 1px solid var(--accent-color);
 
 		h2 {
 			margin: 0;
@@ -216,7 +216,7 @@
 			justify-content: center;
 
 			&:hover {
-				background: var(--border-color);
+				background: var(--accent-color);
 			}
 		}
 	}
@@ -230,7 +230,7 @@
 	.validation-intro {
 		margin-bottom: 25px;
 		padding: 15px;
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.1));
+		background: var(--bg-color-accent);
 		border-radius: 8px;
 		border-left: 4px solid var(--accent-color);
 
@@ -260,7 +260,7 @@
 
 	.overall-status {
 		padding: 20px;
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+		background: var(--bg-color-accent);
 		border-radius: 8px;
 
 		.status-header {
@@ -295,11 +295,11 @@
 	}
 
 	.check-item {
-		background: var(--card-bg);
+		background: var(--bg-color);
 		border-radius: 8px;
 		margin-bottom: 10px;
 		overflow: hidden;
-		border: 1px solid var(--border-color);
+		border: 1px solid var(--accent-color);
 	}
 
 	.check-header {
@@ -308,7 +308,7 @@
 		transition: background-color 0.2s ease;
 
 		&:hover {
-			background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+			background: var(--bg-color-accent);
 		}
 
 		.check-info {
@@ -328,7 +328,7 @@
 		}
 
 		.check-message {
-			color: var(--text-color-secondary, rgba(0, 0, 0, 0.7));
+			color: var(--text-color-accent);
 			margin-bottom: 8px;
 			line-height: 1.4;
 		}
@@ -350,15 +350,15 @@
 	}
 
 	.check-details {
-		border-top: 1px solid var(--border-color);
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+		border-top: 1px solid var(--accent-color);
+		background: var(--bg-color-accent);
 	}
 
 	.details-content {
 		padding: 15px;
 		font-family: monospace;
 		font-size: 0.9em;
-		color: var(--text-color-secondary);
+		color: var(--text-color-accent);
 		line-height: 1.4;
 		word-break: break-all;
 	}
@@ -410,8 +410,8 @@
 
 	.modal-footer {
 		padding: 20px;
-		border-top: 1px solid var(--border-color);
-		background: var(--card-bg-secondary, rgba(0, 0, 0, 0.05));
+		border-top: 1px solid var(--accent-color);
+		background: var(--bg-color-accent);
 	}
 
 	.footer-actions {
