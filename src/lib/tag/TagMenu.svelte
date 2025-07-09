@@ -22,7 +22,7 @@
 
 	const defaultMenuConfig = {
 		width: "200px",
-		right: "47px",
+		right: "87px",
 		arrowLeft: "78px",
 	};
 
