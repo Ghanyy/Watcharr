@@ -17,7 +17,7 @@
 	}
 </script>
 
-<Menu conf={{ width: "200px", right: "47px", arrowLeft: "-2px" }}>
+<Menu conf={{ width: "200px", right: "47px", arrowLeft: "78px" }}>
 	<div class="title">
 		<h4 class="norm sm-caps">type</h4>
 		{#if store.activeFilters?.type?.length > 0 || store.activeFilters?.status?.length > 0}
