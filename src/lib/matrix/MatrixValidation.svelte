@@ -27,7 +27,7 @@
 	async function runValidation() {
 		validationLoading = true;
 		try {
-			const response = await axios.get('/api/matrix/validate');
+			const response = await axios.get('/matrix/validate');
 			validationResults = response.data;
 		} catch (error) {
 			console.error('Failed to run Matrix validation:', error);

@@ -183,7 +183,7 @@
 		
 		matrixInfoLoading = true;
 		try {
-			const response = await axios.get("/api/matrix/info");
+			const response = await axios.get("/matrix/info");
 			matrixInfo = response.data;
 		} catch (error) {
 			console.error("Failed to get Matrix info:", error);
