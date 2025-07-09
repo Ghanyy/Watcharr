@@ -20,19 +20,24 @@
 
 	let submitting = false;
 	let selectedVotes: MovieClubVoteItem[] = [];
+	let savedVotes: MovieClubVoteItem[] = []; // Track the last saved state
 	let expandedReasons: Set<string> = new Set(); // Track expanded reasons by unique ID
 
 	// Initialize selected votes from current user votes
 	$: {
-		selectedVotes = cycleData.userVotes.map((vote) => ({
+		const currentVotes = cycleData.userVotes.map((vote) => ({
 			contentId: vote.contentId,
 			priority: vote.priority,
 		}));
+		selectedVotes = currentVotes;
+		savedVotes = currentVotes; // Track saved state
 	}
 
 	$: nominations = cycleData.cycle.nominations || [];
 	$: maxVotes = cycleData.maxVotes || 2; // Get from settings, fallback to 2
 	$: canVote = cycleData.canVote;
+	$: maxVotesReached = selectedVotes.length >= maxVotes;
+	$: hasVotesChanged = !areVotesEqual(selectedVotes, savedVotes);
 
 	function toggleVote(contentId: number) {
 		const existingIndex = selectedVotes.findIndex(
@@ -52,6 +57,26 @@
 			const nextPriority = selectedVotes.length + 1;
 			selectedVotes = [...selectedVotes, { contentId, priority: nextPriority }];
 		}
+	}
+
+	function isNominationDisabled(contentId: number): boolean {
+		const isSelected = getVotePriority(contentId) !== null;
+		return maxVotesReached && !isSelected;
+	}
+
+	function areVotesEqual(votes1: MovieClubVoteItem[], votes2: MovieClubVoteItem[]): boolean {
+		if (votes1.length !== votes2.length) {
+			return false;
+		}
+		
+		// Sort both arrays by contentId for consistent comparison
+		const sorted1 = [...votes1].sort((a, b) => a.contentId - b.contentId);
+		const sorted2 = [...votes2].sort((a, b) => a.contentId - b.contentId);
+		
+		return sorted1.every((vote, index) => 
+			vote.contentId === sorted2[index].contentId && 
+			vote.priority === sorted2[index].priority
+		);
 	}
 
 	function getVotePriority(contentId: number): number | null {
@@ -81,7 +106,7 @@
 	}
 
 	async function submitVotes() {
-		if (submitting || selectedVotes.length === 0) return;
+		if (submitting || selectedVotes.length === 0 || !hasVotesChanged) return;
 
 		submitting = true;
 		const success = await voteForMovies({
@@ -90,6 +115,8 @@
 		});
 
 		if (success) {
+			// Update saved votes to current state after successful submission
+			savedVotes = [...selectedVotes];
 			dispatch("votesChanged");
 		}
 		submitting = false;
@@ -103,6 +130,7 @@
 
 		if (success) {
 			selectedVotes = [];
+			savedVotes = []; // Update saved state to reflect cleared votes
 			dispatch("votesChanged");
 		}
 		submitting = false;
@@ -138,7 +166,7 @@
 			Vote for Movies
 		</h3>
 		<p>
-			Choose your top {maxVotes} movies from the nominations. Order matters!
+			Choose your top {maxVotes} movies from the nominations. You can change your votes until phase finishes. Order matters!
 		</p>
 	</div>
 
@@ -169,10 +197,10 @@
 				<button
 					class="submit-votes-btn"
 					on:click={submitVotes}
-					disabled={submitting}
+					disabled={submitting || !hasVotesChanged}
 				>
 					<Icon icon="check" />
-					{submitting ? "Submitting..." : "Submit Votes"}
+					{submitting ? "Submitting..." : hasVotesChanged ? "Submit Votes" : "No Changes"}
 				</button>
 			{/if}
 		</div>
@@ -181,15 +209,17 @@
 			{#each nominations as nomination}
 				{@const priority = getVotePriority(nomination.contentId)}
 				{@const isSelected = priority !== null}
+				{@const disabled = isNominationDisabled(nomination.contentId)}
 
 				<div
 					class="nomination-card"
 					class:selected={isSelected}
+					class:disabled={disabled}
 					role="button"
-					tabindex="0"
-					on:click={() => toggleVote(nomination.contentId)}
+					tabindex={disabled ? "-1" : "0"}
+					on:click={() => !disabled && toggleVote(nomination.contentId)}
 					on:keydown={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
+						if (!disabled && (e.key === "Enter" || e.key === " ")) {
 							e.preventDefault();
 							toggleVote(nomination.contentId);
 						}
@@ -509,6 +539,7 @@
 			cursor: not-allowed;
 			transform: none;
 			box-shadow: var(--shadow-sm);
+			background: var(--text-muted);
 		}
 
 		&:focus {
@@ -540,7 +571,7 @@
 		position: relative;
 		box-shadow: var(--shadow-sm);
 
-		&:hover {
+		&:hover:not(.disabled) {
 			border-color: var(--primary);
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
@@ -560,6 +591,34 @@
 				opacity: 0.04;
 				border-radius: inherit;
 				pointer-events: none;
+			}
+		}
+
+		&.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			background: var(--background-secondary, var(--background));
+			border-color: var(--border-muted, var(--border));
+			
+			&::after {
+				content: "";
+				position: absolute;
+				inset: 0;
+				background: var(--text-muted);
+				opacity: 0.1;
+				border-radius: inherit;
+				pointer-events: none;
+			}
+
+			&:hover {
+				transform: none;
+				box-shadow: var(--shadow-sm);
+				border-color: var(--border-muted, var(--border));
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow: var(--shadow-sm);
 			}
 		}
 
@@ -911,6 +970,22 @@
 				right: var(--space-xs);
 				padding: var(--space-xs);
 				font-size: 0.7rem;
+			}
+
+			&.disabled {
+				/* Ensure disabled state is visible on mobile */
+				opacity: 0.4;
+				
+				&:hover {
+					transform: none !important;
+					box-shadow: var(--shadow-sm) !important;
+					border-color: var(--border-muted, var(--border)) !important;
+				}
+				
+				&:active {
+					transform: none !important;
+					box-shadow: var(--shadow-sm) !important;
+				}
 			}
 
 			.nomination-details {
