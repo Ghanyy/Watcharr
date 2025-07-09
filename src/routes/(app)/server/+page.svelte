@@ -415,17 +415,25 @@
 								value={serverConfig.MOVIE_CLUB.communityEnabled}
 								toggled={(on) => {
 									movieClubCommunityDisabled = true;
-									updateMovieClubConfig("communityEnabled", on, () => {
-										movieClubCommunityDisabled = false;
-									});
+									// If disabling community, also disable Matrix chat
+									if (!on && serverConfig.MOVIE_CLUB.matrix.enabled) {
+										updateMatrixConfig("enabled", false, () => {
+											updateMovieClubConfig("communityEnabled", on, () => {
+												movieClubCommunityDisabled = false;
+											});
+										});
+									} else {
+										updateMovieClubConfig("communityEnabled", on, () => {
+											movieClubCommunityDisabled = false;
+										});
+									}
 								}}
 							/>
 						</Setting>
 						
 						{#if serverConfig.MOVIE_CLUB.communityEnabled}
-							<h3>Matrix Chat Integration</h3>
 							<Setting
-								title="Enable Matrix Chat"
+								title="Enable Matrix Chat Integration"
 								desc="Enable Matrix/Dendrite integration for community chats during watching phases."
 								row
 							>
@@ -537,17 +545,13 @@
 									<SettingButton
 										title="Test Matrix Connection"
 										desc="Quick connection test to Matrix server"
-										action="Test Connection"
-										loading={matrixTestLoading}
-										disabled={!serverConfig.MOVIE_CLUB.matrix.serverUrl || !serverConfig.MOVIE_CLUB.matrix.adminToken}
-										onclick={() => testMatrixConnection()}
+										onClick={() => testMatrixConnection()}
 									/>
 									
 									<SettingButton
 										title="Matrix Setup Validation"
 										desc="Comprehensive validation of Matrix configuration and capabilities"
-										action="Run Validation"
-										onclick={() => { matrixValidationModalOpen = true; }}
+										onClick={() => { matrixValidationModalOpen = true; }}
 									/>
 								</div>
 							{/if}
