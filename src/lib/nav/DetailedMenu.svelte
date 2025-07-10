@@ -77,50 +77,26 @@
 		}
 	}
 
-	/* Responsive arrow positioning for DetailedMenu */
+	/* Responsive arrow positioning - DetailedMenu is always leftmost when visible */
 	:global(.menu) {
-		/* Search page positioning */
 		@media screen and (max-width: 435px) {
-			--al: 79px;
+			--al: 27px; /* 13px + 14px to center */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 74px;
+			--al: 22px; /* 8px + 14px to center */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 72px;
+			--al: 20px; /* 6px + 14px to center */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 70px;
+			--al: 18px; /* 4px + 14px to center */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 68px;
-		}
-
-		/* Home page positioning (smaller offset) */
-		:global(body[data-sveltekit-preload-code="/"]) & {
-			@media screen and (max-width: 435px) {
-				--al: 3px;
-			}
-
-			@media screen and (max-width: 380px) {
-				--al: 3px;
-			}
-
-			@media screen and (max-width: 375px) {
-				--al: 3px;
-			}
-
-			@media screen and (max-width: 370px) {
-				--al: 3px;
-			}
-
-			@media screen and (max-width: 350px) {
-				--al: 3px;
-			}
+			--al: 16px; /* 2px + 14px to center */
 		}
 	}
 </style>

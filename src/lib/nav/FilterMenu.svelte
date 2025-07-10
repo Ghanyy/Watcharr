@@ -170,26 +170,50 @@
 		}
 	}
 
-	/* Responsive arrow positioning for FilterMenu */
+	/* Responsive arrow positioning accounting for DetailedMenu visibility */
 	:global(.menu) {
+		/* Base positioning when DetailedMenu is not visible (after SortMenu) */
 		@media screen and (max-width: 435px) {
-			--al: 36px;
+			--al: 67px; /* 27px + 40px for SortMenu */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 34px;
+			--al: 62px; /* 22px + 40px for SortMenu */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 33px;
+			--al: 60px; /* 20px + 40px for SortMenu */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 32px;
+			--al: 58px; /* 18px + 40px for SortMenu */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 31px;
+			--al: 56px; /* 16px + 40px for SortMenu */
+		}
+
+		/* Adjust when DetailedMenu is visible (adds 40px) */
+		:global(.btns:has(.detailedView)) & {
+			@media screen and (max-width: 435px) {
+				--al: 107px; /* 67px + 40px */
+			}
+
+			@media screen and (max-width: 380px) {
+				--al: 102px; /* 62px + 40px */
+			}
+
+			@media screen and (max-width: 375px) {
+				--al: 100px; /* 60px + 40px */
+			}
+
+			@media screen and (max-width: 370px) {
+				--al: 98px; /* 58px + 40px */
+			}
+
+			@media screen and (max-width: 350px) {
+				--al: 96px; /* 56px + 40px */
+			}
 		}
 	}
 </style>
