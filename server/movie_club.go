@@ -78,12 +78,13 @@ type MovieClubSettings struct {
 
 // MatrixSettings holds Matrix/Dendrite server configuration
 type MatrixSettings struct {
-	Enabled     bool   `json:"enabled"`     // Default: false
-	ServerURL   string `json:"serverUrl"`   // Dendrite server URL (e.g., "https://matrix.example.com")
-	AdminToken  string `json:"adminToken"`  // Admin access token for Matrix operations
-	ServerName  string `json:"serverName"`  // Matrix server name (e.g., "example.com")
-	SpaceName   string `json:"spaceName"`   // Default: "Movie Club"
-	AdminUserID string `json:"adminUserId"` // Watcharr admin user ID (e.g., "@watcharr:example.com")
+	Enabled            bool   `json:"enabled"`            // Default: false
+	ServerURL          string `json:"serverUrl"`          // Dendrite server URL (e.g., "https://matrix.example.com")
+	AdminToken         string `json:"adminToken"`         // Admin access token for Matrix operations
+	ServerName         string `json:"serverName"`         // Matrix server name (e.g., "example.com")
+	SpaceName          string `json:"spaceName"`          // Default: "Movie Club"
+	AdminUserID        string `json:"adminUserId"`        // Watcharr admin user ID (e.g., "@watcharr:example.com")
+	RegistrationSecret string `json:"registrationSecret"` // Shared secret for user registration (optional)
 }
 
 // MovieClubVoteCount represents vote tallies for a content item

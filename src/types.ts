@@ -1364,6 +1364,7 @@ export interface MatrixSettings {
 	serverName: string;
 	spaceName: string;
 	adminUserId: string;
+	registrationSecret: string;
 }
 
 export interface MovieClubVoteCount {

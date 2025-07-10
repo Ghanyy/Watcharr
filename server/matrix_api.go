@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -102,6 +103,11 @@ func (b *BaseRouter) validateMatrixSetup(c *gin.Context) {
 	// 4. Room creation test
 	if settings.ServerURL != "" && settings.AdminToken != "" {
 		validation.Results = append(validation.Results, validateRoomCreation(settings)...)
+	}
+
+	// 5. Shared secret registration test
+	if settings.ServerURL != "" && settings.RegistrationSecret != "" {
+		validation.Results = append(validation.Results, validateSharedSecretRegistration(settings)...)
 	}
 
 	// Determine overall status
@@ -215,6 +221,23 @@ func validateMatrixConfig(settings MatrixSettings) []MatrixValidationResult {
 			Status:  "success",
 			Message: "Space name is configured",
 			Details: settings.SpaceName,
+		})
+	}
+
+	// Check Registration Secret
+	if settings.RegistrationSecret == "" {
+		results = append(results, MatrixValidationResult{
+			Check:   "Registration Secret",
+			Status:  "warning",
+			Message: "Shared secret registration is not configured",
+			Details: "Without a registration secret, Matrix users must be created manually. Configure the shared secret for automatic user creation.",
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "Registration Secret",
+			Status:  "success",
+			Message: "Registration secret is configured",
+			Details: "Shared secret registration is available for automatic user creation",
 		})
 	}
 
@@ -354,6 +377,55 @@ func validateRoomCreation(settings MatrixSettings) []MatrixValidationResult {
 	return results
 }
 
+// validateSharedSecretRegistration validates shared secret registration capabilities
+func validateSharedSecretRegistration(settings MatrixSettings) []MatrixValidationResult {
+	var results []MatrixValidationResult
+
+	// Generate test username for validation
+	testUsername := fmt.Sprintf("watcharr_test_%d", time.Now().Unix())
+	testPassword := "test_password_123"
+
+	// Test shared secret registration
+	registrationResponse, err := RegisterUserWithSharedSecret(testUsername, testPassword, false)
+	if err != nil {
+		results = append(results, MatrixValidationResult{
+			Check:   "Shared Secret Registration",
+			Status:  "error",
+			Message: "Shared secret registration test failed",
+			Details: err.Error(),
+		})
+		return results
+	}
+
+	// If registration succeeded, try to clean up the test user
+	if registrationResponse != nil {
+		// Attempt to deactivate the test user
+		deactivateErr := DeactivateMatrixUser(registrationResponse.UserID)
+		if deactivateErr != nil {
+			// Log warning but don't fail validation
+			slog.Warn("Failed to clean up test user after registration validation",
+				"test_user_id", registrationResponse.UserID,
+				"error", deactivateErr)
+		}
+
+		results = append(results, MatrixValidationResult{
+			Check:   "Shared Secret Registration",
+			Status:  "success",
+			Message: "Shared secret registration is working",
+			Details: fmt.Sprintf("Successfully created test user: %s", registrationResponse.UserID),
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "Shared Secret Registration",
+			Status:  "error",
+			Message: "Registration succeeded but returned no data",
+			Details: "This indicates an unexpected response format from the Matrix server",
+		})
+	}
+
+	return results
+}
+
 // getUserMatrixInfo gets Matrix information for a user
 func (b *BaseRouter) getUserMatrixInfo(c *gin.Context) {
 	// AuthRequired middleware should already be applied to this route
@@ -469,6 +541,32 @@ func (b *BaseRouter) linkCustomMatrixAccount(c *gin.Context) {
 	})
 }
 
+// unlinkUserMatrixAccount removes a user's Matrix account link
+func (b *BaseRouter) unlinkUserMatrixAccount(c *gin.Context) {
+	userID := c.GetUint("userId")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User not authenticated"})
+		return
+	}
+
+	// Check if Matrix is enabled
+	if !Config.MOVIE_CLUB.Matrix.Enabled {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Matrix integration is not enabled"})
+		return
+	}
+
+	// Remove user's Matrix account link
+	if err := UnlinkMatrixUser(b.db, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to unlink Matrix account: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Matrix account unlinked successfully",
+	})
+}
+
 // MatrixRoomResponse represents room data for the frontend
 type MatrixRoomResponse struct {
 	ID         string `json:"id"`
@@ -557,5 +655,6 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix.GET("/info", AuthRequired(b.db), b.getUserMatrixInfo)
 	matrix.POST("/create-account", AuthRequired(b.db), b.createUserMatrixAccount)
 	matrix.POST("/link-account", AuthRequired(b.db), b.linkCustomMatrixAccount)
+	matrix.DELETE("/unlink-account", AuthRequired(b.db), b.unlinkUserMatrixAccount)
 	matrix.GET("/rooms", AuthRequired(b.db), b.getUserMatrixRooms)
 }

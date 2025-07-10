@@ -62,6 +62,7 @@
 	let matrixAdminTokenDisabled = $state(false);
 	let matrixAdminUserIdDisabled = $state(false);
 	let matrixSpaceNameDisabled = $state(false);
+	let matrixRegistrationSecretDisabled = $state(false);
 	let matrixTestLoading = $state(false);
 	let matrixValidationModalOpen = $state(false);
 
@@ -538,6 +539,24 @@
 											});
 										}}
 										disabled={matrixSpaceNameDisabled}
+									/>
+								</Setting>
+								
+								<Setting
+									title="Registration Shared Secret"
+									desc="Shared secret for user registration (optional). Leave blank to use admin token for user creation."
+								>
+									<input
+										type="password"
+										placeholder="Enter registration secret (optional)"
+										bind:value={serverConfig.MOVIE_CLUB.matrix.registrationSecret}
+										onblur={() => {
+											matrixRegistrationSecretDisabled = true;
+											updateMatrixConfig("registrationSecret", serverConfig.MOVIE_CLUB.matrix.registrationSecret, () => {
+												matrixRegistrationSecretDisabled = false;
+											});
+										}}
+										disabled={matrixRegistrationSecretDisabled}
 									/>
 								</Setting>
 								

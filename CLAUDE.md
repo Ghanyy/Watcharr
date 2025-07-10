@@ -193,23 +193,40 @@ The movie club feature enables collaborative movie selection through structured 
 
 ## Matrix/Dendrite Integration Architecture
 
-The Matrix integration provides community chat features for Movie Club cycles through self-hosted Dendrite servers.
+The Matrix integration provides community chat features for Movie Club cycles through self-hosted Dendrite servers with full user lifecycle management.
 
 ### Backend Implementation
 
 **Core Matrix Files:**
 
-- `server/matrix.go` - Matrix client initialization, user management, database models
+- `server/matrix.go` - Matrix client initialization, user management, shared secret registration, database models
 - `server/matrix_api.go` - HTTP API endpoints, validation system, troubleshooting
 - `server/matrix_rooms.go` - Room creation, management, user invitations, space organization
+
+**User Creation Methods:**
+
+1. **Shared Secret Registration** (Recommended):
+   - Uses Dendrite's Synapse-compatible shared secret endpoint
+   - Creates real Matrix users with working access tokens
+   - Requires `registrationSecret` configuration in Matrix settings
+   - Users can immediately access Matrix features via Element Web
+
+2. **Placeholder Mode** (Fallback):
+   - Creates database entries with placeholder tokens
+   - Used when shared secret is not configured
+   - Users cannot access actual Matrix features
+   - Maintains feature compatibility for development
 
 **Key Functions:**
 
 - `InitializeMatrixClient()` - Creates Matrix client with admin credentials
-- `CreateMatrixUser()` - Auto-generates Matrix accounts for Watcharr users
+- `RegisterUserWithSharedSecret()` - Creates real Matrix users via shared secret registration
+- `CreateMatrixUser()` - Auto-generates Matrix accounts (real or placeholder based on config)
 - `LinkCustomMatrixUser()` - Links existing Matrix accounts to Watcharr users
+- `UnlinkMatrixUser()` - Removes Matrix account links with proper deactivation for auto-generated accounts
+- `DeactivateMatrixUser()` - Deactivates auto-generated users on Matrix server (if supported)
 - `CreateCycleRoom()` - Creates Matrix rooms when cycles enter watching phase
-- `InviteUsersToRoom()` - Invites eligible users (who nominated/voted) to cycle rooms
+- `InviteUsersToRoom()` - Invites eligible real Matrix users to cycle rooms (skips placeholder users)
 - `EnsureMovieClubSpace()` - Creates and manages Movie Club space for room organization
 
 **Integration Points:**
@@ -219,6 +236,7 @@ The Matrix integration provides community chat features for Movie Club cycles th
 - Room organization under Movie Club space
 - Local-only federation for privacy
 - Admin-controlled moderation with power levels
+- Smart invitation system that only invites real Matrix users
 
 ### Frontend Implementation
 
@@ -233,6 +251,7 @@ The Matrix integration provides community chat features for Movie Club cycles th
 
 - Matrix server URL, admin token, server name configuration
 - Admin user ID and space name settings
+- Registration shared secret for automatic user creation (optional)
 - Connection testing and comprehensive validation
 - Cascading disable functionality (disabling Movie Club disables Matrix)
 
@@ -251,6 +270,7 @@ The Matrix integration provides community chat features for Movie Club cycles th
 2. **Connection Testing** - Verifies Matrix server connectivity and authentication
 3. **Permission Validation** - Tests admin privileges and server access capabilities
 4. **Room Creation Testing** - Creates and cleans up test rooms to verify functionality
+5. **Shared Secret Registration Testing** - Tests user creation via shared secret (if configured)
 
 **Troubleshooting Guide:**
 
@@ -280,10 +300,39 @@ The Matrix integration provides community chat features for Movie Club cycles th
 
 **User Management:**
 
-- Automatic Matrix user creation with secure credentials
+- Automatic Matrix user creation with secure credentials (real or placeholder based on configuration)
 - Custom Matrix account linking with token validation
-- User cleanup only when explicitly configured
-- Secure token handling with hidden display in UI
+- Differentiated unlinking behavior:
+  - Auto-generated accounts: Deactivated on Matrix server and removed from Watcharr
+  - Custom accounts: Only removed from Watcharr, preserving the user's Matrix account
+- Secure token handling with encryption and hidden display in UI
+
+### Shared Secret Registration Configuration
+
+**Dendrite Server Setup:**
+
+To enable real Matrix user creation, configure your Dendrite server with a shared secret:
+
+```yaml
+# dendrite.yaml
+user_api:
+  registration_shared_secret: "your-secure-secret-here"
+```
+
+**Watcharr Configuration:**
+
+1. Navigate to Server Settings → Movie Club → Matrix Configuration
+2. Fill in the "Registration Shared Secret" field with the same secret from your Dendrite configuration
+3. Run validation to test the registration endpoint
+4. Users can now create real Matrix accounts that work with Element Web
+
+**Benefits of Shared Secret Registration:**
+
+- **Real Matrix Users**: Created users are actual Matrix accounts, not placeholders
+- **Immediate Access**: Users can log into Element Web and other Matrix clients
+- **Full Functionality**: Complete access to Matrix rooms and community features
+- **Security**: Uses HMAC-SHA1 signatures for secure user creation
+- **Compatibility**: Works with Dendrite's Synapse-compatible endpoint
 
 ### Room Management
 
@@ -300,7 +349,8 @@ The Matrix integration provides community chat features for Movie Club cycles th
 - Private visibility with local-only federation
 - Admin power levels for Watcharr management
 - Movie-specific topics and descriptions
-- Automatic user invitation based on participation
+- Smart invitation system that only invites real Matrix users (skips placeholder users)
+- Automatic user invitation based on participation (nomination or voting)
 - Space organization for easy navigation
 
 ## Common File Patterns
