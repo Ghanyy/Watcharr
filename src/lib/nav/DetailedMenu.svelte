@@ -76,4 +76,51 @@
 			font-size: 18px;
 		}
 	}
+
+	/* Responsive arrow positioning for DetailedMenu */
+	:global(.menu) {
+		/* Search page positioning */
+		@media screen and (max-width: 435px) {
+			--al: 79px;
+		}
+
+		@media screen and (max-width: 380px) {
+			--al: 74px;
+		}
+
+		@media screen and (max-width: 375px) {
+			--al: 72px;
+		}
+
+		@media screen and (max-width: 370px) {
+			--al: 70px;
+		}
+
+		@media screen and (max-width: 350px) {
+			--al: 68px;
+		}
+
+		/* Home page positioning (smaller offset) */
+		:global(body[data-sveltekit-preload-code="/"]) & {
+			@media screen and (max-width: 435px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 380px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 375px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 370px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 350px) {
+				--al: 3px;
+			}
+		}
+	}
 </style>

@@ -88,4 +88,27 @@
 			font-size: 18px;
 		}
 	}
+
+	/* Responsive arrow positioning for SortMenu */
+	:global(.menu) {
+		@media screen and (max-width: 435px) {
+			--al: 19px;
+		}
+
+		@media screen and (max-width: 380px) {
+			--al: 17px;
+		}
+
+		@media screen and (max-width: 375px) {
+			--al: 16px;
+		}
+
+		@media screen and (max-width: 370px) {
+			--al: 15px;
+		}
+
+		@media screen and (max-width: 350px) {
+			--al: 14px;
+		}
+	}
 </style>

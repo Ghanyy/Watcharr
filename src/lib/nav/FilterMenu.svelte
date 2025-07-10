@@ -169,4 +169,27 @@
 			}
 		}
 	}
+
+	/* Responsive arrow positioning for FilterMenu */
+	:global(.menu) {
+		@media screen and (max-width: 435px) {
+			--al: 36px;
+		}
+
+		@media screen and (max-width: 380px) {
+			--al: 34px;
+		}
+
+		@media screen and (max-width: 375px) {
+			--al: 33px;
+		}
+
+		@media screen and (max-width: 370px) {
+			--al: 32px;
+		}
+
+		@media screen and (max-width: 350px) {
+			--al: 31px;
+		}
+	}
 </style>

@@ -151,4 +151,27 @@
 			}
 		}
 	}
+
+	/* Responsive arrow positioning to match mobile layout changes */
+	:global(.menu) {
+		@media screen and (max-width: 435px) {
+			--al: 73px;
+		}
+
+		@media screen and (max-width: 380px) {
+			--al: 68px;
+		}
+
+		@media screen and (max-width: 375px) {
+			--al: 66px;
+		}
+
+		@media screen and (max-width: 370px) {
+			--al: 64px;
+		}
+
+		@media screen and (max-width: 350px) {
+			--al: 62px;
+		}
+	}
 </style>
