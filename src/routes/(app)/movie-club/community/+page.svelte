@@ -38,7 +38,7 @@
 		
 		matrixInfoLoading = true;
 		try {
-			const response = await axios.get('/api/matrix/info');
+			const response = await axios.get('/matrix/info');
 			matrixInfo = response.data;
 		} catch (error) {
 			console.error('Failed to get Matrix info:', error);
@@ -50,7 +50,7 @@
 	async function createMatrixAccount() {
 		matrixCreateLoading = true;
 		try {
-			const response = await axios.post('/api/matrix/create-account');
+			const response = await axios.post('/matrix/create-account');
 			if (response.status === 200) {
 				notify({ type: 'success', text: 'Matrix account created successfully' });
 				getMatrixInfo(); // Refresh info

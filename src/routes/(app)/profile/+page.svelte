@@ -196,7 +196,7 @@
 	async function createMatrixAccount() {
 		matrixCreateLoading = true;
 		try {
-			const response = await axios.post("/api/matrix/create-account");
+			const response = await axios.post("/matrix/create-account");
 			if (response.status === 200) {
 				notify({ type: "success", text: "Matrix account created successfully" });
 				getMatrixInfo(); // Refresh info
@@ -217,7 +217,7 @@
 
 		matrixLinkLoading = true;
 		try {
-			const response = await axios.post("/api/matrix/link-account", {
+			const response = await axios.post("/matrix/link-account", {
 				matrixUserId: customMatrixUserId,
 				accessToken: customAccessToken,
 			});

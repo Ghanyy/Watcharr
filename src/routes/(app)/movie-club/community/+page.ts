@@ -5,7 +5,7 @@ import type { PageLoad } from './$types';
 export const load: PageLoad = async ({ fetch }) => {
 	try {
 		// Get user's accessible Matrix rooms
-		const roomsResponse = await axios.get('/api/matrix/rooms');
+		const roomsResponse = await axios.get('/matrix/rooms');
 		
 		return {
 			rooms: roomsResponse.data.rooms || []
