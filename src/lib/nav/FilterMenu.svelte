@@ -170,9 +170,27 @@
 		}
 	}
 
-	/* Reset to desktop baseline - will measure exact mobile adjustments needed */
+	/* Responsive arrow positioning - override inline styles with !important */
 	:global(.menu) {
-		/* Keep desktop value (38px) as baseline for now */
-		--al: 38px !important;
+		/* Start with desktop value (38px) and scale for mobile */
+		@media screen and (max-width: 435px) {
+			--al: 51px !important; /* 36px + 15px when all buttons visible */
+		}
+
+		@media screen and (max-width: 380px) {
+			--al: 49px !important; /* 34px + 15px when all buttons visible */
+		}
+
+		@media screen and (max-width: 375px) {
+			--al: 48px !important; /* 33px + 15px when all buttons visible */
+		}
+
+		@media screen and (max-width: 370px) {
+			--al: 47px !important; /* 32px + 15px when all buttons visible */
+		}
+
+		@media screen and (max-width: 350px) {
+			--al: 46px !important; /* 31px + 15px when all buttons visible */
+		}
 	}
 </style>
