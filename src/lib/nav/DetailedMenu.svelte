@@ -77,50 +77,14 @@
 		}
 	}
 
-	/* Responsive arrow positioning - override inline styles with !important */
+	/* Reset to desktop baseline - will measure exact mobile adjustments needed */
 	:global(.menu) {
-		/* Start with desktop logic and scale appropriately */
-		@media screen and (max-width: 435px) {
-			--al: 94px !important; /* 79px + 15px when all buttons visible */
-		}
+		/* Keep desktop value as baseline - search pages use 84px, home uses 3px */
+		--al: 84px !important;
+	}
 
-		@media screen and (max-width: 380px) {
-			--al: 89px !important; /* 74px + 15px when all buttons visible */
-		}
-
-		@media screen and (max-width: 375px) {
-			--al: 87px !important; /* 72px + 15px when all buttons visible */
-		}
-
-		@media screen and (max-width: 370px) {
-			--al: 85px !important; /* 70px + 15px when all buttons visible */
-		}
-
-		@media screen and (max-width: 350px) {
-			--al: 83px !important; /* 68px + 15px when all buttons visible */
-		}
-
-		/* Home page uses smaller offset (3px on desktop) */
-		:global(body:has([data-sveltekit-preload-code="/"])) & {
-			@media screen and (max-width: 435px) {
-				--al: 18px !important; /* 3px + 15px when all buttons visible */
-			}
-
-			@media screen and (max-width: 380px) {
-				--al: 18px !important; /* 3px + 15px when all buttons visible */
-			}
-
-			@media screen and (max-width: 375px) {
-				--al: 18px !important; /* 3px + 15px when all buttons visible */
-			}
-
-			@media screen and (max-width: 370px) {
-				--al: 18px !important; /* 3px + 15px when all buttons visible */
-			}
-
-			@media screen and (max-width: 350px) {
-				--al: 18px !important; /* 3px + 15px when all buttons visible */
-			}
-		}
+	/* Home page specific positioning */
+	:global(body:has([data-sveltekit-preload-code="/"])) :global(.menu) {
+		--al: 3px !important;
 	}
 </style>
