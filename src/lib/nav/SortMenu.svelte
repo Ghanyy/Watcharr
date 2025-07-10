@@ -89,27 +89,27 @@
 		}
 	}
 
-	/* Responsive arrow positioning - override inline styles with !important */
+	/* Responsive arrow positioning - using desktop reference */
 	:global(.menu) {
 		/* Start with desktop value (21px) and scale for mobile */
 		@media screen and (max-width: 435px) {
-			--al: 34px !important; /* 19px + 15px when all buttons visible */
+			--al: 34px; /* 19px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 32px !important; /* 17px + 15px when all buttons visible */
+			--al: 32px; /* 17px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 31px !important; /* 16px + 15px when all buttons visible */
+			--al: 31px; /* 16px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 30px !important; /* 15px + 15px when all buttons visible */
+			--al: 30px; /* 15px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 29px !important; /* 14px + 15px when all buttons visible */
+			--al: 29px; /* 14px + 15px when all buttons visible */
 		}
 	}
 </style>
