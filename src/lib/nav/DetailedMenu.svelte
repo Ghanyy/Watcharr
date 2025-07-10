@@ -77,49 +77,49 @@
 		}
 	}
 
-	/* Responsive arrow positioning - using desktop reference */
+	/* Responsive arrow positioning - override inline styles with !important */
 	:global(.menu) {
 		/* Start with desktop logic and scale appropriately */
 		@media screen and (max-width: 435px) {
-			--al: 94px; /* 79px + 15px when all buttons visible */
+			--al: 94px !important; /* 79px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 89px; /* 74px + 15px when all buttons visible */
+			--al: 89px !important; /* 74px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 87px; /* 72px + 15px when all buttons visible */
+			--al: 87px !important; /* 72px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 85px; /* 70px + 15px when all buttons visible */
+			--al: 85px !important; /* 70px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 83px; /* 68px + 15px when all buttons visible */
+			--al: 83px !important; /* 68px + 15px when all buttons visible */
 		}
 
 		/* Home page uses smaller offset (3px on desktop) */
 		:global(body:has([data-sveltekit-preload-code="/"])) & {
 			@media screen and (max-width: 435px) {
-				--al: 18px; /* 3px + 15px when all buttons visible */
+				--al: 18px !important; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 380px) {
-				--al: 18px; /* 3px + 15px when all buttons visible */
+				--al: 18px !important; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 375px) {
-				--al: 18px; /* 3px + 15px when all buttons visible */
+				--al: 18px !important; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 370px) {
-				--al: 18px; /* 3px + 15px when all buttons visible */
+				--al: 18px !important; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 350px) {
-				--al: 18px; /* 3px + 15px when all buttons visible */
+				--al: 18px !important; /* 3px + 15px when all buttons visible */
 			}
 		}
 	}
