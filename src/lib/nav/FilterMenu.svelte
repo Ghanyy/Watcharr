@@ -174,23 +174,23 @@
 	:global(.menu) {
 		/* Start with desktop value (38px) and scale for mobile */
 		@media screen and (max-width: 435px) {
-			--al: 36px; /* reduce by 2px for smaller gap */
+			--al: 51px; /* 36px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 34px; /* reduce by another 2px */
+			--al: 49px; /* 34px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 33px; /* reduce by 1px */
+			--al: 48px; /* 33px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 32px; /* reduce by 1px */
+			--al: 47px; /* 32px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 31px; /* reduce by 1px */
+			--al: 46px; /* 31px + 15px when all buttons visible */
 		}
 	}
 </style>

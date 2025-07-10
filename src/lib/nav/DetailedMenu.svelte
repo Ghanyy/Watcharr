@@ -81,45 +81,45 @@
 	:global(.menu) {
 		/* Start with desktop logic and scale appropriately */
 		@media screen and (max-width: 435px) {
-			--al: 79px; /* search page default - reduce by 5px from 84px */
+			--al: 94px; /* 79px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 74px; /* reduce by another 5px */
+			--al: 89px; /* 74px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 72px; /* reduce by 2px */
+			--al: 87px; /* 72px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 70px; /* reduce by 2px */
+			--al: 85px; /* 70px + 15px when all buttons visible */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 68px; /* reduce by 2px */
+			--al: 83px; /* 68px + 15px when all buttons visible */
 		}
 
 		/* Home page uses smaller offset (3px on desktop) */
 		:global(body:has([data-sveltekit-preload-code="/"])) & {
 			@media screen and (max-width: 435px) {
-				--al: 3px;
+				--al: 18px; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 380px) {
-				--al: 3px;
+				--al: 18px; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 375px) {
-				--al: 3px;
+				--al: 18px; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 370px) {
-				--al: 3px;
+				--al: 18px; /* 3px + 15px when all buttons visible */
 			}
 
 			@media screen and (max-width: 350px) {
-				--al: 3px;
+				--al: 18px; /* 3px + 15px when all buttons visible */
 			}
 		}
 	}
