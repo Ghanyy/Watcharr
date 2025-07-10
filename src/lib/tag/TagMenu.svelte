@@ -152,96 +152,27 @@
 		}
 	}
 
-	/* Responsive arrow positioning accounting for button visibility */
+	/* Responsive arrow positioning - using desktop reference and scaling down */
 	:global(.menu) {
-		/* Base positioning when only TagMenu and always-visible buttons are shown */
+		/* Start with desktop value (78px) and adjust for mobile responsive gaps */
 		@media screen and (max-width: 435px) {
-			--al: 87px;
+			--al: 73px; /* reduce by 5px for smaller gap */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 82px;
+			--al: 68px; /* reduce by another 5px */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 80px;
+			--al: 66px; /* reduce by 2px */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 78px;
+			--al: 64px; /* reduce by 2px */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 76px;
-		}
-
-		/* DetailedMenu + TagMenu visible (DetailedMenu only, no Sort/Filter) */
-		:global(.btns:has(.detailedView):not(:has(.sort)):not(:has(.filter))) & {
-			@media screen and (max-width: 435px) {
-				--al: 127px; /* 87px + 40px */
-			}
-
-			@media screen and (max-width: 380px) {
-				--al: 122px; /* 82px + 40px */
-			}
-
-			@media screen and (max-width: 375px) {
-				--al: 120px; /* 80px + 40px */
-			}
-
-			@media screen and (max-width: 370px) {
-				--al: 118px; /* 78px + 40px */
-			}
-
-			@media screen and (max-width: 350px) {
-				--al: 116px; /* 76px + 40px */
-			}
-		}
-
-		/* SortMenu + FilterMenu + TagMenu visible (Sort/Filter only, no DetailedMenu) */
-		:global(.btns:has(.sort):has(.filter):not(:has(.detailedView))) & {
-			@media screen and (max-width: 435px) {
-				--al: 167px; /* 87px + 80px */
-			}
-
-			@media screen and (max-width: 380px) {
-				--al: 162px; /* 82px + 80px */
-			}
-
-			@media screen and (max-width: 375px) {
-				--al: 160px; /* 80px + 80px */
-			}
-
-			@media screen and (max-width: 370px) {
-				--al: 158px; /* 78px + 80px */
-			}
-
-			@media screen and (max-width: 350px) {
-				--al: 156px; /* 76px + 80px */
-			}
-		}
-
-		/* All buttons visible (DetailedMenu + SortMenu + FilterMenu + TagMenu) */
-		:global(.btns:has(.detailedView):has(.sort):has(.filter)) & {
-			@media screen and (max-width: 435px) {
-				--al: 207px; /* 87px + 120px */
-			}
-
-			@media screen and (max-width: 380px) {
-				--al: 202px; /* 82px + 120px */
-			}
-
-			@media screen and (max-width: 375px) {
-				--al: 200px; /* 80px + 120px */
-			}
-
-			@media screen and (max-width: 370px) {
-				--al: 198px; /* 78px + 120px */
-			}
-
-			@media screen and (max-width: 350px) {
-				--al: 196px; /* 76px + 120px */
-			}
+			--al: 62px; /* reduce by 2px */
 		}
 	}
 </style>

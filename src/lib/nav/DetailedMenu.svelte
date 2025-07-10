@@ -77,26 +77,50 @@
 		}
 	}
 
-	/* Responsive arrow positioning - DetailedMenu is always leftmost when visible */
+	/* Responsive arrow positioning - using desktop reference */
 	:global(.menu) {
+		/* Start with desktop logic and scale appropriately */
 		@media screen and (max-width: 435px) {
-			--al: 27px; /* 13px + 14px to center */
+			--al: 79px; /* search page default - reduce by 5px from 84px */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 22px; /* 8px + 14px to center */
+			--al: 74px; /* reduce by another 5px */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 20px; /* 6px + 14px to center */
+			--al: 72px; /* reduce by 2px */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 18px; /* 4px + 14px to center */
+			--al: 70px; /* reduce by 2px */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 16px; /* 2px + 14px to center */
+			--al: 68px; /* reduce by 2px */
+		}
+
+		/* Home page uses smaller offset (3px on desktop) */
+		:global(body:has([data-sveltekit-preload-code="/"])) & {
+			@media screen and (max-width: 435px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 380px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 375px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 370px) {
+				--al: 3px;
+			}
+
+			@media screen and (max-width: 350px) {
+				--al: 3px;
+			}
 		}
 	}
 </style>

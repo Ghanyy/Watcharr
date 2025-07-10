@@ -89,50 +89,27 @@
 		}
 	}
 
-	/* Responsive arrow positioning accounting for DetailedMenu visibility */
+	/* Responsive arrow positioning - using desktop reference */
 	:global(.menu) {
-		/* Base positioning when DetailedMenu is not visible */
+		/* Start with desktop value (21px) and scale for mobile */
 		@media screen and (max-width: 435px) {
-			--al: 27px; /* 13px + 14px to center */
+			--al: 19px; /* reduce by 2px for smaller gap */
 		}
 
 		@media screen and (max-width: 380px) {
-			--al: 22px; /* 8px + 14px to center */
+			--al: 17px; /* reduce by another 2px */
 		}
 
 		@media screen and (max-width: 375px) {
-			--al: 20px; /* 6px + 14px to center */
+			--al: 16px; /* reduce by 1px */
 		}
 
 		@media screen and (max-width: 370px) {
-			--al: 18px; /* 4px + 14px to center */
+			--al: 15px; /* reduce by 1px */
 		}
 
 		@media screen and (max-width: 350px) {
-			--al: 16px; /* 2px + 14px to center */
-		}
-
-		/* Adjust when DetailedMenu is visible (adds 40px) */
-		:global(.btns:has(.detailedView)) & {
-			@media screen and (max-width: 435px) {
-				--al: 67px; /* 27px + 40px */
-			}
-
-			@media screen and (max-width: 380px) {
-				--al: 62px; /* 22px + 40px */
-			}
-
-			@media screen and (max-width: 375px) {
-				--al: 60px; /* 20px + 40px */
-			}
-
-			@media screen and (max-width: 370px) {
-				--al: 58px; /* 18px + 40px */
-			}
-
-			@media screen and (max-width: 350px) {
-				--al: 56px; /* 16px + 40px */
-			}
+			--al: 14px; /* reduce by 1px */
 		}
 	}
 </style>
