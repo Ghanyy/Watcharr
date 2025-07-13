@@ -886,6 +886,13 @@ func generateRandomPassword() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+// Matrix URL utilities
+
+// getMatrixServerURL returns the Matrix server URL with trailing slash removed
+func getMatrixServerURL() string {
+	return strings.TrimSuffix(Config.MOVIE_CLUB.Matrix.ServerURL, "/")
+}
+
 // Shared secret registration functions
 
 // generateNonce creates a unique nonce for shared secret registration
@@ -934,9 +941,9 @@ func generateSharedSecretMAC(sharedSecret, nonce, username, password string, adm
 // getServerNonce fetches a nonce from the Matrix server for shared secret registration
 func getServerNonce() (string, error) {
 	// Make GET request to fetch nonce
-	url := fmt.Sprintf("%s/_synapse/admin/v1/register", Config.MOVIE_CLUB.Matrix.ServerURL)
+	url := fmt.Sprintf("%s/_synapse/admin/v1/register", getMatrixServerURL())
 	
-	slog.Info("Fetching nonce from Matrix server", "url", url)
+	slog.Debug("Fetching nonce from Matrix server", "url", url)
 	
 	resp, err := http.Get(url)
 	if err != nil {
@@ -950,7 +957,7 @@ func getServerNonce() (string, error) {
 		return "", fmt.Errorf("failed to read nonce response: %w", err)
 	}
 	
-	slog.Info("Nonce request response", 
+	slog.Debug("Nonce request response", 
 		"status", resp.StatusCode, 
 		"body", responseBody.String())
 	
@@ -969,7 +976,7 @@ func getServerNonce() (string, error) {
 		return "", errors.New("server returned empty nonce")
 	}
 	
-	slog.Info("Fetched nonce from Matrix server", "nonce", nonceResponse.Nonce)
+	slog.Debug("Fetched nonce from Matrix server", "nonce", nonceResponse.Nonce)
 	return nonceResponse.Nonce, nil
 }
 
@@ -1015,7 +1022,7 @@ func RegisterUserWithSharedSecret(username, password string, admin bool) (*Share
 	}
 	
 	// Make HTTP request to Matrix server
-	url := fmt.Sprintf("%s/_synapse/admin/v1/register", Config.MOVIE_CLUB.Matrix.ServerURL)
+	url := fmt.Sprintf("%s/_synapse/admin/v1/register", getMatrixServerURL())
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestJSON))
 	if err != nil {
 		return nil, logAndReturnError("http_request", err, errContext)
@@ -1169,7 +1176,7 @@ func DeactivateMatrixUser(matrixUserID string) error {
 	// This is a best-effort attempt that may need to be updated based on Dendrite version
 	
 	// Try Synapse-compatible deactivation endpoint first
-	url := fmt.Sprintf("%s/_synapse/admin/v1/deactivate/%s", Config.MOVIE_CLUB.Matrix.ServerURL, matrixUserID)
+	url := fmt.Sprintf("%s/_synapse/admin/v1/deactivate/%s", getMatrixServerURL(), matrixUserID)
 	
 	requestBody := map[string]interface{}{
 		"erase": true, // Remove user data completely

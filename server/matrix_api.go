@@ -633,7 +633,9 @@ func (b *BaseRouter) getUserMatrixRooms(c *gin.Context) {
 
 		// Generate join URL
 		if Config.MOVIE_CLUB.Matrix.ServerURL != "" && room.RoomAlias != "" {
-			roomResponse.JoinURL = fmt.Sprintf("%s/#/room/%s", Config.MOVIE_CLUB.Matrix.ServerURL, room.RoomAlias)
+			// Remove trailing slash from server URL to avoid double slashes
+			serverURL := strings.TrimSuffix(Config.MOVIE_CLUB.Matrix.ServerURL, "/")
+			roomResponse.JoinURL = fmt.Sprintf("%s/#/room/%s", serverURL, room.RoomAlias)
 		}
 
 		responseRooms = append(responseRooms, roomResponse)
