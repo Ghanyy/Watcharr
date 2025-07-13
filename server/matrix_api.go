@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -643,6 +644,127 @@ func (b *BaseRouter) getUserMatrixRooms(c *gin.Context) {
 	})
 }
 
+// ExportCredentialsRequest represents a request to export Matrix credentials
+type ExportCredentialsRequest struct {
+	DeletePasswordAfterExport bool `json:"deletePasswordAfterExport"`
+}
+
+// exportUserMatrixCredentials exports Matrix credentials for auto-generated users
+func (b *BaseRouter) exportUserMatrixCredentials(c *gin.Context) {
+	if !Config.MOVIE_CLUB.Matrix.Enabled {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Matrix integration is not enabled"})
+		return
+	}
+
+	userID := c.GetUint("UserID")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User ID not found in session"})
+		return
+	}
+
+	var req ExportCredentialsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request format"})
+		return
+	}
+
+	// Export the credentials
+	export, err := ExportMatrixCredentials(b.db, userID, req.DeletePasswordAfterExport)
+	if err != nil {
+		// Check for specific error types to provide better user messages
+		errMsg := err.Error()
+		statusCode := http.StatusInternalServerError
+		
+		switch {
+		case err.Error() == "no Matrix account linked for this user":
+			statusCode = http.StatusNotFound
+			errMsg = "No Matrix account found for your user"
+		case err.Error() == "credential export is only available for auto-generated Matrix accounts":
+			statusCode = http.StatusForbidden
+			errMsg = "Credential export is only available for auto-generated Matrix accounts"
+		case err.Error() == "no password available for export - account may be a placeholder":
+			statusCode = http.StatusBadRequest
+			errMsg = "No password available for export - your Matrix account appears to be a placeholder"
+		case err.Error() == "maximum number of password exports exceeded for security":
+			statusCode = http.StatusTooManyRequests
+			errMsg = "Maximum number of password exports exceeded for security reasons"
+		case strings.Contains(fmt.Sprintf("%v", err), "please wait at least 1 hour"):
+			statusCode = http.StatusTooManyRequests
+			errMsg = err.Error()
+		}
+		
+		c.JSON(statusCode, ErrorResponse{Error: errMsg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"credentials": export,
+		"message": "Matrix credentials exported successfully",
+	})
+}
+
+// createRoomsForExistingCycles creates Matrix rooms for active watching cycles that don't have them
+func (b *BaseRouter) createRoomsForExistingCycles(c *gin.Context) {
+	if !Config.MOVIE_CLUB.Matrix.Enabled {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Matrix integration is not enabled"})
+		return
+	}
+
+	// Check if Matrix client is initialized
+	if matrixClient == nil {
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "Matrix client is not initialized"})
+		return
+	}
+
+	// First, get a preview of what cycles would be affected
+	cycles, err := GetActiveWatchingCyclesWithoutRooms(b.db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to check for cycles needing rooms: " + err.Error()})
+		return
+	}
+
+	if len(cycles) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "No active watching cycles found that need Matrix rooms",
+			"result": map[string]interface{}{
+				"totalCycles":    0,
+				"createdRooms":   0,
+				"failedRooms":    0,
+				"createdRoomIds": []string{},
+				"errors":         []string{},
+			},
+		})
+		return
+	}
+
+	// Create rooms for the cycles
+	result, err := CreateRoomsForExistingCycles(b.db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create rooms for existing cycles: " + err.Error()})
+		return
+	}
+
+	// Determine response status based on results
+	statusCode := http.StatusOK
+	message := "Successfully created Matrix rooms for existing cycles"
+	
+	if result.FailedRooms > 0 && result.CreatedRooms == 0 {
+		statusCode = http.StatusInternalServerError
+		message = "Failed to create any rooms for existing cycles"
+	} else if result.FailedRooms > 0 {
+		statusCode = http.StatusPartialContent
+		message = fmt.Sprintf("Created %d rooms successfully, but %d failed", result.CreatedRooms, result.FailedRooms)
+	}
+
+	c.JSON(statusCode, gin.H{
+		"success": result.CreatedRooms > 0,
+		"message": message,
+		"result":  result,
+	})
+}
+
 // Matrix API route registration
 func (b *BaseRouter) setupMatrixRoutes() {
 	matrix := b.rg.Group("/matrix")
@@ -650,11 +772,13 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	// Admin routes
 	matrix.POST("/test-connection", AuthRequired(b.db), AdminRequired(), b.testMatrixConnection)
 	matrix.GET("/validate", AuthRequired(b.db), AdminRequired(), b.validateMatrixSetup)
+	matrix.POST("/create-rooms-for-existing-cycles", AuthRequired(b.db), AdminRequired(), b.createRoomsForExistingCycles)
 	
 	// User routes
 	matrix.GET("/info", AuthRequired(b.db), b.getUserMatrixInfo)
 	matrix.POST("/create-account", AuthRequired(b.db), b.createUserMatrixAccount)
 	matrix.POST("/link-account", AuthRequired(b.db), b.linkCustomMatrixAccount)
 	matrix.DELETE("/unlink-account", AuthRequired(b.db), b.unlinkUserMatrixAccount)
+	matrix.POST("/export-credentials", AuthRequired(b.db), b.exportUserMatrixCredentials)
 	matrix.GET("/rooms", AuthRequired(b.db), b.getUserMatrixRooms)
 }

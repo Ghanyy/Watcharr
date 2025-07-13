@@ -335,6 +335,251 @@ func CleanupMatrixResources() error {
 	return nil
 }
 
+// GetUserCurrentMatrixRooms returns the actual Matrix rooms and memberships for a user
+// This is used before account switching to preserve room access
+func GetUserCurrentMatrixRooms(db *gorm.DB, watcharrUserID uint) ([]MatrixRoom, error) {
+	var rooms []MatrixRoom
+
+	// Get rooms where this user is a member
+	err := db.Raw(`
+		SELECT mr.* FROM matrix_rooms mr
+		INNER JOIN matrix_room_members mrm ON mr.id = mrm.room_id
+		WHERE mrm.user_id = ?
+		ORDER BY mr.created_at DESC
+	`, watcharrUserID).Scan(&rooms).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user's current Matrix rooms: %w", err)
+	}
+
+	return rooms, nil
+}
+
+// InviteUserToExistingRooms invites a Matrix user to a list of rooms
+func InviteUserToExistingRooms(db *gorm.DB, matrixUserID string, watcharrUserID uint, rooms []MatrixRoom) error {
+	if matrixClient == nil {
+		return errors.New("matrix client not initialized")
+	}
+
+	if len(rooms) == 0 {
+		slog.Info("No rooms to invite user to", "watcharr_user_id", watcharrUserID)
+		return nil
+	}
+
+	successCount := 0
+	errorCount := 0
+
+	for _, room := range rooms {
+		roomID := id.RoomID(room.RoomID)
+
+		// Invite user to room
+		_, err := matrixClient.InviteUser(context.Background(), roomID, &mautrix.ReqInviteUser{
+			UserID: id.UserID(matrixUserID),
+		})
+
+		if err != nil {
+			slog.Warn("Failed to invite custom Matrix user to existing room",
+				"matrix_user_id", matrixUserID,
+				"room_id", roomID,
+				"room_alias", room.RoomAlias,
+				"error", err)
+			errorCount++
+			continue
+		}
+
+		successCount++
+		slog.Debug("Invited custom Matrix user to existing room",
+			"matrix_user_id", matrixUserID,
+			"room_id", roomID,
+			"room_alias", room.RoomAlias)
+	}
+
+	slog.Info("Custom Matrix user invitation to existing rooms complete",
+		"matrix_user_id", matrixUserID,
+		"watcharr_user_id", watcharrUserID,
+		"invited", successCount,
+		"errors", errorCount,
+		"total_rooms", len(rooms))
+
+	return nil
+}
+
+// RemoveUserFromMatrixRooms removes a Matrix user from all their rooms
+func RemoveUserFromMatrixRooms(db *gorm.DB, matrixUserID string, watcharrUserID uint) error {
+	if matrixClient == nil {
+		return errors.New("matrix client not initialized")
+	}
+
+	// Get user's current rooms
+	rooms, err := GetUserCurrentMatrixRooms(db, watcharrUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get user's rooms for cleanup: %w", err)
+	}
+
+	if len(rooms) == 0 {
+		slog.Info("No rooms to remove user from", "matrix_user_id", matrixUserID)
+		return nil
+	}
+
+	successCount := 0
+	errorCount := 0
+
+	for _, room := range rooms {
+		roomID := id.RoomID(room.RoomID)
+
+		// Kick/ban the user from the room (remove them)
+		_, err := matrixClient.KickUser(context.Background(), roomID, &mautrix.ReqKickUser{
+			UserID: id.UserID(matrixUserID),
+			Reason: "Account being unlinked from Watcharr",
+		})
+
+		if err != nil {
+			slog.Warn("Failed to remove Matrix user from room",
+				"matrix_user_id", matrixUserID,
+				"room_id", roomID,
+				"room_alias", room.RoomAlias,
+				"error", err)
+			errorCount++
+			continue
+		}
+
+		successCount++
+		slog.Debug("Removed Matrix user from room",
+			"matrix_user_id", matrixUserID,
+			"room_id", roomID,
+			"room_alias", room.RoomAlias)
+	}
+
+	slog.Info("Matrix user removal from rooms complete",
+		"matrix_user_id", matrixUserID,
+		"watcharr_user_id", watcharrUserID,
+		"removed_from", successCount,
+		"errors", errorCount,
+		"total_rooms", len(rooms))
+
+	return nil
+}
+
+// Retroactive room creation functions
+
+// GetActiveWatchingCyclesWithoutRooms returns cycles in watching phase that don't have Matrix rooms
+func GetActiveWatchingCyclesWithoutRooms(db *gorm.DB) ([]MovieClubCycle, error) {
+	var cycles []MovieClubCycle
+	now := time.Now()
+
+	// Find cycles that are:
+	// 1. In watching phase (watching_start_date <= now < watching_end_date)
+	// 2. Have a winner content (WinnerContentID is not null)
+	// 3. Don't already have a Matrix room
+	err := db.Raw(`
+		SELECT mcc.* FROM movie_club_cycles mcc
+		WHERE mcc.watching_start_date <= ?
+		AND mcc.watching_end_date > ?
+		AND mcc.winner_content_id IS NOT NULL
+		AND mcc.id NOT IN (
+			SELECT DISTINCT mr.cycle_id 
+			FROM matrix_rooms mr 
+			WHERE mr.cycle_id = mcc.id
+		)
+		ORDER BY mcc.watching_start_date ASC
+	`, now, now).Scan(&cycles).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active watching cycles without rooms: %w", err)
+	}
+
+	// Preload the winner content for each cycle
+	for i := range cycles {
+		if err := db.Preload("WinnerContent").Find(&cycles[i], cycles[i].ID).Error; err != nil {
+			slog.Warn("Failed to preload winner content for cycle", 
+				"cycle_id", cycles[i].ID, 
+				"error", err)
+		}
+	}
+
+	return cycles, nil
+}
+
+// CreateRoomsForExistingCycles creates Matrix rooms for active watching cycles that don't have them
+func CreateRoomsForExistingCycles(db *gorm.DB) (*RetroactiveRoomCreationResult, error) {
+	if !Config.MOVIE_CLUB.Matrix.Enabled {
+		return nil, errors.New("matrix integration is not enabled")
+	}
+
+	if matrixClient == nil {
+		return nil, errors.New("matrix client not initialized")
+	}
+
+	// Get cycles that need rooms
+	cycles, err := GetActiveWatchingCyclesWithoutRooms(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cycles needing rooms: %w", err)
+	}
+
+	result := &RetroactiveRoomCreationResult{
+		TotalCycles:    len(cycles),
+		CreatedRooms:   0,
+		FailedRooms:    0,
+		CreatedRoomIDs: make([]string, 0),
+		Errors:         make([]string, 0),
+	}
+
+	if len(cycles) == 0 {
+		slog.Info("No active watching cycles found that need Matrix rooms")
+		return result, nil
+	}
+
+	slog.Info("Creating Matrix rooms for existing watching cycles", 
+		"cycle_count", len(cycles))
+
+	// Create rooms for each cycle
+	for _, cycle := range cycles {
+		slog.Info("Creating Matrix room for existing cycle", 
+			"cycle_id", cycle.ID,
+			"cycle_name", cycle.Name,
+			"movie_title", cycle.WinnerContent.Title)
+
+		room, err := CreateCycleRoom(db, &cycle)
+		if err != nil {
+			errorMsg := fmt.Sprintf("Failed to create room for cycle %d (%s): %v", 
+				cycle.ID, cycle.Name, err)
+			slog.Error("Retroactive room creation failed", 
+				"cycle_id", cycle.ID,
+				"cycle_name", cycle.Name,
+				"error", err)
+			
+			result.FailedRooms++
+			result.Errors = append(result.Errors, errorMsg)
+			continue
+		}
+
+		result.CreatedRooms++
+		result.CreatedRoomIDs = append(result.CreatedRoomIDs, room.RoomID)
+		
+		slog.Info("Successfully created Matrix room for existing cycle",
+			"cycle_id", cycle.ID,
+			"cycle_name", cycle.Name,
+			"room_id", room.RoomID,
+			"room_alias", room.RoomAlias)
+	}
+
+	slog.Info("Retroactive room creation completed",
+		"total_cycles", result.TotalCycles,
+		"created_rooms", result.CreatedRooms,
+		"failed_rooms", result.FailedRooms)
+
+	return result, nil
+}
+
+// RetroactiveRoomCreationResult represents the result of creating rooms for existing cycles
+type RetroactiveRoomCreationResult struct {
+	TotalCycles    int      `json:"totalCycles"`
+	CreatedRooms   int      `json:"createdRooms"`
+	FailedRooms    int      `json:"failedRooms"`
+	CreatedRoomIDs []string `json:"createdRoomIds"`
+	Errors         []string `json:"errors"`
+}
+
 // Utility functions
 
 // generateRoomAlias creates a Matrix room alias for a cycle

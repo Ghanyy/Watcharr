@@ -65,6 +65,7 @@
 	let matrixRegistrationSecretDisabled = $state(false);
 	let matrixTestLoading = $state(false);
 	let matrixValidationModalOpen = $state(false);
+	let createRoomsLoading = $state(false);
 
 	async function getServerConfig() {
 		serverConfig = (await axios.get(`/server/admin/config`)).data as ServerConfig;
@@ -179,6 +180,60 @@
 			});
 		} finally {
 			matrixTestLoading = false;
+		}
+	}
+
+	async function createRoomsForExistingCycles() {
+		if (!serverConfig?.MOVIE_CLUB?.matrix?.enabled) {
+			notify({ type: "error", text: "Matrix integration is not enabled" });
+			return;
+		}
+
+		createRoomsLoading = true;
+		try {
+			const response = await axios.post("/matrix/create-rooms-for-existing-cycles");
+			
+			if (response.status === 200) {
+				const result = response.data.result;
+				if (result.totalCycles === 0) {
+					notify({ 
+						type: "info", 
+						text: "No active watching cycles found that need Matrix rooms" 
+					});
+				} else if (result.createdRooms > 0) {
+					let message = `Successfully created ${result.createdRooms} Matrix room(s)`;
+					if (result.failedRooms > 0) {
+						message += ` (${result.failedRooms} failed)`;
+					}
+					notify({ type: "success", text: message });
+				} else {
+					notify({ 
+						type: "error", 
+						text: `Failed to create any rooms. ${result.errors?.[0] || 'Unknown error'}` 
+					});
+				}
+			} else if (response.status === 207) { // Partial success
+				const result = response.data.result;
+				notify({ 
+					type: "warning", 
+					text: `Created ${result.createdRooms} rooms, but ${result.failedRooms} failed` 
+				});
+			}
+		} catch (error: any) {
+			console.error("Failed to create rooms for existing cycles:", error);
+			let errorMessage = "Failed to create rooms for existing cycles";
+			
+			if (error.response?.status === 400) {
+				errorMessage = "Matrix integration is not enabled";
+			} else if (error.response?.status === 503) {
+				errorMessage = "Matrix client is not initialized";
+			} else if (error.response?.data?.error) {
+				errorMessage = error.response.data.error;
+			}
+			
+			notify({ type: "error", text: errorMessage });
+		} finally {
+			createRoomsLoading = false;
 		}
 	}
 </script>
@@ -571,6 +626,13 @@
 										title="Matrix Setup Validation"
 										desc="Comprehensive validation of Matrix configuration and capabilities"
 										onClick={() => { matrixValidationModalOpen = true; }}
+									/>
+									
+									<SettingButton
+										title="Create Rooms for Existing Cycles"
+										desc="Create Matrix rooms for active watching cycles that don't have them yet"
+										onClick={() => createRoomsForExistingCycles()}
+										loading={createRoomsLoading}
 									/>
 								</div>
 							{/if}
