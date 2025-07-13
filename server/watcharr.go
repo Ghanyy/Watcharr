@@ -88,6 +88,7 @@ func main() {
 		&MovieClubVote{},
 		&MovieClubCycleRating{},
 		&MatrixUser{},
+		&MatrixUserV2{},
 		&MatrixRoom{},
 		&MatrixRoomMember{},
 		&MatrixSpace{},
@@ -99,6 +100,11 @@ func main() {
 	// Initialize Matrix client if configured
 	if err := InitializeMatrixClient(); err != nil {
 		slog.Warn("Failed to initialize Matrix client", "error", err)
+	}
+
+	// Initialize Application Service if configured
+	if err := InitializeAppService(db, &Config.MOVIE_CLUB.Matrix.AppService); err != nil {
+		slog.Warn("Failed to initialize Application Service", "error", err)
 	}
 
 	if isProd {
@@ -175,6 +181,12 @@ func main() {
 	br.addTagRoutes()
 	br.addMovieClubRoutes()
 	br.setupMatrixRoutes()
+	
+	// Setup Application Service routes if enabled
+	if appServiceManager != nil && appServiceManager.IsRunning() {
+		appServiceManager.SetupRoutes(gine)
+	}
+	
 	br.rg.Static("/img", path.Join(DataPath, "img"))
 
 	go setupTasks(db)

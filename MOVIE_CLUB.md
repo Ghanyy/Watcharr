@@ -194,6 +194,8 @@ Movie Club can integrate with self-hosted Matrix/Dendrite servers to provide ded
 - **Self-hosted Matrix server**: Dendrite recommended for local deployments
 - **Admin configuration**: Matrix server URL, admin token, and user credentials
 - **Community enablement**: Both Movie Club and Community features must be enabled
+- **Application Service configuration**: For optimal performance and security (recommended)
+- **Registration shared secret**: For real Matrix account creation (optional)
 
 #### How Community Features Work
 
@@ -219,19 +221,34 @@ Movie Club can integrate with self-hosted Matrix/Dendrite servers to provide ded
 
 #### Matrix Account Management
 
-Users have two options for Matrix accounts:
+Users have three types of Matrix accounts available:
 
-**Auto-generated Accounts:**
+**Application Service Accounts (Recommended):**
 
-- Watcharr creates Matrix accounts automatically
+- Virtual Matrix users managed entirely by Watcharr
+- No external access - only work within Movie Club community features
+- Automatic account creation and management
+- Best performance and security for Watcharr-only usage
+
+**Personal Accounts:**
+
+*Auto-generated:*
+- Real Matrix accounts created automatically by Watcharr
+- Work with Element Web and other Matrix clients
 - Secure credentials managed by the system
-- No external setup required
+- Requires server configuration with registration shared secret
 
-**Custom Account Linking:**
-
+*Custom Linked:*
 - Link existing Matrix accounts to Watcharr profiles
 - Requires Matrix user ID and access token
 - Full control over Matrix client and settings
+- Preserves your existing Matrix account and settings
+
+**Legacy Accounts:**
+
+- Older account format from previous versions
+- Automatically migrated to Personal accounts when accessed
+- Consider updating to newer account types for better functionality
 
 #### Administrator Tools
 
@@ -248,6 +265,9 @@ Users have two options for Matrix accounts:
 - Server name and space organization settings
 - Admin user ID for room management
 - Customizable space names for room organization
+- Application Service settings for hybrid account management
+- Registration shared secret for real Matrix account creation
+- Account type preferences and migration tools
 
 #### Privacy and Security
 
@@ -383,6 +403,8 @@ If "The Matrix" receives:
 - You must have participated in the cycle (nominated or voted) to access its chat room
 - Set up your Matrix account in your profile settings first
 - Chat rooms are only created when cycles reach the watching phase
+- Check your account type - Application Service accounts work automatically
+- Personal accounts may require additional setup or migration from legacy accounts
 
 **"Matrix connection issues"**
 
@@ -431,4 +453,4 @@ If you encounter issues:
 
 Ready to start your movie club? Contact your administrator to enable the feature and create your first cycle. With support for multiple concurrent cycles and optional community chat integration, your community can always have something new to discover, vote on, and discuss together! 🍿
 
-**New to Matrix/Dendrite?** Community features are completely optional - Movie Club works perfectly without them. But if you want to add real-time chat discussions to your movie club experience, administrators can easily set up Matrix integration with comprehensive validation tools and troubleshooting guides.
+**New to Matrix/Dendrite?** Community features are completely optional - Movie Club works perfectly without them. But if you want to add real-time chat discussions to your movie club experience, administrators can easily set up Matrix integration with comprehensive validation tools and troubleshooting guides. The hybrid account system supports both simple Application Service accounts for Watcharr-only usage and real Matrix accounts for full Matrix client compatibility.

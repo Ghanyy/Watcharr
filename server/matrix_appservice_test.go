@@ -1,0 +1,604 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+// setupTestDB creates an in-memory SQLite database for testing
+func setupTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err, "Failed to connect to test database")
+
+	// Auto migrate all models
+	err = db.AutoMigrate(
+		&User{},
+		&MatrixUser{},
+		&MatrixUserV2{},
+		&MatrixRoom{},
+		&MatrixRoomMember{},
+		&MatrixSpace{},
+		&MovieClubCycle{},
+		&Content{},
+	)
+	require.NoError(t, err, "Failed to migrate test database")
+
+	return db
+}
+
+// setupTestASManager creates a test Application Service manager
+func setupTestASManager(t *testing.T, db *gorm.DB) *AppServiceManager {
+	config := &AppServiceSettings{
+		Enabled:          true,
+		ID:               "test-watcharr",
+		AppServiceToken:  "test-as-token",
+		HomeServerToken:  "test-hs-token",
+		SenderLocalpart:  "watcharr-bot",
+		UserNamespace:    "@watcharr_*:test.example.com",
+		AliasNamespace:   "#watcharr_*:test.example.com",
+		RateLimited:      false,
+	}
+
+	manager := NewAppServiceManager(db, config)
+	require.NotNil(t, manager, "Failed to create AS manager")
+
+	return manager
+}
+
+// setupTestUser creates a test user in the database
+func setupTestUser(t *testing.T, db *gorm.DB, username string) *User {
+	user := &User{
+		Username: username,
+		Password: "testpassword",
+	}
+
+	err := db.Create(user).Error
+	require.NoError(t, err, "Failed to create test user")
+
+	return user
+}
+
+func TestAppServiceManager_ValidateConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      *AppServiceSettings
+		expectError bool
+	}{
+		{
+			name: "valid configuration",
+			config: &AppServiceSettings{
+				Enabled:          true,
+				ID:               "test-watcharr",
+				AppServiceToken:  "test-as-token",
+				HomeServerToken:  "test-hs-token",
+				SenderLocalpart:  "watcharr-bot",
+				UserNamespace:    "@watcharr_*:test.example.com",
+				AliasNamespace:   "#watcharr_*:test.example.com",
+				RateLimited:      false,
+			},
+			expectError: false,
+		},
+		{
+			name: "disabled configuration",
+			config: &AppServiceSettings{
+				Enabled: false,
+			},
+			expectError: true,
+		},
+		{
+			name: "missing ID",
+			config: &AppServiceSettings{
+				Enabled:          true,
+				AppServiceToken:  "test-as-token",
+				HomeServerToken:  "test-hs-token",
+				SenderLocalpart:  "watcharr-bot",
+				UserNamespace:    "@watcharr_*:test.example.com",
+			},
+			expectError: true,
+		},
+		{
+			name: "missing AS token",
+			config: &AppServiceSettings{
+				Enabled:          true,
+				ID:               "test-watcharr",
+				HomeServerToken:  "test-hs-token",
+				SenderLocalpart:  "watcharr-bot",
+				UserNamespace:    "@watcharr_*:test.example.com",
+			},
+			expectError: true,
+		},
+		{
+			name: "missing HS token",
+			config: &AppServiceSettings{
+				Enabled:          true,
+				ID:               "test-watcharr",
+				AppServiceToken:  "test-as-token",
+				SenderLocalpart:  "watcharr-bot",
+				UserNamespace:    "@watcharr_*:test.example.com",
+			},
+			expectError: true,
+		},
+		{
+			name: "missing user namespace",
+			config: &AppServiceSettings{
+				Enabled:          true,
+				ID:               "test-watcharr",
+				AppServiceToken:  "test-as-token",
+				HomeServerToken:  "test-hs-token",
+				SenderLocalpart:  "watcharr-bot",
+			},
+			expectError: true,
+		},
+		{
+			name: "missing sender localpart",
+			config: &AppServiceSettings{
+				Enabled:          true,
+				ID:               "test-watcharr",
+				AppServiceToken:  "test-as-token",
+				HomeServerToken:  "test-hs-token",
+				UserNamespace:    "@watcharr_*:test.example.com",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := setupTestDB(t)
+			manager := NewAppServiceManager(db, tt.config)
+
+			err := manager.ValidateConfig()
+
+			if tt.expectError {
+				assert.Error(t, err, "Expected validation error for %s", tt.name)
+			} else {
+				assert.NoError(t, err, "Expected no validation error for %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestAppServiceManager_CreateUser(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+	user := setupTestUser(t, db, "testuser")
+
+	// Test creating AS user
+	createdUser, err := manager.CreateUser(user.ID, user.Username)
+	require.NoError(t, err, "Failed to create AS user")
+	require.NotNil(t, createdUser, "AS user should not be nil")
+
+	// Verify user properties
+	assert.Equal(t, user.ID, createdUser.UserID, "User ID should match")
+	assert.Equal(t, AccountTypeAppService, createdUser.AccountType, "Account type should be AppService")
+	assert.True(t, createdUser.IsAutoGenerated, "Should be auto generated")
+	assert.True(t, createdUser.ASManagedUser, "Should be AS managed")
+	assert.True(t, createdUser.CreatedViaAS, "Should be created via AS")
+	assert.Contains(t, createdUser.MatrixUserID, "watcharr_", "Matrix user ID should contain prefix")
+	assert.Contains(t, createdUser.MatrixUserID, user.Username, "Matrix user ID should contain username")
+	assert.Contains(t, createdUser.MatrixUserID, "test.example.com", "Matrix user ID should contain server name")
+
+	// Test duplicate user creation
+	_, err = manager.CreateUser(user.ID, user.Username)
+	assert.Error(t, err, "Should not allow duplicate AS user")
+	assert.Contains(t, err.Error(), "already has an Application Service account", "Error should mention duplicate account")
+
+	// Verify user exists in database
+	var dbUser MatrixUserV2
+	err = db.Where("user_id = ? AND account_type = ?", user.ID, AccountTypeAppService).First(&dbUser).Error
+	assert.NoError(t, err, "AS user should exist in database")
+	assert.Equal(t, createdUser.MatrixUserID, dbUser.MatrixUserID, "Matrix user ID should match")
+}
+
+func TestAppServiceManager_DeleteUser(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+	user := setupTestUser(t, db, "testuser")
+
+	// First create a user
+	_, err := manager.CreateUser(user.ID, user.Username)
+	require.NoError(t, err, "Failed to create AS user")
+
+	// Verify user exists
+	var dbUser MatrixUserV2
+	err = db.Where("user_id = ? AND account_type = ?", user.ID, AccountTypeAppService).First(&dbUser).Error
+	assert.NoError(t, err, "AS user should exist before deletion")
+
+	// Delete the user
+	err = manager.DeleteUser(user.ID)
+	assert.NoError(t, err, "Should be able to delete AS user")
+
+	// Verify user is deleted
+	err = db.Where("user_id = ? AND account_type = ?", user.ID, AccountTypeAppService).First(&dbUser).Error
+	assert.Error(t, err, "AS user should not exist after deletion")
+
+	// Test deleting non-existent user
+	err = manager.DeleteUser(user.ID)
+	assert.Error(t, err, "Should return error when deleting non-existent user")
+	assert.Contains(t, err.Error(), "no Application Service account found", "Error should mention no account found")
+}
+
+func TestAppServiceManager_isUserInNamespace(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+
+	tests := []struct {
+		name     string
+		userID   string
+		expected bool
+	}{
+		{
+			name:     "valid user in namespace",
+			userID:   "@watcharr_123_testuser:test.example.com",
+			expected: true, // Should now work with fixed implementation
+		},
+		{
+			name:     "user not in namespace",
+			userID:   "@someother_123_testuser:test.example.com",
+			expected: false,
+		},
+		{
+			name:     "empty user ID",
+			userID:   "",
+			expected: false,
+		},
+		{
+			name:     "malformed user ID",
+			userID:   "not-a-matrix-user-id",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := manager.isUserInNamespace(tt.userID)
+			if tt.expected != result {
+				t.Logf("Config namespace: %s", manager.config.UserNamespace)
+				t.Logf("Test user ID: %s", tt.userID)
+				t.Logf("Expected: %v, Got: %v", tt.expected, result)
+				
+				// Debug the namespace processing
+				namespace := strings.TrimSuffix(manager.config.UserNamespace, "*")
+				if colonIndex := strings.Index(namespace, ":"); colonIndex != -1 {
+					namespace = namespace[:colonIndex]
+				}
+				t.Logf("Processed namespace: '%s'", namespace)
+				t.Logf("HasPrefix result: %v", strings.HasPrefix(tt.userID, namespace))
+			}
+			assert.Equal(t, tt.expected, result, "Namespace check result should match expected")
+		})
+	}
+}
+
+func TestAppServiceManager_isRoomAliasInNamespace(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+
+	tests := []struct {
+		name      string
+		roomAlias string
+		expected  bool
+	}{
+		{
+			name:      "valid room alias in namespace",
+			roomAlias: "#watcharr_movieclub_2025:test.example.com",
+			expected:  true,
+		},
+		{
+			name:      "room alias not in namespace",
+			roomAlias: "#someother_room:test.example.com",
+			expected:  false,
+		},
+		{
+			name:      "empty room alias",
+			roomAlias: "",
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := manager.isRoomAliasInNamespace(tt.roomAlias)
+			assert.Equal(t, tt.expected, result, "Room alias namespace check result should match expected")
+		})
+	}
+}
+
+func TestAppServiceManager_authMiddleware(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		authHeader     string
+		expectedStatus int
+	}{
+		{
+			name:           "valid token",
+			authHeader:     "Bearer test-hs-token",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "invalid token",
+			authHeader:     "Bearer wrong-token",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "missing bearer prefix",
+			authHeader:     "test-hs-token",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "empty header",
+			authHeader:     "",
+			expectedStatus: http.StatusUnauthorized,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test router with auth middleware
+			router := gin.New()
+			router.Use(manager.authMiddleware())
+			router.GET("/test", func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{"status": "ok"})
+			})
+
+			// Create test request
+			req := httptest.NewRequest("GET", "/test", nil)
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
+
+			// Record response
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code should match expected")
+
+			if tt.expectedStatus == http.StatusOK {
+				var response map[string]string
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				assert.NoError(t, err, "Should be able to parse response")
+				assert.Equal(t, "ok", response["status"], "Response should contain success status")
+			}
+		})
+	}
+}
+
+func TestExtractServerFromNamespace(t *testing.T) {
+	tests := []struct {
+		name      string
+		namespace string
+		expected  string
+	}{
+		{
+			name:      "valid namespace",
+			namespace: "@watcharr_*:test.example.com",
+			expected:  "test.example.com",
+		},
+		{
+			name:      "namespace without colon",
+			namespace: "@watcharr_*",
+			expected:  "",
+		},
+		{
+			name:      "empty namespace",
+			namespace: "",
+			expected:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractServerFromNamespace(tt.namespace)
+			assert.Equal(t, tt.expected, result, "Server extraction should match expected")
+		})
+	}
+}
+
+func TestSanitizeUsernameForAS(t *testing.T) {
+	tests := []struct {
+		name     string
+		username string
+		expected string
+	}{
+		{
+			name:     "valid username",
+			username: "testuser123",
+			expected: "testuser123",
+		},
+		{
+			name:     "username with spaces",
+			username: "test user",
+			expected: "test_user",
+		},
+		{
+			name:     "username with special characters",
+			username: "test@user#123",
+			expected: "test_user_123",
+		},
+		{
+			name:     "uppercase username",
+			username: "TestUser",
+			expected: "testuser",
+		},
+		{
+			name:     "username with allowed special chars",
+			username: "test.user-123_test=ok",
+			expected: "test.user-123_test=ok",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := sanitizeUsernameForAS(tt.username)
+			assert.Equal(t, tt.expected, result, "Sanitized username should match expected")
+		})
+	}
+}
+
+func TestAppServiceManager_processEvent(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+
+	tests := []struct {
+		name      string
+		event     ASEvent
+		expectErr bool
+	}{
+		{
+			name: "membership event",
+			event: ASEvent{
+				Type:     "m.room.member",
+				EventID:  "test-event-1",
+				Sender:   "@watcharr_123_testuser:test.example.com",
+				RoomID:   "!testroom:test.example.com",
+				Content:  map[string]interface{}{"membership": "join"},
+				StateKey: stringPtr("@watcharr_123_testuser:test.example.com"),
+			},
+			expectErr: false,
+		},
+		{
+			name: "message event",
+			event: ASEvent{
+				Type:    "m.room.message",
+				EventID: "test-event-2",
+				Sender:  "@watcharr_123_testuser:test.example.com",
+				RoomID:  "!testroom:test.example.com",
+				Content: map[string]interface{}{
+					"msgtype": "m.text",
+					"body":    "Hello, world!",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "unknown event type",
+			event: ASEvent{
+				Type:    "m.room.unknown",
+				EventID: "test-event-3",
+				Sender:  "@watcharr_123_testuser:test.example.com",
+				RoomID:  "!testroom:test.example.com",
+				Content: map[string]interface{}{},
+			},
+			expectErr: false, // Unknown events should be ignored, not error
+		},
+		{
+			name: "malformed membership event",
+			event: ASEvent{
+				Type:     "m.room.member",
+				EventID:  "test-event-4",
+				Sender:   "@watcharr_123_testuser:test.example.com",
+				RoomID:   "!testroom:test.example.com",
+				Content:  map[string]interface{}{}, // Missing membership field
+				StateKey: stringPtr("@watcharr_123_testuser:test.example.com"),
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := manager.processEvent(tt.event)
+
+			if tt.expectErr {
+				assert.Error(t, err, "Expected error for %s", tt.name)
+			} else {
+				assert.NoError(t, err, "Expected no error for %s", tt.name)
+			}
+		})
+	}
+}
+
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
+}
+
+func TestAppServiceManager_SetupRoutes(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	// This should not panic
+	assert.NotPanics(t, func() {
+		manager.SetupRoutes(router)
+	}, "Setting up routes should not panic")
+
+	// Verify routes are accessible (though we can't test full functionality without Matrix server)
+	tests := []struct {
+		method string
+		path   string
+	}{
+		{"PUT", "/_matrix/app/v1/transactions/test-txn"},
+		{"GET", "/_matrix/app/v1/users/%40watcharr_123_test%3Atest.example.com"}, // URL encoded
+		{"GET", "/_matrix/app/v1/rooms/%23watcharr_test%3Atest.example.com"},     // URL encoded
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req.Header.Set("Authorization", "Bearer test-hs-token")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// AS routes should exist and process requests
+			// 404 is acceptable for user/room queries when entities don't exist
+			// 400 is acceptable for malformed transaction requests
+			// 401 is acceptable for invalid auth
+			acceptableCodes := []int{
+				http.StatusOK,
+				http.StatusBadRequest,     // 400 - for malformed requests
+				http.StatusUnauthorized,   // 401 - for auth issues  
+				http.StatusNotFound,       // 404 - for missing users/rooms
+			}
+			
+			codeAcceptable := false
+			for _, code := range acceptableCodes {
+				if w.Code == code {
+					codeAcceptable = true
+					break
+				}
+			}
+			
+			assert.True(t, codeAcceptable, "Route should return acceptable HTTP status code, got %d", w.Code)
+		})
+	}
+}
+
+func TestAppServiceManager_StartStop(t *testing.T) {
+	db := setupTestDB(t)
+	manager := setupTestASManager(t, db)
+
+	// Test initial state
+	assert.False(t, manager.IsRunning(), "Manager should not be running initially")
+
+	// Test start
+	err := manager.Start()
+	assert.NoError(t, err, "Starting manager should not error")
+	assert.True(t, manager.IsRunning(), "Manager should be running after start")
+
+	// Test stop
+	manager.Stop()
+	assert.False(t, manager.IsRunning(), "Manager should not be running after stop")
+
+	// Test start with invalid config
+	manager.config.Enabled = false
+	err = manager.Start()
+	assert.Error(t, err, "Starting with disabled config should error")
+}

@@ -85,6 +85,21 @@ type MatrixSettings struct {
 	SpaceName          string `json:"spaceName"`          // Default: "Movie Club"
 	AdminUserID        string `json:"adminUserId"`        // Watcharr admin user ID (e.g., "@watcharr:example.com")
 	RegistrationSecret string `json:"registrationSecret"` // Shared secret for user registration (optional)
+	
+	// Application Service Configuration
+	AppService AppServiceSettings `json:"appService"` // Application Service settings
+}
+
+// AppServiceSettings holds Application Service configuration
+type AppServiceSettings struct {
+	Enabled          bool   `json:"enabled"`          // Enable Application Service mode
+	ID               string `json:"id"`               // AS identifier (e.g., "watcharr")
+	AppServiceToken  string `json:"asToken"`          // AS -> HS authentication token
+	HomeServerToken  string `json:"hsToken"`          // HS -> AS authentication token
+	SenderLocalpart  string `json:"senderLocalpart"`  // AS bot user localpart (e.g., "watcharr-bot")
+	UserNamespace    string `json:"userNamespace"`    // User namespace (e.g., "@watcharr_*:server.name")
+	AliasNamespace   string `json:"aliasNamespace"`   // Alias namespace (e.g., "#watcharr_*:server.name")
+	RateLimited      bool   `json:"rateLimited"`      // Whether AS users are rate limited
 }
 
 // MovieClubVoteCount represents vote tallies for a content item
@@ -1366,7 +1381,7 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 		// Create Matrix room for the watching phase if Matrix is enabled
 		if Config.MOVIE_CLUB.Matrix.Enabled && cycle.WinnerContentID != nil {
 			// Load winner content information
-			if err := db.Preload("WinnerContent").Find(cycle, cycle.ID).Error; err != nil {
+			if err := db.Preload("WinnerContent").First(cycle, cycle.ID).Error; err != nil {
 				slog.Warn("Failed to load winner content for Matrix room creation", "error", err, "cycle_id", cycle.ID)
 			} else {
 				// Create Matrix room asynchronously to avoid blocking cycle transition
