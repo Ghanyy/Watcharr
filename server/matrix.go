@@ -936,7 +936,7 @@ func getServerNonce() (string, error) {
 	// Make GET request to fetch nonce
 	url := fmt.Sprintf("%s/_synapse/admin/v1/register", Config.MOVIE_CLUB.Matrix.ServerURL)
 	
-	slog.Debug("Fetching nonce from Matrix server", "url", url)
+	slog.Info("Fetching nonce from Matrix server", "url", url)
 	
 	resp, err := http.Get(url)
 	if err != nil {
@@ -950,7 +950,7 @@ func getServerNonce() (string, error) {
 		return "", fmt.Errorf("failed to read nonce response: %w", err)
 	}
 	
-	slog.Debug("Nonce request response", 
+	slog.Info("Nonce request response", 
 		"status", resp.StatusCode, 
 		"body", responseBody.String())
 	
@@ -969,7 +969,7 @@ func getServerNonce() (string, error) {
 		return "", errors.New("server returned empty nonce")
 	}
 	
-	slog.Debug("Fetched nonce from Matrix server", "nonce", nonceResponse.Nonce)
+	slog.Info("Fetched nonce from Matrix server", "nonce", nonceResponse.Nonce)
 	return nonceResponse.Nonce, nil
 }
 
