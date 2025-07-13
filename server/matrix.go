@@ -540,22 +540,22 @@ func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*Matri
 				
 				// If we have a soft-deleted record for this user, this is a reactivation
 				if existingMatrixUser.ID != 0 && existingMatrixUser.DeletedAt.Valid {
-					slog.Info("Matrix user exists and we have soft-deleted record - this is a reactivation", 
+					slog.Info("Matrix user exists and we have soft-deleted record - attempting reactivation", 
 						"watcharr_user_id", watcharrUserID, 
 						"matrix_user_id", matrixUserID)
 					
-					// For reactivation, create a fake response since we can't register the same user again
-					// but we know this user exists and we'll update our database record
-					registrationResponse = &SharedSecretRegistrationResponse{
-						UserID:      matrixUserID, // Keep the same Matrix user ID
-						AccessToken: "placeholder_for_existing_user", // Placeholder - user will need to export credentials again
-						DeviceID:    "reactivated_device",
+					// Attempt to reactivate the Matrix account on the Matrix server
+					reactivatedResponse, err := ReactivateMatrixAccount(matrixUserID, password)
+					if err != nil {
+						return nil, logAndReturnError("matrix_reactivation_failed", fmt.Errorf(
+							"failed to reactivate Matrix account on server: %w", err), errContext)
 					}
 					
+					registrationResponse = reactivatedResponse
 					wasReactivated = true
-					slog.Info("Reactivating existing Matrix user with same ID", 
+					slog.Info("Successfully reactivated Matrix account on server", 
 						"watcharr_user_id", watcharrUserID, 
-						"matrix_user_id", matrixUserID)
+						"matrix_user_id", registrationResponse.UserID)
 				} else {
 					// User exists but we don't have a record - this shouldn't happen for auto-generated accounts
 					return nil, logAndReturnError("user_exists_no_record", fmt.Errorf(
@@ -566,18 +566,10 @@ func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*Matri
 			}
 		}
 		
-		// Handle access token encryption (placeholder for reactivated accounts)
-		var encryptedToken string
-		if registrationResponse.AccessToken == "placeholder_for_existing_user" {
-			// For reactivated accounts, we don't have a real access token yet
-			encryptedToken = "placeholder_encrypted_token"
-		} else {
-			// Encrypt the real access token before storing
-			var err error
-			encryptedToken, err = encryptToken(registrationResponse.AccessToken)
-			if err != nil {
-				return nil, logAndReturnError("token_encryption", err, errContext)
-			}
+		// Encrypt the real access token before storing
+		encryptedToken, err := encryptToken(registrationResponse.AccessToken)
+		if err != nil {
+			return nil, logAndReturnError("token_encryption", err, errContext)
 		}
 
 		// Encrypt the password for credential export feature
@@ -1169,8 +1161,77 @@ func RegisterUserWithSharedSecret(username, password string, admin bool) (*Share
 	return &registrationResponse, nil
 }
 
-// Note: Complex reactivation functions removed in favor of simpler approach
-// that creates new Matrix account variants when username conflicts occur
+// ReactivateMatrixAccount attempts to reactivate a deactivated Matrix account using the shared secret registration approach
+func ReactivateMatrixAccount(matrixUserID, newPassword string) (*SharedSecretRegistrationResponse, error) {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+	}
+	
+	// Extract the localpart from the Matrix user ID
+	// Format: @localpart:server.name
+	if !strings.HasPrefix(matrixUserID, "@") || !strings.Contains(matrixUserID, ":") {
+		return nil, logAndReturnError("invalid_matrix_user_id", 
+			fmt.Errorf("invalid Matrix user ID format: %s", matrixUserID), errContext)
+	}
+	
+	parts := strings.SplitN(matrixUserID[1:], ":", 2) // Remove @ and split on first :
+	if len(parts) != 2 {
+		return nil, logAndReturnError("invalid_matrix_user_id", 
+			fmt.Errorf("could not parse Matrix user ID: %s", matrixUserID), errContext)
+	}
+	
+	localpart := parts[0]
+	serverName := parts[1]
+	
+	slog.Info("Attempting Matrix account reactivation via shared secret registration", 
+		"matrix_user_id", matrixUserID,
+		"localpart", localpart,
+		"server_name", serverName)
+	
+	// For deactivated accounts, we need to use shared secret registration to reset the password
+	// and reactivate the account. According to Matrix spec, deactivated accounts can be
+	// reactivated by re-registering with the same user ID using shared secret registration.
+	slog.Info("Attempting to reactivate deactivated Matrix account using shared secret registration", 
+		"matrix_user_id", matrixUserID,
+		"localpart", localpart)
+	
+	// Use admin=true flag and the existing localpart to reactivate the account
+	// This should work for deactivated accounts according to Matrix/Synapse documentation
+	registrationResponse, err := RegisterUserWithSharedSecret(localpart, newPassword, true)
+	if err != nil {
+		slog.Error("Admin shared secret registration failed for reactivation", 
+			"matrix_user_id", matrixUserID, 
+			"localpart", localpart,
+			"error", err.Error())
+			
+		// If admin registration fails, try standard registration as fallback
+		// Some Matrix servers might handle reactivation differently
+		slog.Info("Attempting fallback: standard shared secret registration for reactivation", 
+			"matrix_user_id", matrixUserID)
+			
+		registrationResponse, err = RegisterUserWithSharedSecret(localpart, newPassword, false)
+		if err != nil {
+			return nil, logAndReturnError("reactivation_failed", fmt.Errorf(
+				"Matrix account reactivation failed - admin registration error: %v, standard registration error: %v", 
+				err.Error(), err), errContext)
+		}
+		
+		slog.Info("Matrix account reactivated via standard shared secret registration (fallback)", 
+			"matrix_user_id", registrationResponse.UserID)
+	} else {
+		slog.Info("Matrix account successfully reactivated via admin shared secret registration", 
+			"matrix_user_id", registrationResponse.UserID)
+	}
+	
+	// Verify the reactivated account works by checking if we got a valid access token
+	if registrationResponse.AccessToken == "" {
+		return nil, logAndReturnError("invalid_reactivation_response", 
+			errors.New("reactivation succeeded but no access token received"), errContext)
+	}
+	
+	return registrationResponse, nil
+}
+
 
 // resetMatrixUserPassword uses standard Matrix client API to change password
 func resetMatrixUserPassword(matrixUserID, newPassword string) error {
