@@ -398,22 +398,18 @@ func validateSharedSecretRegistration(settings MatrixSettings) []MatrixValidatio
 		return results
 	}
 
-	// If registration succeeded, try to clean up the test user
+	// If registration succeeded, validation passed
 	if registrationResponse != nil {
-		// Attempt to deactivate the test user
-		deactivateErr := DeactivateMatrixUser(b.db, registrationResponse.UserID)
-		if deactivateErr != nil {
-			// Log warning but don't fail validation
-			slog.Warn("Failed to clean up test user after registration validation",
-				"test_user_id", registrationResponse.UserID,
-				"error", deactivateErr)
-		}
+		// Note: Test user will remain on Matrix server (cleanup would require database access)
+		slog.Info("Shared secret registration validation successful - test user created",
+			"test_user_id", registrationResponse.UserID,
+			"note", "Test user will remain on Matrix server")
 
 		results = append(results, MatrixValidationResult{
 			Check:   "Shared Secret Registration",
 			Status:  "success",
 			Message: "Shared secret registration is working",
-			Details: fmt.Sprintf("Successfully created test user: %s", registrationResponse.UserID),
+			Details: fmt.Sprintf("Successfully created test user: %s (test user remains on server)", registrationResponse.UserID),
 		})
 	} else {
 		results = append(results, MatrixValidationResult{
