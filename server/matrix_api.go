@@ -401,7 +401,7 @@ func validateSharedSecretRegistration(settings MatrixSettings) []MatrixValidatio
 	// If registration succeeded, try to clean up the test user
 	if registrationResponse != nil {
 		// Attempt to deactivate the test user
-		deactivateErr := DeactivateMatrixUser(registrationResponse.UserID)
+		deactivateErr := DeactivateMatrixUser(b.db, registrationResponse.UserID)
 		if deactivateErr != nil {
 			// Log warning but don't fail validation
 			slog.Warn("Failed to clean up test user after registration validation",
@@ -492,7 +492,12 @@ func (b *BaseRouter) createUserMatrixAccount(c *gin.Context) {
 	// Create Matrix user
 	matrixUser, err := CreateMatrixUser(b.db, userID, user.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create Matrix user"})
+		// Provide better error messages for reactivation failures
+		if strings.Contains(err.Error(), "matrix_reactivation") {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "Failed to reactivate existing Matrix account. The account may have been deactivated and credentials are no longer valid."})
+		} else {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create Matrix user"})
+		}
 		return
 	}
 
