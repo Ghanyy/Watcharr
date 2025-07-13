@@ -10,7 +10,7 @@
 		issue: string;
 		symptoms: string[];
 		solutions: string[];
-		links?: Array<{text: string; url: string}>;
+		links?: Array<{ text: string; url: string }>;
 	}
 
 	const troubleshootingSections: TroubleshootingSection[] = [
@@ -22,30 +22,30 @@
 					symptoms: [
 						"Connection test fails",
 						"'Failed to create Matrix client' error",
-						"Network timeout errors"
+						"Network timeout errors",
 					],
 					solutions: [
 						"Verify the server URL is correct and accessible",
 						"Check that Dendrite/Matrix server is running",
 						"Ensure firewall allows connections on the Matrix port",
 						"Test server accessibility from Watcharr server: curl -I <server-url>",
-						"Check server logs for error details"
-					]
+						"Check server logs for error details",
+					],
 				},
 				{
 					issue: "Authentication fails with valid token",
 					symptoms: [
 						"'Failed to authenticate' error",
-						"Access token appears correct but validation fails"
+						"Access token appears correct but validation fails",
 					],
 					solutions: [
 						"Verify the admin token has not expired",
 						"Check that the token has admin privileges",
 						"Regenerate admin access token from Dendrite",
-						"Ensure token format is correct (no extra spaces or newlines)"
-					]
-				}
-			]
+						"Ensure token format is correct (no extra spaces or newlines)",
+					],
+				},
+			],
 		},
 		{
 			title: "Permission Issues",
@@ -55,23 +55,23 @@
 					symptoms: [
 						"Room creation fails",
 						"User creation fails",
-						"'Admin permissions' check fails"
+						"'Admin permissions' check fails",
 					],
 					solutions: [
 						"Verify the admin user exists in Dendrite",
 						"Check admin user has server admin privileges",
 						"Review Dendrite configuration for admin settings",
 						"Create admin user if missing: dendrite-admin-tool create-account <username>",
-						"Grant admin privileges: dendrite-admin-tool set-admin <username> true"
+						"Grant admin privileges: dendrite-admin-tool set-admin <username> true",
 					],
 					links: [
 						{
 							text: "Dendrite Admin Tool Documentation",
-							url: "https://matrix-org.github.io/dendrite/administration/adminapi"
-						}
-					]
-				}
-			]
+							url: "https://matrix-org.github.io/dendrite/administration/adminapi",
+						},
+					],
+				},
+			],
 		},
 		{
 			title: "Room Creation Issues",
@@ -81,30 +81,30 @@
 					symptoms: [
 						"Room creation validation fails",
 						"'Failed to create test room' error",
-						"Rooms created but not accessible"
+						"Rooms created but not accessible",
 					],
 					solutions: [
 						"Check Matrix server disk space and resources",
 						"Verify room alias format is valid",
 						"Review Dendrite logs for room creation errors",
 						"Check server configuration allows room creation",
-						"Ensure federation is disabled for local-only rooms"
-					]
+						"Ensure federation is disabled for local-only rooms",
+					],
 				},
 				{
 					issue: "Room aliases not working",
 					symptoms: [
 						"Room created but alias not accessible",
-						"Alias conflicts or format errors"
+						"Alias conflicts or format errors",
 					],
 					solutions: [
 						"Verify server name configuration matches Dendrite setup",
 						"Check for existing alias conflicts",
 						"Review alias format: #roomname:servername",
-						"Ensure server name matches Dendrite's configured domain"
-					]
-				}
-			]
+						"Ensure server name matches Dendrite's configured domain",
+					],
+				},
+			],
 		},
 		{
 			title: "Configuration Issues",
@@ -114,29 +114,29 @@
 					symptoms: [
 						"User IDs not in expected format",
 						"Room aliases not working",
-						"Federation issues (if enabled)"
+						"Federation issues (if enabled)",
 					],
 					solutions: [
 						"Match server name to Dendrite's configured server_name",
 						"Update Watcharr Matrix server name setting",
 						"Restart Watcharr after configuration changes",
-						"Check Dendrite matrix_key configuration"
-					]
+						"Check Dendrite matrix_key configuration",
+					],
 				},
 				{
 					issue: "Invalid admin user ID format",
 					symptoms: [
 						"Admin user operations fail",
-						"User ID format errors in logs"
+						"User ID format errors in logs",
 					],
 					solutions: [
 						"Ensure admin user ID format: @username:servername",
 						"Match servername to Matrix server configuration",
 						"Create admin user if it doesn't exist",
-						"Verify case sensitivity in usernames"
-					]
-				}
-			]
+						"Verify case sensitivity in usernames",
+					],
+				},
+			],
 		},
 		{
 			title: "Dendrite-Specific Issues",
@@ -146,38 +146,38 @@
 					symptoms: [
 						"Matrix server not responding",
 						"Connection refused errors",
-						"Service not running"
+						"Service not running",
 					],
 					solutions: [
 						"Check Dendrite service status: systemctl status dendrite",
 						"Review Dendrite configuration file for syntax errors",
 						"Check Dendrite logs: journalctl -u dendrite -f",
 						"Verify database connectivity (PostgreSQL/SQLite)",
-						"Ensure required ports are available (8008, 8448)"
+						"Ensure required ports are available (8008, 8448)",
 					],
 					links: [
 						{
 							text: "Dendrite Installation Guide",
-							url: "https://matrix-org.github.io/dendrite/installation"
-						}
-					]
+							url: "https://matrix-org.github.io/dendrite/installation",
+						},
+					],
 				},
 				{
 					issue: "Database connectivity issues",
 					symptoms: [
 						"Dendrite fails to start",
-						"Database connection errors in logs"
+						"Database connection errors in logs",
 					],
 					solutions: [
 						"Verify database server is running and accessible",
 						"Check database credentials in Dendrite config",
 						"Test database connection independently",
 						"Review database permissions for Dendrite user",
-						"Check database schema is properly initialized"
-					]
-				}
-			]
-		}
+						"Check database schema is properly initialized",
+					],
+				},
+			],
+		},
 	];
 
 	let expandedSections = $state<Record<string, boolean>>({});
@@ -201,24 +201,37 @@
 
 		<div class="modal-content">
 			<div class="guide-intro">
-				<p>This guide helps resolve common Matrix/Dendrite integration issues. Click on sections and problems to expand detailed solutions.</p>
+				<p>
+					This guide helps resolve common Matrix/Dendrite integration issues.
+					Click on sections and problems to expand detailed solutions.
+				</p>
 			</div>
 
 			<div class="troubleshooting-sections">
 				{#each troubleshootingSections as section}
 					<div class="section">
-						<div class="section-header" onclick={() => toggleSection(section.title)}>
+						<div
+							class="section-header"
+							onclick={() => toggleSection(section.title)}
+						>
 							<h3>{section.title}</h3>
-							<span class="toggle-icon">{expandedSections[section.title] ? '▼' : '▶'}</span>
+							<span class="toggle-icon"
+								>{expandedSections[section.title] ? "▼" : "▶"}</span
+							>
 						</div>
 
 						{#if expandedSections[section.title]}
 							<div class="section-content">
 								{#each section.problems as problem}
 									<div class="problem">
-										<div class="problem-header" onclick={() => toggleProblem(problem.issue)}>
+										<div
+											class="problem-header"
+											onclick={() => toggleProblem(problem.issue)}
+										>
 											<h4>{problem.issue}</h4>
-											<span class="toggle-icon">{expandedProblems[problem.issue] ? '▼' : '▶'}</span>
+											<span class="toggle-icon"
+												>{expandedProblems[problem.issue] ? "▼" : "▶"}</span
+											>
 										</div>
 
 										{#if expandedProblems[problem.issue]}
@@ -247,7 +260,11 @@
 														<ul class="links-list">
 															{#each problem.links as link}
 																<li>
-																	<a href={link.url} target="_blank" rel="noopener noreferrer">
+																	<a
+																		href={link.url}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																	>
 																		{link.text} ↗
 																	</a>
 																</li>
@@ -271,8 +288,20 @@
 				<ul>
 					<li>Check Watcharr server logs for detailed error messages</li>
 					<li>Review Dendrite logs for Matrix server issues</li>
-					<li>Consult the <a href="https://matrix-org.github.io/dendrite/" target="_blank" rel="noopener noreferrer">official Dendrite documentation ↗</a></li>
-					<li>Report issues to the <a href="https://github.com/sbondCo/Watcharr/issues" target="_blank" rel="noopener noreferrer">Watcharr GitHub repository ↗</a></li>
+					<li>
+						Consult the <a
+							href="https://matrix-org.github.io/dendrite/"
+							target="_blank"
+							rel="noopener noreferrer">official Dendrite documentation ↗</a
+						>
+					</li>
+					<li>
+						Report issues to the <a
+							href="https://github.com/sbondCo/Watcharr/issues"
+							target="_blank"
+							rel="noopener noreferrer">Watcharr GitHub repository ↗</a
+						>
+					</li>
 				</ul>
 			</div>
 		</div>
@@ -445,7 +474,8 @@
 			color: var(--accent-color);
 		}
 
-		ul, ol {
+		ul,
+		ol {
 			margin: 0 0 15px 0;
 			padding-left: 20px;
 
@@ -455,7 +485,9 @@
 			}
 		}
 
-		.symptoms, .solutions, .helpful-links {
+		.symptoms,
+		.solutions,
+		.helpful-links {
 			margin-bottom: 15px;
 
 			&:last-child {
@@ -560,7 +592,8 @@
 			padding: 15px;
 		}
 
-		.section-header, .problem-header {
+		.section-header,
+		.problem-header {
 			padding: 12px;
 		}
 

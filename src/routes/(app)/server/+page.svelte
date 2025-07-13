@@ -54,7 +54,7 @@
 	let movieClubNominationsDisabled = $state(false);
 	let movieClubVotesDisabled = $state(false);
 	let movieClubDurationDisabled = $state(false);
-	
+
 	// Matrix disabled vars
 	let matrixEnabledDisabled = $state(false);
 	let matrixServerUrlDisabled = $state(false);
@@ -68,7 +68,8 @@
 	let createRoomsLoading = $state(false);
 
 	async function getServerConfig() {
-		serverConfig = (await axios.get(`/server/admin/config`)).data as ServerConfig;
+		serverConfig = (await axios.get(`/server/admin/config`))
+			.data as ServerConfig;
 	}
 
 	export function updateServerConfig<K extends keyof ServerConfig>(
@@ -174,9 +175,9 @@
 			}
 		} catch (error) {
 			console.error("Matrix connection test failed:", error);
-			notify({ 
-				type: "error", 
-				text: "Matrix connection failed. Check server URL and admin token." 
+			notify({
+				type: "error",
+				text: "Matrix connection failed. Check server URL and admin token.",
 			});
 		} finally {
 			matrixTestLoading = false;
@@ -191,14 +192,16 @@
 
 		createRoomsLoading = true;
 		try {
-			const response = await axios.post("/matrix/create-rooms-for-existing-cycles");
-			
+			const response = await axios.post(
+				"/matrix/create-rooms-for-existing-cycles",
+			);
+
 			if (response.status === 200) {
 				const result = response.data.result;
 				if (result.totalCycles === 0) {
-					notify({ 
-						type: "info", 
-						text: "No active watching cycles found that need Matrix rooms" 
+					notify({
+						type: "info",
+						text: "No active watching cycles found that need Matrix rooms",
 					});
 				} else if (result.createdRooms > 0) {
 					let message = `Successfully created ${result.createdRooms} Matrix room(s)`;
@@ -207,22 +210,23 @@
 					}
 					notify({ type: "success", text: message });
 				} else {
-					notify({ 
-						type: "error", 
-						text: `Failed to create any rooms. ${result.errors?.[0] || 'Unknown error'}` 
+					notify({
+						type: "error",
+						text: `Failed to create any rooms. ${result.errors?.[0] || "Unknown error"}`,
 					});
 				}
-			} else if (response.status === 207) { // Partial success
+			} else if (response.status === 207) {
+				// Partial success
 				const result = response.data.result;
-				notify({ 
-					type: "warning", 
-					text: `Created ${result.createdRooms} rooms, but ${result.failedRooms} failed` 
+				notify({
+					type: "warning",
+					text: `Created ${result.createdRooms} rooms, but ${result.failedRooms} failed`,
 				});
 			}
 		} catch (error: any) {
 			console.error("Failed to create rooms for existing cycles:", error);
 			let errorMessage = "Failed to create rooms for existing cycles";
-			
+
 			if (error.response?.status === 400) {
 				errorMessage = "Matrix integration is not enabled";
 			} else if (error.response?.status === 503) {
@@ -230,7 +234,7 @@
 			} else if (error.response?.data?.error) {
 				errorMessage = error.response.data.error;
 			}
-			
+
 			notify({ type: "error", text: errorMessage });
 		} finally {
 			createRoomsLoading = false;
@@ -486,7 +490,7 @@
 								}}
 							/>
 						</Setting>
-						
+
 						{#if serverConfig.MOVIE_CLUB.communityEnabled}
 							<Setting
 								title="Enable Matrix Chat Integration"
@@ -505,7 +509,7 @@
 									}}
 								/>
 							</Setting>
-							
+
 							{#if serverConfig.MOVIE_CLUB.matrix.enabled}
 								<Setting
 									title="Matrix Server URL"
@@ -517,14 +521,18 @@
 										bind:value={serverConfig.MOVIE_CLUB.matrix.serverUrl}
 										onblur={() => {
 											matrixServerUrlDisabled = true;
-											updateMatrixConfig("serverUrl", serverConfig.MOVIE_CLUB.matrix.serverUrl, () => {
-												matrixServerUrlDisabled = false;
-											});
+											updateMatrixConfig(
+												"serverUrl",
+												serverConfig.MOVIE_CLUB.matrix.serverUrl,
+												() => {
+													matrixServerUrlDisabled = false;
+												},
+											);
 										}}
 										disabled={matrixServerUrlDisabled}
 									/>
 								</Setting>
-								
+
 								<Setting
 									title="Matrix Server Name"
 									desc="Matrix server domain name (e.g., example.com)"
@@ -535,14 +543,18 @@
 										bind:value={serverConfig.MOVIE_CLUB.matrix.serverName}
 										onblur={() => {
 											matrixServerNameDisabled = true;
-											updateMatrixConfig("serverName", serverConfig.MOVIE_CLUB.matrix.serverName, () => {
-												matrixServerNameDisabled = false;
-											});
+											updateMatrixConfig(
+												"serverName",
+												serverConfig.MOVIE_CLUB.matrix.serverName,
+												() => {
+													matrixServerNameDisabled = false;
+												},
+											);
 										}}
 										disabled={matrixServerNameDisabled}
 									/>
 								</Setting>
-								
+
 								<Setting
 									title="Admin Access Token"
 									desc="Matrix admin access token for managing users and rooms"
@@ -553,14 +565,18 @@
 										bind:value={serverConfig.MOVIE_CLUB.matrix.adminToken}
 										onblur={() => {
 											matrixAdminTokenDisabled = true;
-											updateMatrixConfig("adminToken", serverConfig.MOVIE_CLUB.matrix.adminToken, () => {
-												matrixAdminTokenDisabled = false;
-											});
+											updateMatrixConfig(
+												"adminToken",
+												serverConfig.MOVIE_CLUB.matrix.adminToken,
+												() => {
+													matrixAdminTokenDisabled = false;
+												},
+											);
 										}}
 										disabled={matrixAdminTokenDisabled}
 									/>
 								</Setting>
-								
+
 								<Setting
 									title="Admin User ID"
 									desc="Matrix user ID for Watcharr admin (e.g., @watcharr:example.com)"
@@ -571,14 +587,18 @@
 										bind:value={serverConfig.MOVIE_CLUB.matrix.adminUserId}
 										onblur={() => {
 											matrixAdminUserIdDisabled = true;
-											updateMatrixConfig("adminUserId", serverConfig.MOVIE_CLUB.matrix.adminUserId, () => {
-												matrixAdminUserIdDisabled = false;
-											});
+											updateMatrixConfig(
+												"adminUserId",
+												serverConfig.MOVIE_CLUB.matrix.adminUserId,
+												() => {
+													matrixAdminUserIdDisabled = false;
+												},
+											);
 										}}
 										disabled={matrixAdminUserIdDisabled}
 									/>
 								</Setting>
-								
+
 								<Setting
 									title="Space Name"
 									desc="Name for the Movie Club space in Matrix"
@@ -589,14 +609,18 @@
 										bind:value={serverConfig.MOVIE_CLUB.matrix.spaceName}
 										onblur={() => {
 											matrixSpaceNameDisabled = true;
-											updateMatrixConfig("spaceName", serverConfig.MOVIE_CLUB.matrix.spaceName, () => {
-												matrixSpaceNameDisabled = false;
-											});
+											updateMatrixConfig(
+												"spaceName",
+												serverConfig.MOVIE_CLUB.matrix.spaceName,
+												() => {
+													matrixSpaceNameDisabled = false;
+												},
+											);
 										}}
 										disabled={matrixSpaceNameDisabled}
 									/>
 								</Setting>
-								
+
 								<Setting
 									title="Registration Shared Secret"
 									desc="Shared secret for user registration (optional). Leave blank to use admin token for user creation."
@@ -604,30 +628,40 @@
 									<input
 										type="password"
 										placeholder="Enter registration secret (optional)"
-										bind:value={serverConfig.MOVIE_CLUB.matrix.registrationSecret}
+										bind:value={
+											serverConfig.MOVIE_CLUB.matrix.registrationSecret
+										}
 										onblur={() => {
 											matrixRegistrationSecretDisabled = true;
-											updateMatrixConfig("registrationSecret", serverConfig.MOVIE_CLUB.matrix.registrationSecret, () => {
-												matrixRegistrationSecretDisabled = false;
-											});
+											updateMatrixConfig(
+												"registrationSecret",
+												serverConfig.MOVIE_CLUB.matrix.registrationSecret,
+												() => {
+													matrixRegistrationSecretDisabled = false;
+												},
+											);
 										}}
 										disabled={matrixRegistrationSecretDisabled}
 									/>
 								</Setting>
-								
-								<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch;">
+
+								<div
+									style="display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch;"
+								>
 									<SettingButton
 										title="Test Matrix Connection"
 										desc="Quick connection test to Matrix server"
 										onClick={() => testMatrixConnection()}
 									/>
-									
+
 									<SettingButton
 										title="Matrix Setup Validation"
 										desc="Comprehensive validation of Matrix configuration and capabilities"
-										onClick={() => { matrixValidationModalOpen = true; }}
+										onClick={() => {
+											matrixValidationModalOpen = true;
+										}}
 									/>
-									
+
 									<SettingButton
 										title="Create Rooms for Existing Cycles"
 										desc="Create Matrix rooms for active watching cycles that don't have them yet"
@@ -840,7 +874,9 @@
 
 					{#if matrixValidationModalOpen}
 						<MatrixValidation
-							onClose={() => { matrixValidationModalOpen = false; }}
+							onClose={() => {
+								matrixValidationModalOpen = false;
+							}}
 						/>
 					{/if}
 				{/if}

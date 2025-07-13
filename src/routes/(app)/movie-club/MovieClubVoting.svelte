@@ -64,18 +64,22 @@
 		return maxVotesReached && !isSelected;
 	}
 
-	function areVotesEqual(votes1: MovieClubVoteItem[], votes2: MovieClubVoteItem[]): boolean {
+	function areVotesEqual(
+		votes1: MovieClubVoteItem[],
+		votes2: MovieClubVoteItem[],
+	): boolean {
 		if (votes1.length !== votes2.length) {
 			return false;
 		}
-		
+
 		// Sort both arrays by contentId for consistent comparison
 		const sorted1 = [...votes1].sort((a, b) => a.contentId - b.contentId);
 		const sorted2 = [...votes2].sort((a, b) => a.contentId - b.contentId);
-		
-		return sorted1.every((vote, index) => 
-			vote.contentId === sorted2[index].contentId && 
-			vote.priority === sorted2[index].priority
+
+		return sorted1.every(
+			(vote, index) =>
+				vote.contentId === sorted2[index].contentId &&
+				vote.priority === sorted2[index].priority,
 		);
 	}
 
@@ -166,7 +170,8 @@
 			Vote for Movies
 		</h3>
 		<p>
-			Choose your top {maxVotes} movies from the nominations. You can change your votes until phase finishes. Order matters!
+			Choose your top {maxVotes} movies from the nominations. You can change your
+			votes until phase finishes. Order matters!
 		</p>
 	</div>
 
@@ -200,7 +205,11 @@
 					disabled={submitting || !hasVotesChanged}
 				>
 					<Icon icon="check" />
-					{submitting ? "Submitting..." : hasVotesChanged ? "Submit Votes" : "No Changes"}
+					{submitting
+						? "Submitting..."
+						: hasVotesChanged
+							? "Submit Votes"
+							: "No Changes"}
 				</button>
 			{/if}
 		</div>
@@ -214,7 +223,7 @@
 				<div
 					class="nomination-card"
 					class:selected={isSelected}
-					class:disabled={disabled}
+					class:disabled
 					role="button"
 					tabindex={disabled ? "-1" : "0"}
 					on:click={() => !disabled && toggleVote(nomination.contentId)}
@@ -599,7 +608,7 @@
 			cursor: not-allowed;
 			background: var(--background-secondary, var(--background));
 			border-color: var(--border-muted, var(--border));
-			
+
 			&::after {
 				content: "";
 				position: absolute;
@@ -975,13 +984,13 @@
 			&.disabled {
 				/* Ensure disabled state is visible on mobile */
 				opacity: 0.4;
-				
+
 				&:hover {
 					transform: none !important;
 					box-shadow: var(--shadow-sm) !important;
 					border-color: var(--border-muted, var(--border)) !important;
 				}
-				
+
 				&:active {
 					transform: none !important;
 					box-shadow: var(--shadow-sm) !important;

@@ -198,17 +198,20 @@ Movie Club can integrate with self-hosted Matrix/Dendrite servers to provide ded
 #### How Community Features Work
 
 **Automatic Room Creation:**
+
 - Chat rooms are created automatically when cycles enter the watching phase
 - Room names include the date and movie title for easy identification
 - Only users who participated (nominated or voted) are invited to the room
 
 **Access Control:**
+
 - **Participation-based access**: Only users who engaged with the cycle can join
 - **Persistent access**: Rooms remain available even after cycles end
 - **Local-only federation**: Rooms are private to your Dendrite instance
 - **Admin moderation**: Watcharr administrators have full room management
 
 **User Experience:**
+
 - **Profile setup**: Users can create auto-generated Matrix accounts or link existing ones
 - **Community page**: Centralized access to all available chat rooms
 - **Mobile-friendly**: Responsive design works across all devices
@@ -219,11 +222,13 @@ Movie Club can integrate with self-hosted Matrix/Dendrite servers to provide ded
 Users have two options for Matrix accounts:
 
 **Auto-generated Accounts:**
+
 - Watcharr creates Matrix accounts automatically
 - Secure credentials managed by the system
 - No external setup required
 
 **Custom Account Linking:**
+
 - Link existing Matrix accounts to Watcharr profiles
 - Requires Matrix user ID and access token
 - Full control over Matrix client and settings
@@ -231,12 +236,14 @@ Users have two options for Matrix accounts:
 #### Administrator Tools
 
 **Setup Validation:**
+
 - Comprehensive validation of Matrix server configuration
 - Real-time testing of connectivity, permissions, and room creation
 - Detailed troubleshooting guide with step-by-step solutions
 - Connection testing tools for quick diagnostics
 
 **Configuration Options:**
+
 - Matrix server URL and admin credentials
 - Server name and space organization settings
 - Admin user ID for room management

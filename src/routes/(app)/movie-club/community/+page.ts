@@ -1,22 +1,22 @@
-import { error } from '@sveltejs/kit';
-import axios from 'axios';
-import type { PageLoad } from './$types';
+import { error } from "@sveltejs/kit";
+import axios from "axios";
+import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ fetch }) => {
 	try {
 		// Get user's accessible Matrix rooms
-		const roomsResponse = await axios.get('/matrix/rooms');
-		
+		const roomsResponse = await axios.get("/matrix/rooms");
+
 		return {
-			rooms: roomsResponse.data.rooms || []
+			rooms: roomsResponse.data.rooms || [],
 		};
 	} catch (err: any) {
 		// If Matrix is not enabled or user has no access, return empty rooms
 		if (err?.response?.status === 404 || err?.response?.status === 401) {
 			return {
-				rooms: []
+				rooms: [],
 			};
 		}
-		throw error(500, 'Failed to load community data');
+		throw error(500, "Failed to load community data");
 	}
 };

@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { notify } from '@/lib/util/notify';
-	import Spinner from '@/lib/Spinner.svelte';
-	import MatrixTroubleshooting from './MatrixTroubleshooting.svelte';
-	import axios from 'axios';
+	import { notify } from "@/lib/util/notify";
+	import Spinner from "@/lib/Spinner.svelte";
+	import MatrixTroubleshooting from "./MatrixTroubleshooting.svelte";
+	import axios from "axios";
 
 	interface ValidationResult {
 		check: string;
-		status: 'success' | 'warning' | 'error';
+		status: "success" | "warning" | "error";
 		message: string;
 		details?: string;
 	}
 
 	interface ValidationResponse {
-		overallStatus: 'success' | 'warning' | 'error';
+		overallStatus: "success" | "warning" | "error";
 		results: ValidationResult[];
 		summary: string;
 	}
@@ -27,13 +27,13 @@
 	async function runValidation() {
 		validationLoading = true;
 		try {
-			const response = await axios.get('/matrix/validate');
+			const response = await axios.get("/matrix/validate");
 			validationResults = response.data;
 		} catch (error) {
-			console.error('Failed to run Matrix validation:', error);
-			notify({ 
-				type: 'error', 
-				text: 'Failed to run Matrix validation. Please check your connection.' 
+			console.error("Failed to run Matrix validation:", error);
+			notify({
+				type: "error",
+				text: "Failed to run Matrix validation. Please check your connection.",
 			});
 		} finally {
 			validationLoading = false;
@@ -46,19 +46,27 @@
 
 	function getStatusIcon(status: string) {
 		switch (status) {
-			case 'success': return '✅';
-			case 'warning': return '⚠️';
-			case 'error': return '❌';
-			default: return '❓';
+			case "success":
+				return "✅";
+			case "warning":
+				return "⚠️";
+			case "error":
+				return "❌";
+			default:
+				return "❓";
 		}
 	}
 
 	function getStatusColor(status: string) {
 		switch (status) {
-			case 'success': return 'var(--success-color, #22c55e)';
-			case 'warning': return 'var(--warning-color, #f59e0b)';
-			case 'error': return 'var(--error-color, #ef4444)';
-			default: return 'var(--text-color)';
+			case "success":
+				return "var(--success-color, #22c55e)";
+			case "warning":
+				return "var(--warning-color, #f59e0b)";
+			case "error":
+				return "var(--error-color, #ef4444)";
+			default:
+				return "var(--text-color)";
 		}
 	}
 
@@ -75,7 +83,11 @@
 
 		<div class="modal-content">
 			<div class="validation-intro">
-				<p>This tool performs comprehensive validation of your Matrix/Dendrite server configuration to ensure everything is working properly for Movie Club community features.</p>
+				<p>
+					This tool performs comprehensive validation of your Matrix/Dendrite
+					server configuration to ensure everything is working properly for
+					Movie Club community features.
+				</p>
 			</div>
 
 			{#if validationLoading}
@@ -85,10 +97,19 @@
 				</div>
 			{:else if validationResults}
 				<div class="validation-results">
-					<div class="overall-status" style="border-left: 4px solid {getStatusColor(validationResults.overallStatus)}">
+					<div
+						class="overall-status"
+						style="border-left: 4px solid {getStatusColor(
+							validationResults.overallStatus,
+						)}"
+					>
 						<div class="status-header">
-							<span class="status-icon">{getStatusIcon(validationResults.overallStatus)}</span>
-							<h3>Overall Status: {validationResults.overallStatus.toUpperCase()}</h3>
+							<span class="status-icon"
+								>{getStatusIcon(validationResults.overallStatus)}</span
+							>
+							<h3>
+								Overall Status: {validationResults.overallStatus.toUpperCase()}
+							</h3>
 						</div>
 						<p>{validationResults.summary}</p>
 					</div>
@@ -96,20 +117,28 @@
 					<div class="checks-list">
 						<h4>Validation Checks</h4>
 						{#each validationResults.results as result}
-							<div class="check-item" style="border-left: 3px solid {getStatusColor(result.status)}">
-								<div class="check-header" onclick={() => toggleDetails(result.check)}>
+							<div
+								class="check-item"
+								style="border-left: 3px solid {getStatusColor(result.status)}"
+							>
+								<div
+									class="check-header"
+									onclick={() => toggleDetails(result.check)}
+								>
 									<div class="check-info">
-										<span class="check-icon">{getStatusIcon(result.status)}</span>
+										<span class="check-icon"
+											>{getStatusIcon(result.status)}</span
+										>
 										<span class="check-name">{result.check}</span>
 									</div>
 									<div class="check-message">{result.message}</div>
 									{#if result.details}
 										<button class="details-toggle" type="button">
-											{showDetails[result.check] ? '▼' : '▶'} Details
+											{showDetails[result.check] ? "▼" : "▶"} Details
 										</button>
 									{/if}
 								</div>
-								
+
 								{#if result.details && showDetails[result.check]}
 									<div class="check-details">
 										<div class="details-content">
@@ -121,18 +150,32 @@
 						{/each}
 					</div>
 
-					{#if validationResults.overallStatus === 'success'}
+					{#if validationResults.overallStatus === "success"}
 						<div class="success-actions">
-							<p><strong>Great!</strong> Your Matrix setup is fully configured and ready to use.</p>
+							<p>
+								<strong>Great!</strong> Your Matrix setup is fully configured and
+								ready to use.
+							</p>
 						</div>
-					{:else if validationResults.overallStatus === 'warning'}
+					{:else if validationResults.overallStatus === "warning"}
 						<div class="warning-actions">
-							<p><strong>Almost there!</strong> Your Matrix setup is functional but has some optional configurations missing.</p>
+							<p>
+								<strong>Almost there!</strong> Your Matrix setup is functional but
+								has some optional configurations missing.
+							</p>
 						</div>
 					{:else}
 						<div class="error-actions">
-							<p><strong>Action required:</strong> Please resolve the errors above before using Matrix features.</p>
-							<button onclick={() => { troubleshootingModalOpen = true; }} class="troubleshooting-button">
+							<p>
+								<strong>Action required:</strong> Please resolve the errors above
+								before using Matrix features.
+							</p>
+							<button
+								onclick={() => {
+									troubleshootingModalOpen = true;
+								}}
+								class="troubleshooting-button"
+							>
 								📋 View Troubleshooting Guide
 							</button>
 						</div>
@@ -143,10 +186,19 @@
 
 		<div class="modal-footer">
 			<div class="footer-actions">
-				<button onclick={() => { troubleshootingModalOpen = true; }} class="help">
+				<button
+					onclick={() => {
+						troubleshootingModalOpen = true;
+					}}
+					class="help"
+				>
 					📋 Troubleshooting Guide
 				</button>
-				<button onclick={runValidation} disabled={validationLoading} class="secondary">
+				<button
+					onclick={runValidation}
+					disabled={validationLoading}
+					class="secondary"
+				>
 					{#if validationLoading}
 						<Spinner />
 					{:else}
@@ -160,7 +212,11 @@
 </div>
 
 {#if troubleshootingModalOpen}
-	<MatrixTroubleshooting onClose={() => { troubleshootingModalOpen = false; }} />
+	<MatrixTroubleshooting
+		onClose={() => {
+			troubleshootingModalOpen = false;
+		}}
+	/>
 {/if}
 
 <style lang="scss">
@@ -363,7 +419,9 @@
 		word-break: break-all;
 	}
 
-	.success-actions, .warning-actions, .error-actions {
+	.success-actions,
+	.warning-actions,
+	.error-actions {
 		padding: 15px;
 		border-radius: 8px;
 		margin-top: 10px;

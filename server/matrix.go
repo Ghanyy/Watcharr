@@ -538,39 +538,46 @@ func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*Matri
 			   strings.Contains(err.Error(), "user already exists") ||
 			   strings.Contains(err.Error(), "M_USER_IN_USE") {
 				
-				slog.Info("Matrix user already exists, creating new account variant", 
-					"watcharr_user_id", watcharrUserID, 
-					"original_matrix_user_id", matrixUserID)
-				
-				// Create a new account with timestamp suffix to avoid conflicts
-				timestamp := time.Now().Unix()
-				newLocalpart := fmt.Sprintf("watcharr_%d_%s_%d", watcharrUserID, sanitizedUsername, timestamp)
-				newMatrixUserID := fmt.Sprintf("@%s:%s", newLocalpart, serverName)
-				
-				errContext["new_matrix_user_id"] = newMatrixUserID
-				slog.Info("Creating new Matrix account variant", 
-					"watcharr_user_id", watcharrUserID,
-					"new_matrix_user_id", newMatrixUserID)
-				
-				registrationResponse, err = RegisterUserWithSharedSecret(newLocalpart, password, false)
-				if err != nil {
-					return nil, logAndReturnError("new_account_creation", fmt.Errorf(
-						"failed to create original user (already exists) and failed to create new account variant: %w", err), errContext)
+				// If we have a soft-deleted record for this user, this is a reactivation
+				if existingMatrixUser.ID != 0 && existingMatrixUser.DeletedAt.Valid {
+					slog.Info("Matrix user exists and we have soft-deleted record - this is a reactivation", 
+						"watcharr_user_id", watcharrUserID, 
+						"matrix_user_id", matrixUserID)
+					
+					// For reactivation, create a fake response since we can't register the same user again
+					// but we know this user exists and we'll update our database record
+					registrationResponse = &SharedSecretRegistrationResponse{
+						UserID:      matrixUserID, // Keep the same Matrix user ID
+						AccessToken: "placeholder_for_existing_user", // Placeholder - user will need to export credentials again
+						DeviceID:    "reactivated_device",
+					}
+					
+					wasReactivated = true
+					slog.Info("Reactivating existing Matrix user with same ID", 
+						"watcharr_user_id", watcharrUserID, 
+						"matrix_user_id", matrixUserID)
+				} else {
+					// User exists but we don't have a record - this shouldn't happen for auto-generated accounts
+					return nil, logAndReturnError("user_exists_no_record", fmt.Errorf(
+						"Matrix user %s already exists but no Watcharr record found for reactivation", matrixUserID), errContext)
 				}
-				
-				wasReactivated = true
-				slog.Info("Successfully created new Matrix account variant", 
-					"watcharr_user_id", watcharrUserID, 
-					"new_matrix_user_id", registrationResponse.UserID)
 			} else {
 				return nil, logAndReturnError("shared_secret_registration", err, errContext)
 			}
 		}
 		
-		// Encrypt the real access token before storing
-		encryptedToken, err := encryptToken(registrationResponse.AccessToken)
-		if err != nil {
-			return nil, logAndReturnError("token_encryption", err, errContext)
+		// Handle access token encryption (placeholder for reactivated accounts)
+		var encryptedToken string
+		if registrationResponse.AccessToken == "placeholder_for_existing_user" {
+			// For reactivated accounts, we don't have a real access token yet
+			encryptedToken = "placeholder_encrypted_token"
+		} else {
+			// Encrypt the real access token before storing
+			var err error
+			encryptedToken, err = encryptToken(registrationResponse.AccessToken)
+			if err != nil {
+				return nil, logAndReturnError("token_encryption", err, errContext)
+			}
 		}
 
 		// Encrypt the password for credential export feature
@@ -589,6 +596,10 @@ func CreateMatrixUser(db *gorm.DB, watcharrUserID uint, username string) (*Matri
 			matrixUser.DeviceID = registrationResponse.DeviceID
 			matrixUser.EncryptedPassword = encryptedPassword
 			matrixUser.DeletedAt = gorm.DeletedAt{} // Undelete the record
+			// Reset password export flags since user will need to export credentials again
+			matrixUser.PasswordExported = false
+			matrixUser.PasswordExportedAt = nil
+			matrixUser.PasswordExportCount = 0
 			
 			// Update the existing record
 			if err := db.Unscoped().Save(matrixUser).Error; err != nil {

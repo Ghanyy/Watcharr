@@ -206,6 +206,7 @@ The Matrix integration provides community chat features for Movie Club cycles th
 **User Creation Methods:**
 
 1. **Shared Secret Registration** (Recommended):
+
    - Uses Dendrite's Synapse-compatible shared secret endpoint
    - Creates real Matrix users with working access tokens
    - Requires `registrationSecret` configuration in Matrix settings

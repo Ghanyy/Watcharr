@@ -488,9 +488,9 @@ func (b *BaseRouter) createUserMatrixAccount(c *gin.Context) {
 	// Create Matrix user
 	matrixUser, err := CreateMatrixUser(b.db, userID, user.Username)
 	if err != nil {
-		// Provide better error messages for reactivation failures
-		if strings.Contains(err.Error(), "matrix_reactivation") {
-			c.JSON(http.StatusConflict, ErrorResponse{Error: "Failed to reactivate existing Matrix account. The account may have been deactivated and credentials are no longer valid."})
+		// Provide better error messages for different failure scenarios
+		if strings.Contains(err.Error(), "user_exists_no_record") {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "Matrix username already exists but no previous Watcharr record found. Please use a different username or link a custom Matrix account."})
 		} else {
 			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create Matrix user"})
 		}
