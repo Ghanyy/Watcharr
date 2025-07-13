@@ -691,75 +691,86 @@
 				<SyncModal type="plex" onClose={() => (plexSyncModalOpen = false)} />
 			{/if}
 			{#if showExportModal && exportedCredentials}
-				<div class="modal-overlay" onclick={closeExportModal}>
-					<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+				<div class="modal-backdrop" onclick={closeExportModal}>
+					<div class="credentials-modal" onclick={(e) => e.stopPropagation()}>
 						<div class="modal-header">
-							<h3>Matrix Credentials Exported</h3>
-							<button class="close-btn" onclick={closeExportModal}>×</button>
+							<h2>Matrix Credentials Exported</h2>
+							<button class="close-button" onclick={closeExportModal}>×</button>
 						</div>
-						<div class="modal-body">
-							<p style="margin-bottom: 20px; color: #666;">
-								Use these credentials to log into Element Web or other Matrix clients:
-							</p>
-							
-							<div class="credential-section">
-								<label>Matrix User ID:</label>
-								<div class="credential-field">
-									<code>{exportedCredentials.matrixUserId}</code>
-									<button onclick={() => copyToClipboard(exportedCredentials!.matrixUserId, "User ID")}>
-										Copy
-									</button>
+
+						<div class="modal-content">
+							<div class="export-intro">
+								<p>Your Matrix credentials have been exported successfully. Use these credentials to access Element Web or other Matrix clients.</p>
+							</div>
+
+							<div class="credentials-section">
+								<h4>🔑 Your Credentials</h4>
+								
+								<div class="credential-item" style="border-left: 3px solid var(--accent-color)">
+									<div class="credential-header">
+										<div class="credential-info">
+											<span class="credential-icon">👤</span>
+											<span class="credential-name">Matrix User ID</span>
+										</div>
+										<div class="credential-value">{exportedCredentials.matrixUserId}</div>
+										<button class="copy-button" onclick={() => copyToClipboard(exportedCredentials!.matrixUserId, 'User ID')}>
+											📋 Copy
+										</button>
+									</div>
+								</div>
+
+								<div class="credential-item" style="border-left: 3px solid var(--accent-color)">
+									<div class="credential-header">
+										<div class="credential-info">
+											<span class="credential-icon">🔒</span>
+											<span class="credential-name">Password</span>
+										</div>
+										<div class="credential-value monospace">{exportedCredentials.password}</div>
+										<button class="copy-button" onclick={() => copyToClipboard(exportedCredentials!.password, 'Password')}>
+											📋 Copy
+										</button>
+									</div>
+								</div>
+
+								<div class="credential-item" style="border-left: 3px solid var(--accent-color)">
+									<div class="credential-header">
+										<div class="credential-info">
+											<span class="credential-icon">🌐</span>
+											<span class="credential-name">Server URL</span>
+										</div>
+										<div class="credential-value">{exportedCredentials.serverUrl}</div>
+										<button class="copy-button" onclick={() => copyToClipboard(exportedCredentials!.serverUrl, 'Server URL')}>
+											📋 Copy
+										</button>
+									</div>
 								</div>
 							</div>
 
-							<div class="credential-section">
-								<label>Password:</label>
-								<div class="credential-field">
-									<code style="font-family: monospace; letter-spacing: 1px;">
-										{exportedCredentials.password}
-									</code>
-									<button onclick={() => copyToClipboard(exportedCredentials!.password, "Password")}>
-										Copy
-									</button>
+							<div class="setup-guide">
+								<h4>📱 Element Web Setup</h4>
+								<div class="setup-steps">
+									<ol>
+										<li>Visit <a href="https://app.element.io" target="_blank" rel="noopener">app.element.io</a></li>
+										<li>Click "Sign In"</li>
+										<li>Click "Edit" next to the server field</li>
+										<li>Enter your server URL: <code>{exportedCredentials.serverUrl}</code></li>
+										<li>Use your Matrix User ID and Password above</li>
+									</ol>
 								</div>
 							</div>
 
-							<div class="credential-section">
-								<label>Server URL:</label>
-								<div class="credential-field">
-									<code>{exportedCredentials.serverUrl}</code>
-									<button onclick={() => copyToClipboard(exportedCredentials!.serverUrl, "Server URL")}>
-										Copy
-									</button>
-								</div>
+							<div class="security-notice">
+								<h4>⚠️ Security Notice</h4>
+								<p>Store these credentials securely. For enhanced security, you can export again with the "Delete password after export" option to remove the password from our database.</p>
 							</div>
+						</div>
 
-							<div class="element-setup">
-								<h4>Element Web Setup:</h4>
-								<ol>
-									<li>Visit <a href="https://app.element.io" target="_blank" rel="noopener">app.element.io</a></li>
-									<li>Click "Sign In"</li>
-									<li>Click "Edit" next to the server field</li>
-									<li>Enter your server URL: <code>{exportedCredentials.serverUrl}</code></li>
-									<li>Use your Matrix User ID and Password above</li>
-								</ol>
-							</div>
-
-							<div class="security-warning">
-								<h4>⚠️ Security Notice:</h4>
-								<p>
-									Store these credentials securely. For enhanced security, you can export again with 
-									the "Delete password after export" option to remove the password from our database.
-								</p>
-								<button 
-									class="delete-password-btn"
-									onclick={() => {
-										closeExportModal();
-										exportMatrixCredentials(true);
-									}}
-								>
-									Export & Delete Password
+						<div class="modal-footer">
+							<div class="footer-actions">
+								<button onclick={() => { closeExportModal(); exportMatrixCredentials(true); }} class="warning">
+									🗑️ Export & Delete Password
 								</button>
+								<button onclick={closeExportModal} class="primary">Close</button>
 							</div>
 						</div>
 					</div>
@@ -1085,6 +1096,303 @@
 				&:hover {
 					background-color: #f57c00;
 				}
+			}
+		}
+	}
+
+	// Matrix Credential Export Modal Styles (based on MatrixValidation.svelte)
+	.modal-backdrop {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.credentials-modal {
+		background: var(--bg-color);
+		border-radius: 12px;
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+		width: 90%;
+		max-width: 700px;
+		max-height: 90vh;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.credentials-modal .modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20px;
+		border-bottom: 1px solid var(--accent-color);
+
+		h2 {
+			margin: 0;
+			font-size: 1.5em;
+		}
+
+		.close-button {
+			background: none;
+			border: none;
+			font-size: 24px;
+			cursor: pointer;
+			color: var(--text-color);
+			padding: 5px;
+			border-radius: 50%;
+			width: 35px;
+			height: 35px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+
+			&:hover {
+				background: var(--accent-color);
+			}
+		}
+	}
+
+	.credentials-modal .modal-content {
+		flex: 1;
+		overflow-y: auto;
+		padding: 20px;
+	}
+
+	.export-intro {
+		margin-bottom: 25px;
+		padding: 15px;
+		background: var(--bg-color);
+		border-radius: 8px;
+		border-left: 4px solid var(--accent-color);
+
+		p {
+			margin: 0;
+			line-height: 1.6;
+		}
+	}
+
+	.credentials-section {
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+		margin-bottom: 25px;
+
+		h4 {
+			margin: 0 0 15px 0;
+			font-size: 1.1em;
+			color: var(--text-color);
+		}
+	}
+
+	.credential-item {
+		background: var(--bg-color);
+		border-radius: 8px;
+		overflow: hidden;
+		border: 1px solid var(--accent-color);
+	}
+
+	.credential-header {
+		padding: 15px;
+		display: flex;
+		align-items: center;
+		gap: 15px;
+
+		.credential-info {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			min-width: 150px;
+
+			.credential-icon {
+				font-size: 1.2em;
+			}
+
+			.credential-name {
+				font-weight: 500;
+				font-size: 1.05em;
+			}
+		}
+
+		.credential-value {
+			flex: 1;
+			padding: 10px 12px;
+			background: var(--bg-color);
+			border: 1px solid var(--accent-color);
+			border-radius: 6px;
+			font-family: 'Courier New', monospace;
+			font-size: 0.9em;
+			word-break: break-all;
+			line-height: 1.3;
+
+			&.monospace {
+				letter-spacing: 1px;
+			}
+		}
+
+		.copy-button {
+			background: var(--accent-color);
+			color: white;
+			border: none;
+			padding: 8px 12px;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.85em;
+			font-weight: 500;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+
+			&:hover {
+				background: var(--accent-color-dark);
+			}
+		}
+	}
+
+	.setup-guide {
+		margin-bottom: 20px;
+		padding: 15px;
+		background: var(--bg-color);
+		border-radius: 8px;
+		border-left: 4px solid var(--success-color, #22c55e);
+
+		h4 {
+			margin: 0 0 15px 0;
+			font-size: 1.1em;
+			color: var(--text-color);
+		}
+
+		.setup-steps {
+			ol {
+				margin: 0;
+				padding-left: 20px;
+
+				li {
+					margin-bottom: 8px;
+					line-height: 1.5;
+
+					a {
+						color: var(--accent-color);
+						text-decoration: none;
+
+						&:hover {
+							text-decoration: underline;
+						}
+					}
+
+					code {
+						background: var(--bg-color);
+						border: 1px solid var(--accent-color);
+						padding: 2px 6px;
+						border-radius: 4px;
+						font-family: 'Courier New', monospace;
+						font-size: 0.9em;
+					}
+				}
+			}
+		}
+	}
+
+	.security-notice {
+		padding: 15px;
+		border-radius: 8px;
+		background: rgba(245, 158, 11, 0.1);
+		border: 1px solid rgba(245, 158, 11, 0.3);
+		color: var(--warning-color, #f59e0b);
+
+		h4 {
+			margin: 0 0 10px 0;
+			font-size: 1.05em;
+		}
+
+		p {
+			margin: 0;
+			line-height: 1.5;
+			font-size: 0.95em;
+		}
+	}
+
+	.credentials-modal .modal-footer {
+		padding: 20px;
+		border-top: 1px solid var(--accent-color);
+		background: var(--bg-color);
+	}
+
+	.footer-actions {
+		display: flex;
+		gap: 10px;
+		justify-content: flex-end;
+
+		button {
+			padding: 10px 20px;
+			border-radius: 6px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			border: none;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+
+			&.primary {
+				background: var(--accent-color);
+				color: white;
+
+				&:hover {
+					background: var(--accent-color-dark);
+				}
+			}
+
+			&.warning {
+				background: var(--warning-color, #f59e0b);
+				color: white;
+
+				&:hover {
+					background: var(--warning-color-dark, #d97706);
+				}
+			}
+		}
+	}
+
+	@media (max-width: 768px) {
+		.credentials-modal {
+			width: 95%;
+			max-height: 95vh;
+		}
+
+		.credentials-modal .modal-content {
+			padding: 15px;
+		}
+
+		.credentials-modal .modal-header {
+			padding: 15px;
+		}
+
+		.credential-header {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 10px;
+
+			.credential-info {
+				min-width: auto;
+			}
+
+			.copy-button {
+				align-self: flex-end;
+				width: fit-content;
+			}
+		}
+
+		.footer-actions {
+			flex-direction: column;
+
+			button {
+				width: 100%;
+				justify-content: center;
 			}
 		}
 	}

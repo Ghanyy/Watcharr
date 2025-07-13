@@ -1095,17 +1095,25 @@ func RegisterUserWithSharedSecret(username, password string, admin bool) (*Share
 	return &registrationResponse, nil
 }
 
-// ReactivateMatrixUser attempts to reactivate a deactivated Matrix user by logging in
-func ReactivateMatrixUser(matrixUserID, password string) (*SharedSecretRegistrationResponse, error) {
+// ReactivateMatrixUser attempts to reactivate a deactivated Matrix user by resetting password and logging in
+func ReactivateMatrixUser(matrixUserID, newPassword string) (*SharedSecretRegistrationResponse, error) {
 	errContext := map[string]interface{}{
 		"matrix_user_id": matrixUserID,
 	}
 	
-	// Use Matrix login API to reactivate the account
+	// Step 1: Reset the user's password using admin API
+	err := resetMatrixUserPassword(matrixUserID, newPassword)
+	if err != nil {
+		return nil, logAndReturnError("password_reset_failed", err, errContext)
+	}
+	
+	slog.Info("Successfully reset Matrix user password", "matrix_user_id", matrixUserID)
+	
+	// Step 2: Login with the new password to reactivate
 	loginRequest := map[string]interface{}{
 		"type": "m.login.password",
 		"user": matrixUserID,
-		"password": password,
+		"password": newPassword,
 	}
 	
 	// Convert to JSON
@@ -1165,6 +1173,66 @@ func ReactivateMatrixUser(matrixUserID, password string) (*SharedSecretRegistrat
 	return &reactivationResponse, nil
 }
 
+// resetMatrixUserPassword resets a Matrix user's password using the admin API
+func resetMatrixUserPassword(matrixUserID, newPassword string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+	}
+	
+	// Extract username from matrix user ID (@username:server.name)
+	username := strings.TrimPrefix(matrixUserID, "@")
+	if colonIndex := strings.Index(username, ":"); colonIndex != -1 {
+		username = username[:colonIndex]
+	}
+	
+	// Use Synapse admin API to reset password
+	url := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", getMatrixServerURL(), matrixUserID)
+	
+	// Build request body
+	requestBody := map[string]interface{}{
+		"password": newPassword,
+		"logout_devices": false, // Don't logout existing devices
+	}
+	
+	requestJSON, err := json.Marshal(requestBody)
+	if err != nil {
+		return logAndReturnError("json_marshal", err, errContext)
+	}
+	
+	// Create HTTP request
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return logAndReturnError("request_creation", err, errContext)
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	// Make request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return logAndReturnError("http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	// Read response
+	var responseBody bytes.Buffer
+	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
+		return logAndReturnError("response_read", err, errContext)
+	}
+	
+	// Check response
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		slog.Info("Successfully reset Matrix user password", "matrix_user_id", matrixUserID)
+		return nil
+	} else {
+		return logAndReturnError("password_reset_failed", 
+			fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+			errContext)
+	}
+}
+
 // ExportMatrixCredentials exports Matrix credentials for auto-generated users
 func ExportMatrixCredentials(db *gorm.DB, watcharrUserID uint, deletePasswordAfterExport bool) (*MatrixCredentialExport, error) {
 	errContext := map[string]interface{}{
@@ -1204,14 +1272,13 @@ func ExportMatrixCredentials(db *gorm.DB, watcharrUserID uint, deletePasswordAft
 			errContext)
 	}
 
-	// Check if exported recently (within last hour)
+	// Check if exported recently (within last 5 minutes)
 	if matrixUser.PasswordExportedAt != nil {
-		hourAgo := time.Now().Add(-1 * time.Hour)
-		if matrixUser.PasswordExportedAt.After(hourAgo) {
-			// Count recent exports by checking if exported 3+ times in last hour
-			// For simplicity, we'll just limit to one export per hour
+		fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
+		if matrixUser.PasswordExportedAt.After(fiveMinutesAgo) {
+			// Limit to one export per 5 minutes
 			return nil, logAndReturnError("export_rate_limited", 
-				fmt.Errorf("password was exported recently at %s - please wait at least 1 hour between exports", 
+				fmt.Errorf("password was exported recently at %s - please wait at least 5 minutes between exports", 
 					matrixUser.PasswordExportedAt.Format("2006-01-02 15:04:05")), 
 				errContext)
 		}

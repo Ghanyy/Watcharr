@@ -691,7 +691,7 @@ func (b *BaseRouter) exportUserMatrixCredentials(c *gin.Context) {
 		case err.Error() == "maximum number of password exports exceeded for security":
 			statusCode = http.StatusTooManyRequests
 			errMsg = "Maximum number of password exports exceeded for security reasons"
-		case strings.Contains(fmt.Sprintf("%v", err), "please wait at least 1 hour"):
+		case strings.Contains(fmt.Sprintf("%v", err), "please wait at least 5 minutes"):
 			statusCode = http.StatusTooManyRequests
 			errMsg = err.Error()
 		}
