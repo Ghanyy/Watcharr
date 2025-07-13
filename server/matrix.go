@@ -886,7 +886,8 @@ func generateRandomPassword() (string, error) {
 // generateNonce creates a unique nonce for shared secret registration
 func generateNonce() (string, error) {
 	// Generate timestamp + random hex for uniqueness
-	timestamp := time.Now().Unix()
+	// Use UTC to avoid timezone mismatch issues with Dendrite server
+	timestamp := time.Now().UTC().Unix()
 	randomBytes := make([]byte, 8)
 	if _, err := rand.Read(randomBytes); err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)
@@ -908,11 +909,19 @@ func generateSharedSecretMAC(sharedSecret, nonce, username, password string, adm
 	}
 	
 	// Create message: nonce + \0 + username + \0 + password + \0 + admin_flag
-	message := fmt.Sprintf("%s\x00%s\x00%s\x00%s", nonce, username, password, adminFlag)
+	// Build message with actual null byte separators (not literal \x00 strings)
+	var message bytes.Buffer
+	message.WriteString(nonce)
+	message.WriteByte(0)
+	message.WriteString(username)
+	message.WriteByte(0)
+	message.WriteString(password)
+	message.WriteByte(0)
+	message.WriteString(adminFlag)
 	
 	// Generate HMAC-SHA1
 	mac := hmac.New(sha1.New, []byte(sharedSecret))
-	mac.Write([]byte(message))
+	mac.Write(message.Bytes())
 	
 	return hex.EncodeToString(mac.Sum(nil)), nil
 }
