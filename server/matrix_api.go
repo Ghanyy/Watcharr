@@ -658,7 +658,7 @@ func (b *BaseRouter) exportUserMatrixCredentials(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetUint("UserID")
+	userID := c.GetUint("userId")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "User ID not found in session"})
 		return
