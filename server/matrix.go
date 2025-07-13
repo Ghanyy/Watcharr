@@ -935,20 +935,33 @@ func generateSharedSecretMAC(sharedSecret, nonce, username, password string, adm
 func getServerNonce() (string, error) {
 	// Make GET request to fetch nonce
 	url := fmt.Sprintf("%s/_synapse/admin/v1/register", Config.MOVIE_CLUB.Matrix.ServerURL)
+	
+	slog.Debug("Fetching nonce from Matrix server", "url", url)
+	
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch nonce: %w", err)
 	}
 	defer resp.Body.Close()
 	
-	// Check status code
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("nonce request failed with status %d", resp.StatusCode)
+	// Read response body for debugging
+	var responseBody bytes.Buffer
+	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
+		return "", fmt.Errorf("failed to read nonce response: %w", err)
 	}
 	
-	// Read and parse response
+	slog.Debug("Nonce request response", 
+		"status", resp.StatusCode, 
+		"body", responseBody.String())
+	
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("nonce request failed with status %d: %s", resp.StatusCode, responseBody.String())
+	}
+	
+	// Parse response
 	var nonceResponse SharedSecretNonceResponse
-	if err := json.NewDecoder(resp.Body).Decode(&nonceResponse); err != nil {
+	if err := json.Unmarshal(responseBody.Bytes(), &nonceResponse); err != nil {
 		return "", fmt.Errorf("failed to parse nonce response: %w", err)
 	}
 	
