@@ -1101,15 +1101,16 @@ func ReactivateMatrixUser(matrixUserID, newPassword string) (*SharedSecretRegist
 		"matrix_user_id": matrixUserID,
 	}
 	
-	// Step 1: Reset the user's password using admin API
-	err := resetMatrixUserPassword(matrixUserID, newPassword)
+	// For deactivated accounts, we need to use the admin API to reactivate the user
+	// since standard password reset won't work on deactivated accounts
+	err := reactivateAccountViaAdminAPI(matrixUserID, newPassword)
 	if err != nil {
-		return nil, logAndReturnError("password_reset_failed", err, errContext)
+		return nil, logAndReturnError("admin_reactivation_failed", err, errContext)
 	}
 	
-	slog.Info("Successfully reset Matrix user password", "matrix_user_id", matrixUserID)
+	slog.Info("Successfully reactivated Matrix user via admin API", "matrix_user_id", matrixUserID)
 	
-	// Step 2: Login with the new password to reactivate
+	// Step 2: Login with the new password to get fresh access token
 	loginRequest := map[string]interface{}{
 		"type": "m.login.password",
 		"user": matrixUserID,
@@ -1166,25 +1167,84 @@ func ReactivateMatrixUser(matrixUserID, newPassword string) (*SharedSecretRegist
 		DeviceID:    loginResponse.DeviceID,
 	}
 	
-	slog.Info("Successfully reactivated Matrix user",
+	slog.Info("Successfully reactivated Matrix user and obtained fresh access token",
 		"matrix_user_id", loginResponse.UserID,
 		"device_id", loginResponse.DeviceID)
 	
 	return &reactivationResponse, nil
 }
 
-// resetMatrixUserPassword resets a Matrix user's password using Dendrite admin API
+// reactivateAccountViaAdminAPI reactivates a deactivated Matrix account using standard Matrix admin client APIs
+func reactivateAccountViaAdminAPI(matrixUserID, newPassword string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+	}
+	
+	// Step 1: Use PUT /_matrix/client/r0/admin/users/{userId} to reset the user
+	// This is a standard Matrix client API that should work with admin privileges
+	url := fmt.Sprintf("%s/_matrix/client/r0/admin/users/%s", getMatrixServerURL(), matrixUserID)
+	
+	// Build request body to reactivate user and set new password
+	requestBody := map[string]interface{}{
+		"deactivated": false,
+		"password":    newPassword,
+	}
+	
+	requestJSON, err := json.Marshal(requestBody)
+	if err != nil {
+		return logAndReturnError("json_marshal", err, errContext)
+	}
+	
+	// Create HTTP request
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return logAndReturnError("request_creation", err, errContext)
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	// Make request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return logAndReturnError("http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	// Read response
+	var responseBody bytes.Buffer
+	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
+		return logAndReturnError("response_read", err, errContext)
+	}
+	
+	// Check response
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		slog.Info("Successfully reactivated Matrix user account", "matrix_user_id", matrixUserID)
+		return nil
+	} else {
+		return fmt.Errorf("account reactivation failed with status %d: %s", resp.StatusCode, responseBody.String())
+	}
+}
+
+// resetMatrixUserPassword uses standard Matrix client API to change password
 func resetMatrixUserPassword(matrixUserID, newPassword string) error {
 	errContext := map[string]interface{}{
 		"matrix_user_id": matrixUserID,
 	}
 	
-	// Try Dendrite admin API first (/_dendrite/admin/resetPassword/{userID})
-	url := fmt.Sprintf("%s/_dendrite/admin/resetPassword/%s", getMatrixServerURL(), matrixUserID)
+	// Use standard Matrix client API to change password
+	// This works by using admin privileges with client API
+	url := fmt.Sprintf("%s/_matrix/client/r0/account/password", getMatrixServerURL())
 	
-	// Build request body for Dendrite
+	// Build request body using Matrix client API format
 	requestBody := map[string]interface{}{
-		"password": newPassword,
+		"new_password": newPassword,
+		// Use admin auth instead of user auth
+		"auth": map[string]interface{}{
+			"type": "m.login.password",
+			"user": matrixUserID,
+		},
 	}
 	
 	requestJSON, err := json.Marshal(requestBody)
@@ -1216,16 +1276,16 @@ func resetMatrixUserPassword(matrixUserID, newPassword string) error {
 	}
 	
 	// Check response
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-		slog.Info("Successfully reset Matrix user password using Dendrite API", "matrix_user_id", matrixUserID)
+	if resp.StatusCode == http.StatusOK {
+		slog.Info("Successfully reset Matrix user password using client API", "matrix_user_id", matrixUserID)
 		return nil
-	} else if resp.StatusCode == http.StatusNotFound {
-		// Fallback: Try Synapse-compatible admin API
-		return resetMatrixUserPasswordSynapse(matrixUserID, newPassword)
 	} else {
-		return logAndReturnError("password_reset_failed", 
-			fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String()), 
-			errContext)
+		// Log the error but don't fail - the main issue might be that the account is deactivated
+		slog.Warn("Password reset via client API failed", 
+			"matrix_user_id", matrixUserID,
+			"status", resp.StatusCode,
+			"response", responseBody.String())
+		return fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String())
 	}
 }
 
