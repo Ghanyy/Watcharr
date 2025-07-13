@@ -384,6 +384,11 @@ type SharedSecretRegistrationResponse struct {
 	DeviceID    string `json:"device_id"`
 }
 
+// SharedSecretNonceResponse represents the response from nonce request
+type SharedSecretNonceResponse struct {
+	Nonce string `json:"nonce"`
+}
+
 // Matrix client management
 
 var matrixClient *mautrix.Client
@@ -926,6 +931,35 @@ func generateSharedSecretMAC(sharedSecret, nonce, username, password string, adm
 	return hex.EncodeToString(mac.Sum(nil)), nil
 }
 
+// getServerNonce fetches a nonce from the Matrix server for shared secret registration
+func getServerNonce() (string, error) {
+	// Make GET request to fetch nonce
+	url := fmt.Sprintf("%s/_synapse/admin/v1/register", Config.MOVIE_CLUB.Matrix.ServerURL)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch nonce: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("nonce request failed with status %d", resp.StatusCode)
+	}
+	
+	// Read and parse response
+	var nonceResponse SharedSecretNonceResponse
+	if err := json.NewDecoder(resp.Body).Decode(&nonceResponse); err != nil {
+		return "", fmt.Errorf("failed to parse nonce response: %w", err)
+	}
+	
+	if nonceResponse.Nonce == "" {
+		return "", errors.New("server returned empty nonce")
+	}
+	
+	slog.Debug("Fetched nonce from Matrix server", "nonce", nonceResponse.Nonce)
+	return nonceResponse.Nonce, nil
+}
+
 // RegisterUserWithSharedSecret creates a Matrix user using shared secret registration
 func RegisterUserWithSharedSecret(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
 	errContext := map[string]interface{}{
@@ -939,10 +973,10 @@ func RegisterUserWithSharedSecret(username, password string, admin bool) (*Share
 			errors.New("shared secret not configured"), errContext)
 	}
 	
-	// Generate nonce
-	nonce, err := generateNonce()
+	// Get nonce from server (Dendrite requires server-generated nonce)
+	nonce, err := getServerNonce()
 	if err != nil {
-		return nil, logAndReturnError("nonce_generation", err, errContext)
+		return nil, logAndReturnError("nonce_fetch", err, errContext)
 	}
 	errContext["nonce"] = nonce
 	
