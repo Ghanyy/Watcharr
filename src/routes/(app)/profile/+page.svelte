@@ -752,11 +752,11 @@
 									the "Delete password after export" option to remove the password from our database.
 								</p>
 								<button 
+									class="delete-password-btn"
 									onclick={() => {
 										closeExportModal();
 										exportMatrixCredentials(true);
 									}}
-									style="background-color: #ff9800; color: white; margin-top: 10px;"
 								>
 									Export & Delete Password
 								</button>
@@ -910,21 +910,24 @@
 		left: 0;
 		width: 100%;
 		height: 100%;
-		background-color: rgba(0, 0, 0, 0.5);
+		background-color: rgba(0, 0, 0, 0.7);
+		backdrop-filter: blur(4px);
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		z-index: 1000;
+		padding: 20px;
 	}
 
 	.modal-content {
-		background: var(--bg-secondary);
+		background: var(--bg-primary);
 		border-radius: 10px;
 		width: 90%;
 		max-width: 600px;
 		max-height: 90vh;
 		overflow-y: auto;
 		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		border: 1px solid var(--border-color);
 	}
 
 	.modal-header {
@@ -974,31 +977,38 @@
 			
 			.credential-field {
 				display: flex;
-				gap: 10px;
-				align-items: center;
+				gap: 8px;
+				align-items: stretch;
 				
 				code {
-					background-color: var(--bg-primary);
-					padding: 8px 12px;
-					border-radius: 5px;
+					background-color: var(--bg-secondary);
+					padding: 12px 16px;
+					border-radius: 6px;
 					border: 1px solid var(--border-color);
 					flex: 1;
 					font-family: 'Courier New', monospace;
 					word-break: break-all;
-					font-size: 14px;
+					font-size: 13px;
+					line-height: 1.4;
+					display: flex;
+					align-items: center;
+					color: var(--fg);
 				}
 				
 				button {
-					padding: 8px 16px;
-					background-color: #2196F3;
+					padding: 6px 12px;
+					background-color: var(--accent);
 					color: white;
 					border: none;
-					border-radius: 5px;
+					border-radius: 6px;
 					cursor: pointer;
-					font-size: 12px;
+					font-size: 11px;
+					font-weight: 500;
+					min-width: 50px;
+					flex-shrink: 0;
 					
 					&:hover {
-						background-color: #1976D2;
+						opacity: 0.9;
 					}
 				}
 			}
@@ -1044,21 +1054,37 @@
 		}
 		
 		.security-warning {
-			background-color: #fff3cd;
-			border: 1px solid #ffeaa7;
+			background-color: var(--bg-secondary);
+			border: 1px solid var(--border-color);
 			padding: 15px;
 			border-radius: 8px;
 			margin-top: 20px;
 			
 			h4 {
 				margin: 0 0 10px 0;
-				color: #856404;
+				color: var(--fg);
 			}
 			
 			p {
-				margin: 0 0 10px 0;
-				color: #856404;
+				margin: 0 0 15px 0;
+				color: var(--fg);
 				font-size: 14px;
+				opacity: 0.9;
+			}
+			
+			.delete-password-btn {
+				background-color: #ff9800;
+				color: white;
+				border: none;
+				padding: 8px 16px;
+				border-radius: 6px;
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 500;
+				
+				&:hover {
+					background-color: #f57c00;
+				}
 			}
 		}
 	}
