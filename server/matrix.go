@@ -1173,25 +1173,76 @@ func ReactivateMatrixUser(matrixUserID, newPassword string) (*SharedSecretRegist
 	return &reactivationResponse, nil
 }
 
-// resetMatrixUserPassword resets a Matrix user's password using the admin API
+// resetMatrixUserPassword resets a Matrix user's password using Dendrite admin API
 func resetMatrixUserPassword(matrixUserID, newPassword string) error {
 	errContext := map[string]interface{}{
 		"matrix_user_id": matrixUserID,
 	}
 	
-	// Extract username from matrix user ID (@username:server.name)
-	username := strings.TrimPrefix(matrixUserID, "@")
-	if colonIndex := strings.Index(username, ":"); colonIndex != -1 {
-		username = username[:colonIndex]
+	// Try Dendrite admin API first (/_dendrite/admin/resetPassword/{userID})
+	url := fmt.Sprintf("%s/_dendrite/admin/resetPassword/%s", getMatrixServerURL(), matrixUserID)
+	
+	// Build request body for Dendrite
+	requestBody := map[string]interface{}{
+		"password": newPassword,
 	}
 	
-	// Use Synapse admin API to reset password
+	requestJSON, err := json.Marshal(requestBody)
+	if err != nil {
+		return logAndReturnError("json_marshal", err, errContext)
+	}
+	
+	// Create HTTP request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return logAndReturnError("request_creation", err, errContext)
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	// Make request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return logAndReturnError("http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	// Read response
+	var responseBody bytes.Buffer
+	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
+		return logAndReturnError("response_read", err, errContext)
+	}
+	
+	// Check response
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		slog.Info("Successfully reset Matrix user password using Dendrite API", "matrix_user_id", matrixUserID)
+		return nil
+	} else if resp.StatusCode == http.StatusNotFound {
+		// Fallback: Try Synapse-compatible admin API
+		return resetMatrixUserPasswordSynapse(matrixUserID, newPassword)
+	} else {
+		return logAndReturnError("password_reset_failed", 
+			fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+			errContext)
+	}
+}
+
+// resetMatrixUserPasswordSynapse fallback using Synapse admin API
+func resetMatrixUserPasswordSynapse(matrixUserID, newPassword string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+		"fallback": "synapse_api",
+	}
+	
+	// Use Synapse admin API as fallback
 	url := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", getMatrixServerURL(), matrixUserID)
 	
 	// Build request body
 	requestBody := map[string]interface{}{
 		"password": newPassword,
-		"logout_devices": false, // Don't logout existing devices
+		"logout_devices": false,
 	}
 	
 	requestJSON, err := json.Marshal(requestBody)
@@ -1224,11 +1275,11 @@ func resetMatrixUserPassword(matrixUserID, newPassword string) error {
 	
 	// Check response
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-		slog.Info("Successfully reset Matrix user password", "matrix_user_id", matrixUserID)
+		slog.Info("Successfully reset Matrix user password using Synapse API fallback", "matrix_user_id", matrixUserID)
 		return nil
 	} else {
 		return logAndReturnError("password_reset_failed", 
-			fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+			fmt.Errorf("password reset failed with both Dendrite and Synapse APIs. Status %d: %s", resp.StatusCode, responseBody.String()), 
 			errContext)
 	}
 }
