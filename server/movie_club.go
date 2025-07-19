@@ -217,18 +217,22 @@ func (c *MovieClubCycle) GetNextPhase() MovieClubPhase {
 // IsPreviousWinner checks if a content ID has already won in any previous cycle that advanced to watch phase
 func IsPreviousWinner(db *gorm.DB, contentID int) bool {
 	var count int64
-	db.Model(&MovieClubCycle{}).
+	result := db.Model(&MovieClubCycle{}).
 		Where("winner_content_id = ? AND phase = ?", contentID, PHASE_WATCHING).
 		Count(&count)
+	
+	slog.Debug("IsPreviousWinner", "contentID", contentID, "count", count, "sql_error", result.Error)
 	return count > 0
 }
 
 // IsCurrentWinner checks if a content ID is currently winning in any active watching phase cycle
 func IsCurrentWinner(db *gorm.DB, contentID int) bool {
 	var count int64
-	db.Model(&MovieClubCycle{}).
+	result := db.Model(&MovieClubCycle{}).
 		Where("winner_content_id = ? AND phase = ? AND active = ?", contentID, PHASE_WATCHING, true).
 		Count(&count)
+	
+	slog.Debug("IsCurrentWinner", "contentID", contentID, "count", count, "sql_error", result.Error)
 	return count > 0
 }
 
@@ -557,15 +561,31 @@ func (b *BaseRouter) checkPreviousWinner(c *gin.Context) {
 		return
 	}
 	
-	contentIDStr := c.Param("contentId")
-	contentID, err := strconv.Atoi(contentIDStr)
+	tmdbIDStr := c.Param("contentId")
+	tmdbID, err := strconv.Atoi(tmdbIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid content ID"})
 		return
 	}
 	
-	isPreviousWinner := IsPreviousWinner(b.db, contentID)
-	isCurrentWinner := IsCurrentWinner(b.db, contentID)
+	// Convert TMDB ID to internal content ID
+	var content Content
+	result := b.db.Where("tmdb_id = ? AND type = ?", tmdbID, "movie").First(&content)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// If content doesn't exist in our DB, it can't be a winner
+			c.JSON(http.StatusOK, gin.H{"isPreviousWinner": false})
+			return
+		}
+		slog.Error("Failed to find content", "tmdbID", tmdbID, "error", result.Error)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to check content"})
+		return
+	}
+	
+	isPreviousWinner := IsPreviousWinner(b.db, int(content.ID))
+	isCurrentWinner := IsCurrentWinner(b.db, int(content.ID))
+	
+	slog.Debug("checkPreviousWinner", "tmdbID", tmdbID, "contentID", content.ID, "isPreviousWinner", isPreviousWinner, "isCurrentWinner", isCurrentWinner)
 	
 	// Return true if the movie is either a previous winner or current winner
 	isExcluded := isPreviousWinner || isCurrentWinner
@@ -936,13 +956,13 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 	}
 	
 	// Check if this movie has already won in a previous cycle that advanced to watch phase
-	if IsPreviousWinner(b.db, req.ContentID) {
+	if IsPreviousWinner(b.db, int(content.ID)) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "This movie has already won in a previous cycle"})
 		return
 	}
 	
 	// Check if this movie is currently winning in any active watching phase cycle
-	if IsCurrentWinner(b.db, req.ContentID) {
+	if IsCurrentWinner(b.db, int(content.ID)) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "This movie is currently the winner of an active cycle"})
 		return
 	}
