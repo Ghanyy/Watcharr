@@ -223,6 +223,15 @@ func IsPreviousWinner(db *gorm.DB, contentID int) bool {
 	return count > 0
 }
 
+// IsCurrentWinner checks if a content ID is currently winning in any active watching phase cycle
+func IsCurrentWinner(db *gorm.DB, contentID int) bool {
+	var count int64
+	db.Model(&MovieClubCycle{}).
+		Where("winner_content_id = ? AND phase = ? AND active = ?", contentID, PHASE_WATCHING, true).
+		Count(&count)
+	return count > 0
+}
+
 // GetActiveMovieClubCycles returns all currently active movie club cycles with proper sorting
 func GetActiveMovieClubCycles(db *gorm.DB) ([]MovieClubCycle, error) {
 	slog.Debug("GetActiveMovieClubCycles: Looking for active cycles")
@@ -925,6 +934,12 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 	// Check if this movie has already won in a previous cycle that advanced to watch phase
 	if IsPreviousWinner(b.db, req.ContentID) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "This movie has already won in a previous cycle"})
+		return
+	}
+	
+	// Check if this movie is currently winning in any active watching phase cycle
+	if IsCurrentWinner(b.db, req.ContentID) {
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: "This movie is currently the winner of an active cycle"})
 		return
 	}
 	
