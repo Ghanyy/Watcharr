@@ -19,7 +19,9 @@
 	let reason = "";
 	let searching = false;
 	let searchTimeout: NodeJS.Timeout;
-	let previousWinners = new Set<number>(); // Track which movies are previous winners
+	let isSelectedMovieExcluded = false; // Track if selected movie is excluded
+	let exclusionMessage = ""; // Message explaining why movie is excluded
+	let checkingExclusion = false; // Loading state for exclusion check
 
 	onMount(() => {
 		// Focus search input
@@ -49,9 +51,6 @@
 				tmdbId: movie.id, // Ensure tmdbId is set from TMDB's id field
 				type: "movie" as const,
 			}));
-
-			// Check which movies are previous winners
-			await checkForPreviousWinners(searchResults);
 		} catch (err) {
 			console.error("Search failed:", err);
 			searchResults = [];
@@ -67,28 +66,29 @@
 		}, 300);
 	}
 
-	async function checkForPreviousWinners(movies: Content[]) {
-		const checks = movies.map(async (movie) => {
-			const isPreviousWinner = await checkPreviousWinner(movie.tmdbId);
-			if (isPreviousWinner) {
-				previousWinners.add(movie.tmdbId);
-			}
-		});
-		await Promise.all(checks);
-		previousWinners = previousWinners; // Trigger reactivity
-	}
-
-	function selectMovie(movie: Content) {
-		// Prevent selection of previous winners
-		if (previousWinners.has(movie.tmdbId)) {
-			return;
-		}
+	async function selectMovie(movie: Content) {
 		selectedMovie = movie;
 		reason = "";
+		isSelectedMovieExcluded = false;
+		exclusionMessage = "";
+		checkingExclusion = true;
+
+		try {
+			const result = await checkPreviousWinner(movie.tmdbId);
+			if (result) {
+				isSelectedMovieExcluded = true;
+				exclusionMessage = "This movie has already won in a previous cycle or is currently the winner of an active cycle.";
+			}
+		} catch (err) {
+			console.error("Failed to check movie exclusion:", err);
+			// On error, allow nomination but let server validation handle it
+		} finally {
+			checkingExclusion = false;
+		}
 	}
 
 	function submitNomination() {
-		if (!selectedMovie) return;
+		if (!selectedMovie || isSelectedMovieExcluded) return;
 
 		dispatch("movieSelected", {
 			content: selectedMovie,
@@ -138,12 +138,10 @@
 			{:else if searchResults.length > 0}
 				<div class="search-results">
 					{#each searchResults as movie}
-						{@const isPreviousWinner = previousWinners.has(movie.tmdbId)}
 						<div
 							class="movie-result"
-							class:ineligible={isPreviousWinner}
 							role="button"
-							tabindex={isPreviousWinner ? -1 : 0}
+							tabindex="0"
 							on:click={() => selectMovie(movie)}
 							on:keydown={(e) => {
 								if (e.key === "Enter" || e.key === " ") {
@@ -163,12 +161,6 @@
 							<div class="movie-info">
 								<div class="movie-title-row">
 									<h4>{movie.title}</h4>
-									{#if isPreviousWinner}
-										<span class="previous-winner-badge">
-											<Icon icon="trophy" />
-											Previous Winner
-										</span>
-									{/if}
 								</div>
 								<p class="release-year">
 									{movie.release_date
@@ -177,11 +169,6 @@
 								</p>
 								{#if movie.overview}
 									<p class="overview">{movie.overview.substring(0, 150)}...</p>
-								{/if}
-								{#if isPreviousWinner}
-									<p class="ineligible-message">
-										This movie has already won in a previous cycle
-									</p>
 								{/if}
 							</div>
 							<Icon icon="chevron" />
@@ -230,6 +217,19 @@
 				</div>
 			</div>
 
+			<!-- Exclusion Check Status -->
+			{#if checkingExclusion}
+				<div class="checking-status">
+					<Spinner />
+					<p>Checking eligibility...</p>
+				</div>
+			{:else if isSelectedMovieExcluded}
+				<div class="exclusion-message">
+					<Icon icon="block" />
+					<p>{exclusionMessage}</p>
+				</div>
+			{/if}
+
 			<div class="reason-section">
 				<label for="reason">Why are you nominating this movie? (Optional)</label
 				>
@@ -238,6 +238,7 @@
 					placeholder="Share why you think this would be a great choice..."
 					bind:value={reason}
 					maxlength="500"
+					disabled={isSelectedMovieExcluded}
 				></textarea>
 				<small>{reason.length}/500 characters</small>
 			</div>
@@ -246,9 +247,19 @@
 				<button class="cancel-btn" on:click={() => dispatch("close")}>
 					Cancel
 				</button>
-				<button class="submit-btn" on:click={submitNomination}>
+				<button 
+					class="submit-btn" 
+					on:click={submitNomination}
+					disabled={isSelectedMovieExcluded || checkingExclusion}
+				>
 					<Icon icon="add" />
-					Nominate This Movie
+					{#if checkingExclusion}
+						Checking...
+					{:else if isSelectedMovieExcluded}
+						Cannot Nominate
+					{:else}
+						Nominate This Movie
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -1115,6 +1126,77 @@
 				font-size: 0.9rem;
 				min-width: unset;
 			}
+		}
+	}
+
+	.checking-status {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-md);
+		background: var(--background-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		color: var(--text-muted);
+		margin-bottom: var(--space-md);
+
+		:global(.spinner) {
+			font-size: 1.2rem;
+		}
+
+		p {
+			margin: 0;
+			font-size: 0.9rem;
+		}
+	}
+
+	.exclusion-message {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-md);
+		background: #fef2f2;
+		border: 1px solid #fecaca;
+		border-radius: var(--radius-md);
+		color: #dc2626;
+		margin-bottom: var(--space-md);
+
+		@media (prefers-color-scheme: dark) {
+			background: #450a0a;
+			border-color: #7f1d1d;
+			color: #fca5a5;
+		}
+
+		:global(svg) {
+			font-size: 1.2rem;
+			flex-shrink: 0;
+		}
+
+		p {
+			margin: 0;
+			font-size: 0.9rem;
+			font-weight: 500;
+			line-height: 1.4;
+		}
+	}
+
+	.reason-section {
+		textarea:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			background: var(--background-secondary);
+		}
+	}
+
+	.submit-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+		background: var(--text-muted);
+		
+		&:hover {
+			background: var(--text-muted);
+			transform: none;
+			box-shadow: var(--shadow-sm);
 		}
 	}
 </style>
