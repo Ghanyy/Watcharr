@@ -565,7 +565,11 @@ func (b *BaseRouter) checkPreviousWinner(c *gin.Context) {
 	}
 	
 	isPreviousWinner := IsPreviousWinner(b.db, contentID)
-	c.JSON(http.StatusOK, gin.H{"isPreviousWinner": isPreviousWinner})
+	isCurrentWinner := IsCurrentWinner(b.db, contentID)
+	
+	// Return true if the movie is either a previous winner or current winner
+	isExcluded := isPreviousWinner || isCurrentWinner
+	c.JSON(http.StatusOK, gin.H{"isPreviousWinner": isExcluded})
 }
 
 // addMovieClubActivity creates an activity record for movie club actions
