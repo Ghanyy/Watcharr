@@ -216,6 +216,7 @@ The Matrix integration provides community chat features for Movie Club cycles th
 The Matrix integration supports two account types through a unified API:
 
 1. **Application Service (AS) Accounts** (Default):
+
    - Virtual Matrix users managed entirely by Watcharr
    - No external Matrix client access required
    - Lightweight and automatic user management
@@ -231,18 +232,21 @@ The Matrix integration supports two account types through a unified API:
 **User Creation Methods:**
 
 1. **Application Service Virtual Users** (Default):
+
    - Creates virtual Matrix identities managed by Watcharr AS
    - No real Matrix user accounts on the server
    - Automatic lifecycle management (create/delete)
    - No external client access
 
 2. **Shared Secret Registration** (Personal Accounts):
+
    - Uses Dendrite's Synapse-compatible shared secret endpoint
    - Creates real Matrix users with working access tokens
    - Requires `registrationSecret` configuration in Matrix settings
    - Users can immediately access Matrix features via Element Web
 
 3. **Custom Account Linking** (Personal Accounts):
+
    - Links existing Matrix accounts to Watcharr users
    - Requires user to provide Matrix User ID and access token
    - Preserves existing Matrix identity and relationships
@@ -256,27 +260,32 @@ The Matrix integration supports two account types through a unified API:
 **Key Functions:**
 
 **Core Management:**
+
 - `InitializeMatrixClient()` - Creates Matrix client with admin credentials
 - `GetOrCreateMatrixUserV2()` - Unified user creation using hybrid architecture (AS or personal)
 - `UnlinkMatrixUserV2()` - Removes Matrix account links with account-type-specific handling
 
 **Application Service Functions:**
+
 - `InitializeAppService()` - Initializes AS manager with configuration
 - `CreateUser()` (AS) - Creates virtual Matrix users via Application Service
 - `DeleteUser()` (AS) - Removes AS-managed virtual users
 - `ValidateConfig()` (AS) - Validates AS configuration and namespace setup
 
 **Personal Account Functions:**
+
 - `RegisterUserWithSharedSecret()` - Creates real Matrix users via shared secret registration
 - `CreatePersonalMatrixUser()` - Creates real Matrix accounts with credentials
 - `LinkCustomMatrixUser()` - Links existing Matrix accounts to Watcharr users
 - `DeactivateMatrixUser()` - Deactivates real Matrix users on server (if supported)
 
 **Migration and Legacy Support:**
+
 - `MigrateMatrixUsersToV2()` - Migrates all legacy Matrix users to hybrid system
 - `MigrateSingleMatrixUserToV2()` - Migrates individual legacy users with conflict detection
 
 **Room and Space Management:**
+
 - `CreateCycleRoom()` - Creates Matrix rooms when cycles enter watching phase
 - `InviteUsersToRoom()` - Invites eligible users to cycle rooms (handles both account types)
 - `EnsureMovieClubSpace()` - Creates and manages Movie Club space for room organization
@@ -355,6 +364,7 @@ The Matrix integration supports two account types through a unified API:
 The hybrid architecture provides differentiated user management based on account type:
 
 **Application Service Accounts:**
+
 - Virtual users created and managed entirely by Watcharr AS
 - No real Matrix accounts created on the server
 - Automatic lifecycle management (create/delete)
@@ -362,6 +372,7 @@ The hybrid architecture provides differentiated user management based on account
 - Immediate cleanup when unlinking accounts
 
 **Personal Accounts:**
+
 - Real Matrix accounts with full server presence
 - Created via shared secret registration or custom linking
 - Secure credential storage with encryption
@@ -369,12 +380,14 @@ The hybrid architecture provides differentiated user management based on account
 - Custom accounts preserved when unlinking from Watcharr
 
 **Unified Unlinking Behavior:**
+
 - **AS Accounts**: Immediate deletion from database, no server cleanup needed
 - **Auto-generated Personal**: Deactivated on Matrix server and removed from Watcharr
 - **Custom Personal**: Only removed from Watcharr, preserving the user's Matrix account
 - **Legacy Accounts**: Migrated to V2 system or handled via legacy cleanup process
 
 **Security Features:**
+
 - Account-type-specific validation and permissions
 - Secure token handling with encryption for personal accounts
 - Hidden credential display in UI for security
@@ -417,14 +430,16 @@ The Application Service mode creates virtual Matrix users that exist only within
 **Required Configuration:**
 
 1. **Application Service Settings** (in Movie Club → Matrix → Application Service):
+
    - **AS ID**: Unique identifier for the Application Service (e.g., "watcharr-movieclub")
    - **AS Token**: Authentication token for AS-to-homeserver communication
    - **Homeserver Token**: Authentication token for homeserver-to-AS communication
-   - **User Namespace**: Pattern for AS-managed users (e.g., "@watcharr_*:yourdomain.com")
-   - **Alias Namespace**: Pattern for AS-managed room aliases (e.g., "#watcharr_*:yourdomain.com")
+   - **User Namespace**: Pattern for AS-managed users (e.g., "@watcharr\_\*:yourdomain.com")
+   - **Alias Namespace**: Pattern for AS-managed room aliases (e.g., "#watcharr\_\*:yourdomain.com")
    - **Sender Localpart**: Bot user localpart for AS communications (e.g., "watcharr-bot")
 
 2. **Dendrite Configuration** (dendrite.yaml):
+
 ```yaml
 # Add Application Service registration
 app_service_api:
@@ -435,9 +450,10 @@ app_service_api:
 ```
 
 3. **AS Registration File** (watcharr-registration.yaml):
+
 ```yaml
 id: "watcharr-movieclub"
-url: "http://watcharr:8080"  # Watcharr server URL
+url: "http://watcharr:8080" # Watcharr server URL
 as_token: "your-as-token-here"
 hs_token: "your-hs-token-here"
 sender_localpart: "watcharr-bot"
@@ -474,6 +490,7 @@ Watcharr implements the Matrix Application Service API endpoints:
 The hybrid system includes comprehensive migration support for existing Matrix users:
 
 **Automatic Migration:**
+
 - API endpoint: `POST /api/matrix/migrate-users-to-v2` (Admin only)
 - Migrates all legacy `MatrixUser` records to `MatrixUserV2`
 - Preserves user data, credentials, and preferences
@@ -481,6 +498,7 @@ The hybrid system includes comprehensive migration support for existing Matrix u
 - Provides detailed migration results and error reporting
 
 **Migration Process:**
+
 1. **Discovery**: Finds all legacy Matrix users in database
 2. **Conflict Detection**: Checks for existing V2 accounts to prevent duplicates
 3. **Data Migration**: Transfers user data with proper field mapping
@@ -488,6 +506,7 @@ The hybrid system includes comprehensive migration support for existing Matrix u
 5. **Cleanup**: Soft-deletes legacy records after successful migration
 
 **Migration Safety:**
+
 - Atomic transactions ensure data integrity
 - Failed migrations don't affect successful ones
 - Comprehensive error logging and reporting
@@ -528,35 +547,41 @@ The Matrix integration includes comprehensive test coverage for both the Applica
 **Application Service Tests (`matrix_appservice_test.go`):**
 
 1. **Configuration Validation** (7 test cases):
+
    - Valid AS configuration acceptance
    - Invalid/missing configuration rejection
    - Required field validation (ID, tokens, namespaces)
 
 2. **User Management** (4 test cases):
+
    - AS user creation and lifecycle
    - Duplicate user prevention
    - User deletion and cleanup
    - Database consistency verification
 
 3. **Namespace Validation** (8 test cases):
+
    - User ID namespace pattern matching
    - Room alias namespace validation
    - Malformed ID handling
    - Server name extraction from namespaces
 
 4. **Authentication & Security** (4 test cases):
+
    - Bearer token validation
    - Invalid token rejection
    - Missing authentication handling
    - Authorization header parsing
 
 5. **Event Processing** (4 test cases):
+
    - Matrix membership event handling
    - Message event processing
    - Unknown event type graceful handling
    - Malformed event error handling
 
 6. **HTTP API Endpoints** (3 test cases):
+
    - AS route registration and accessibility
    - Transaction endpoint functionality
    - User/room query endpoint responses
@@ -570,16 +595,19 @@ The Matrix integration includes comprehensive test coverage for both the Applica
 **Hybrid System Tests (`matrix_hybrid_test.go`):**
 
 1. **Account Creation** (2 test cases):
+
    - AS account creation in AS-enabled mode
    - Personal account creation (integration test - skipped in unit tests)
 
 2. **Account Unlinking** (4 test cases):
+
    - AS account unlinking and cleanup
    - Personal account unlinking with deactivation
    - Legacy account migration and unlinking
    - Non-existent account error handling
 
 3. **Migration System** (4 test cases):
+
    - Bulk legacy user migration to V2 system
    - Migration with no legacy users
    - Single user migration with conflict detection

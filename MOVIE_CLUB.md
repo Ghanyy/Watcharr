@@ -232,13 +232,15 @@ Users have three types of Matrix accounts available:
 
 **Personal Accounts:**
 
-*Auto-generated:*
+_Auto-generated:_
+
 - Real Matrix accounts created automatically by Watcharr
 - Work with Element Web and other Matrix clients
 - Secure credentials managed by the system
 - Requires server configuration with registration shared secret
 
-*Custom Linked:*
+_Custom Linked:_
+
 - Link existing Matrix accounts to Watcharr profiles
 - Requires Matrix user ID and access token
 - Full control over Matrix client and settings

@@ -84,7 +84,7 @@
 		<div class="modal-content">
 			<div class="validation-intro">
 				<p>
-					This tool performs comprehensive validation of your Matrix/Dendrite
+					This tool performs comprehensive validation of your Matrix server
 					server configuration to ensure everything is working properly for
 					Movie Club community features.
 				</p>

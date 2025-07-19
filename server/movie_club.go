@@ -77,14 +77,24 @@ type MovieClubSettings struct {
 }
 
 // MatrixSettings holds Matrix/Dendrite server configuration
+// Matrix server types for compatibility
+type MatrixServerType string
+
+const (
+	MatrixServerTypeAuto     MatrixServerType = "auto"     // Auto-detect server type
+	MatrixServerTypeSynapse  MatrixServerType = "synapse"  // Synapse server
+	MatrixServerTypeDendrite MatrixServerType = "dendrite" // Dendrite server
+)
+
 type MatrixSettings struct {
-	Enabled            bool   `json:"enabled"`            // Default: false
-	ServerURL          string `json:"serverUrl"`          // Dendrite server URL (e.g., "https://matrix.example.com")
-	AdminToken         string `json:"adminToken"`         // Admin access token for Matrix operations
-	ServerName         string `json:"serverName"`         // Matrix server name (e.g., "example.com")
-	SpaceName          string `json:"spaceName"`          // Default: "Movie Club"
-	AdminUserID        string `json:"adminUserId"`        // Watcharr admin user ID (e.g., "@watcharr:example.com")
-	RegistrationSecret string `json:"registrationSecret"` // Shared secret for user registration (optional)
+	Enabled            bool              `json:"enabled"`            // Default: false
+	ServerURL          string            `json:"serverUrl"`          // Matrix server URL (e.g., "https://matrix.example.com")
+	ServerType         MatrixServerType  `json:"serverType"`         // Server type (auto, synapse, dendrite) - Default: "auto"
+	AdminToken         string            `json:"adminToken"`         // Admin access token for Matrix operations
+	ServerName         string            `json:"serverName"`         // Matrix server name (e.g., "example.com")
+	SpaceName          string            `json:"spaceName"`          // Default: "Movie Club"
+	AdminUserID        string            `json:"adminUserId"`        // Watcharr admin user ID (e.g., "@watcharr:example.com")
+	RegistrationSecret string            `json:"registrationSecret"` // Shared secret for user registration (optional)
 	
 	// Application Service Configuration
 	AppService AppServiceSettings `json:"appService"` // Application Service settings

@@ -11,6 +11,7 @@
 		DropDownItem,
 		MovieClubSettings,
 		MatrixSettings,
+		MatrixServerType,
 	} from "@/types";
 	import axios from "axios";
 	import SonarrModal from "./modals/SonarrModal.svelte";
@@ -58,6 +59,7 @@
 	// Matrix disabled vars
 	let matrixEnabledDisabled = $state(false);
 	let matrixServerUrlDisabled = $state(false);
+	let matrixServerTypeDisabled = $state(false);
 	let matrixServerNameDisabled = $state(false);
 	let matrixAdminTokenDisabled = $state(false);
 	let matrixAdminUserIdDisabled = $state(false);
@@ -513,7 +515,7 @@
 							{#if serverConfig.MOVIE_CLUB.matrix.enabled}
 								<Setting
 									title="Matrix Server URL"
-									desc="URL of your Dendrite/Matrix server (e.g., https://matrix.example.com)"
+									desc="URL of your Matrix server (e.g., https://matrix.example.com)"
 								>
 									<input
 										type="url"
@@ -531,6 +533,30 @@
 										}}
 										disabled={matrixServerUrlDisabled}
 									/>
+								</Setting>
+
+								<Setting
+									title="Matrix Server Type"
+									desc="Type of Matrix server (Auto-detect recommended)"
+								>
+									<select
+										bind:value={serverConfig.MOVIE_CLUB.matrix.serverType}
+										onchange={() => {
+											matrixServerTypeDisabled = true;
+											updateMatrixConfig(
+												"serverType",
+												serverConfig.MOVIE_CLUB.matrix.serverType,
+												() => {
+													matrixServerTypeDisabled = false;
+												},
+											);
+										}}
+										disabled={matrixServerTypeDisabled}
+									>
+										<option value="auto">Auto-detect</option>
+										<option value="synapse">Synapse</option>
+										<option value="dendrite">Dendrite</option>
+									</select>
 								</Setting>
 
 								<Setting

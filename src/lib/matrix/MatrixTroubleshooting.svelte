@@ -26,7 +26,7 @@
 					],
 					solutions: [
 						"Verify the server URL is correct and accessible",
-						"Check that Dendrite/Matrix server is running",
+						"Check that Matrix server (Synapse/Dendrite) is running",
 						"Ensure firewall allows connections on the Matrix port",
 						"Test server accessibility from Watcharr server: curl -I <server-url>",
 						"Check server logs for error details",
@@ -41,8 +41,9 @@
 					solutions: [
 						"Verify the admin token has not expired",
 						"Check that the token has admin privileges",
-						"Regenerate admin access token from Dendrite",
+						"Regenerate admin access token from Matrix server",
 						"Ensure token format is correct (no extra spaces or newlines)",
+						"For Synapse: Use admin API token; For Dendrite: Use admin access token",
 					],
 				},
 			],
@@ -58,16 +59,16 @@
 						"'Admin permissions' check fails",
 					],
 					solutions: [
-						"Verify the admin user exists in Dendrite",
+						"Verify the admin user exists in Matrix server",
 						"Check admin user has server admin privileges",
-						"Review Dendrite configuration for admin settings",
-						"Create admin user if missing: dendrite-admin-tool create-account <username>",
-						"Grant admin privileges: dendrite-admin-tool set-admin <username> true",
+						"Review Matrix server configuration for admin settings",
+						"For Dendrite: Use dendrite-admin-tool create-account <username>",
+						"For Synapse: Use registration_shared_secret or admin API",
 					],
 					links: [
 						{
-							text: "Dendrite Admin Tool Documentation",
-							url: "https://matrix-org.github.io/dendrite/administration/adminapi",
+							text: "Matrix Admin Documentation",
+							url: "https://matrix-org.github.io/synapse/latest/admin_api/",
 						},
 					],
 				},
@@ -86,7 +87,7 @@
 					solutions: [
 						"Check Matrix server disk space and resources",
 						"Verify room alias format is valid",
-						"Review Dendrite logs for room creation errors",
+						"Review Matrix server logs for room creation errors",
 						"Check server configuration allows room creation",
 						"Ensure federation is disabled for local-only rooms",
 					],
@@ -98,10 +99,10 @@
 						"Alias conflicts or format errors",
 					],
 					solutions: [
-						"Verify server name configuration matches Dendrite setup",
+						"Verify server name configuration matches Matrix server setup",
 						"Check for existing alias conflicts",
 						"Review alias format: #roomname:servername",
-						"Ensure server name matches Dendrite's configured domain",
+						"Ensure server name matches Matrix server's configured domain",
 					],
 				},
 			],
@@ -117,10 +118,10 @@
 						"Federation issues (if enabled)",
 					],
 					solutions: [
-						"Match server name to Dendrite's configured server_name",
+						"Match server name to Matrix server's configured server_name",
 						"Update Watcharr Matrix server name setting",
 						"Restart Watcharr after configuration changes",
-						"Check Dendrite matrix_key configuration",
+						"Check Matrix server key configuration",
 					],
 				},
 				{
@@ -139,8 +140,29 @@
 			],
 		},
 		{
-			title: "Dendrite-Specific Issues",
+			title: "Matrix Server-Specific Issues",
 			problems: [
+				{
+					issue: "Synapse startup failures",
+					symptoms: [
+						"Matrix server not responding",
+						"Connection refused errors",
+						"Service not running",
+					],
+					solutions: [
+						"Check Synapse service status: systemctl status matrix-synapse",
+						"Review homeserver.yaml configuration file for syntax errors",
+						"Check Synapse logs: journalctl -u matrix-synapse -f",
+						"Verify database connectivity (PostgreSQL/SQLite)",
+						"Ensure required ports are available (8008, 8448)",
+					],
+					links: [
+						{
+							text: "Synapse Installation Guide",
+							url: "https://matrix-org.github.io/synapse/latest/setup/installation.html",
+						},
+					],
+				},
 				{
 					issue: "Dendrite startup failures",
 					symptoms: [
@@ -150,7 +172,7 @@
 					],
 					solutions: [
 						"Check Dendrite service status: systemctl status dendrite",
-						"Review Dendrite configuration file for syntax errors",
+						"Review dendrite.yaml configuration file for syntax errors",
 						"Check Dendrite logs: journalctl -u dendrite -f",
 						"Verify database connectivity (PostgreSQL/SQLite)",
 						"Ensure required ports are available (8008, 8448)",
@@ -165,15 +187,17 @@
 				{
 					issue: "Database connectivity issues",
 					symptoms: [
-						"Dendrite fails to start",
+						"Matrix server fails to start",
 						"Database connection errors in logs",
 					],
 					solutions: [
 						"Verify database server is running and accessible",
-						"Check database credentials in Dendrite config",
+						"Check database credentials in Matrix server config",
 						"Test database connection independently",
-						"Review database permissions for Dendrite user",
+						"Review database permissions for Matrix server user",
 						"Check database schema is properly initialized",
+						"For Synapse: Check PostgreSQL config in homeserver.yaml",
+						"For Dendrite: Check database config in dendrite.yaml",
 					],
 				},
 			],
@@ -202,7 +226,7 @@
 		<div class="modal-content">
 			<div class="guide-intro">
 				<p>
-					This guide helps resolve common Matrix/Dendrite integration issues.
+					This guide helps resolve common Matrix server integration issues.
 					Click on sections and problems to expand detailed solutions.
 				</p>
 			</div>
@@ -287,12 +311,19 @@
 				<p>If you're still experiencing issues:</p>
 				<ul>
 					<li>Check Watcharr server logs for detailed error messages</li>
-					<li>Review Dendrite logs for Matrix server issues</li>
+					<li>Review Matrix server logs for issues</li>
 					<li>
-						Consult the <a
+						Consult the official Matrix server documentation:
+						<a
+							href="https://matrix-org.github.io/synapse/latest/"
+							target="_blank"
+							rel="noopener noreferrer">Synapse ↗</a
+						>
+						|
+						<a
 							href="https://matrix-org.github.io/dendrite/"
 							target="_blank"
-							rel="noopener noreferrer">official Dendrite documentation ↗</a
+							rel="noopener noreferrer">Dendrite ↗</a
 						>
 					</li>
 					<li>

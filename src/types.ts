@@ -1357,9 +1357,12 @@ export interface MovieClubSettings {
 	matrix: MatrixSettings;
 }
 
+export type MatrixServerType = "auto" | "synapse" | "dendrite";
+
 export interface MatrixSettings {
 	enabled: boolean;
 	serverUrl: string;
+	serverType: MatrixServerType;
 	adminToken: string;
 	serverName: string;
 	spaceName: string;

@@ -1332,6 +1332,178 @@ func getMatrixServerURL() string {
 	return strings.TrimSuffix(Config.MOVIE_CLUB.Matrix.ServerURL, "/")
 }
 
+// Matrix server detection and compatibility functions
+
+// MatrixServerInfo holds information about a Matrix server
+type MatrixServerInfo struct {
+	ServerType   MatrixServerType `json:"serverType"`
+	ServerName   string           `json:"serverName"`
+	Version      string           `json:"version"`
+	Capabilities []string         `json:"capabilities"`
+}
+
+// DetectMatrixServerType attempts to detect the Matrix server type
+func DetectMatrixServerType(serverURL string) (MatrixServerType, error) {
+	// Try to get server information from /_matrix/client/versions endpoint
+	versionsURL := fmt.Sprintf("%s/_matrix/client/versions", strings.TrimSuffix(serverURL, "/"))
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(versionsURL)
+	if err != nil {
+		return MatrixServerTypeAuto, fmt.Errorf("failed to connect to Matrix server: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return MatrixServerTypeAuto, fmt.Errorf("server returned status %d", resp.StatusCode)
+	}
+	
+	var versionsResp struct {
+		Versions []string `json:"versions"`
+		Server   struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		} `json:"unstable_features,omitempty"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&versionsResp); err != nil {
+		return MatrixServerTypeAuto, fmt.Errorf("failed to parse versions response: %w", err)
+	}
+	
+	// Try to get server info from /_synapse/admin/v1/server_version endpoint (Synapse specific)
+	synapseURL := fmt.Sprintf("%s/_synapse/admin/v1/server_version", strings.TrimSuffix(serverURL, "/"))
+	synapseResp, err := client.Get(synapseURL)
+	if err == nil && synapseResp.StatusCode == http.StatusOK {
+		synapseResp.Body.Close()
+		return MatrixServerTypeSynapse, nil
+	}
+	if synapseResp != nil {
+		synapseResp.Body.Close()
+	}
+	
+	// Check for Dendrite-specific patterns or default to auto-detection
+	// For now, we'll default to Dendrite if we can't detect Synapse
+	// This maintains backward compatibility
+	return MatrixServerTypeDendrite, nil
+}
+
+// GetEffectiveServerType returns the effective server type based on configuration
+func GetEffectiveServerType() MatrixServerType {
+	settings := Config.MOVIE_CLUB.Matrix
+	
+	// If server type is explicitly set and not auto, use it
+	if settings.ServerType != "" && settings.ServerType != MatrixServerTypeAuto {
+		return settings.ServerType
+	}
+	
+	// If server type is auto or not set, try to detect
+	if settings.ServerURL != "" {
+		detected, err := DetectMatrixServerType(settings.ServerURL)
+		if err != nil {
+			slog.Warn("Failed to auto-detect Matrix server type, defaulting to Dendrite", 
+				"error", err, "server_url", settings.ServerURL)
+			return MatrixServerTypeDendrite
+		}
+		
+		slog.Info("Auto-detected Matrix server type", 
+			"detected_type", detected, "server_url", settings.ServerURL)
+		return detected
+	}
+	
+	// Default to Dendrite for backward compatibility
+	return MatrixServerTypeDendrite
+}
+
+// IsServerTypeSynapse checks if the current server is Synapse
+func IsServerTypeSynapse() bool {
+	return GetEffectiveServerType() == MatrixServerTypeSynapse
+}
+
+// IsServerTypeDendrite checks if the current server is Dendrite
+func IsServerTypeDendrite() bool {
+	return GetEffectiveServerType() == MatrixServerTypeDendrite
+}
+
+// Matrix user registration interface and implementations
+
+// MatrixUserRegistrar defines the interface for Matrix user registration
+type MatrixUserRegistrar interface {
+	RegisterUser(username, password string, admin bool) (*SharedSecretRegistrationResponse, error)
+	ValidateRegistrationCapability() error
+	GetServerType() MatrixServerType
+}
+
+// DendriteRegistrar implements user registration for Dendrite servers
+type DendriteRegistrar struct{}
+
+// SynapseRegistrar implements user registration for Synapse servers  
+type SynapseRegistrar struct{}
+
+// GetMatrixRegistrar returns the appropriate registrar for the current server type
+func GetMatrixRegistrar() MatrixUserRegistrar {
+	serverType := GetEffectiveServerType()
+	switch serverType {
+	case MatrixServerTypeSynapse:
+		return &SynapseRegistrar{}
+	case MatrixServerTypeDendrite:
+		return &DendriteRegistrar{}
+	default:
+		// Default to Dendrite for backward compatibility
+		return &DendriteRegistrar{}
+	}
+}
+
+// DendriteRegistrar implementation
+
+func (d *DendriteRegistrar) GetServerType() MatrixServerType {
+	return MatrixServerTypeDendrite
+}
+
+func (d *DendriteRegistrar) ValidateRegistrationCapability() error {
+	if Config.MOVIE_CLUB.Matrix.RegistrationSecret == "" {
+		return errors.New("shared secret not configured for Dendrite registration")
+	}
+	return nil
+}
+
+func (d *DendriteRegistrar) RegisterUser(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
+	return registerUserWithDendriteSharedSecret(username, password, admin)
+}
+
+// SynapseRegistrar implementation
+
+func (s *SynapseRegistrar) GetServerType() MatrixServerType {
+	return MatrixServerTypeSynapse
+}
+
+func (s *SynapseRegistrar) ValidateRegistrationCapability() error {
+	if Config.MOVIE_CLUB.Matrix.RegistrationSecret == "" {
+		return errors.New("shared secret not configured for Synapse registration")
+	}
+	return nil
+}
+
+func (s *SynapseRegistrar) RegisterUser(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
+	return registerUserWithSynapseSharedSecret(username, password, admin)
+}
+
+// RegisterUserWithSharedSecret creates a Matrix user using the appropriate registrar
+func RegisterUserWithSharedSecret(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
+	registrar := GetMatrixRegistrar()
+	
+	// Validate registration capability
+	if err := registrar.ValidateRegistrationCapability(); err != nil {
+		return nil, err
+	}
+	
+	slog.Debug("Using Matrix registrar", 
+		"server_type", registrar.GetServerType(),
+		"username", username,
+		"admin", admin)
+	
+	return registrar.RegisterUser(username, password, admin)
+}
+
 // Shared secret registration functions
 
 // generateNonce creates a unique nonce for shared secret registration
@@ -1419,30 +1591,25 @@ func getServerNonce() (string, error) {
 	return nonceResponse.Nonce, nil
 }
 
-// RegisterUserWithSharedSecret creates a Matrix user using shared secret registration
-func RegisterUserWithSharedSecret(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
+// registerUserWithDendriteSharedSecret creates a Matrix user using Dendrite's shared secret registration
+func registerUserWithDendriteSharedSecret(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
 	errContext := map[string]interface{}{
 		"username": username,
 		"admin":    admin,
-	}
-	
-	// Check if shared secret is configured
-	if Config.MOVIE_CLUB.Matrix.RegistrationSecret == "" {
-		return nil, logAndReturnError("shared_secret_registration", 
-			errors.New("shared secret not configured"), errContext)
+		"server_type": "dendrite",
 	}
 	
 	// Get nonce from server (Dendrite requires server-generated nonce)
 	nonce, err := getServerNonce()
 	if err != nil {
-		return nil, logAndReturnError("nonce_fetch", err, errContext)
+		return nil, logAndReturnError("dendrite_nonce_fetch", err, errContext)
 	}
 	errContext["nonce"] = nonce
 	
 	// Generate HMAC signature
 	mac, err := generateSharedSecretMAC(Config.MOVIE_CLUB.Matrix.RegistrationSecret, nonce, username, password, admin)
 	if err != nil {
-		return nil, logAndReturnError("mac_generation", err, errContext)
+		return nil, logAndReturnError("dendrite_mac_generation", err, errContext)
 	}
 	
 	// Prepare request
@@ -1457,42 +1624,367 @@ func RegisterUserWithSharedSecret(username, password string, admin bool) (*Share
 	// Convert to JSON
 	requestJSON, err := json.Marshal(request)
 	if err != nil {
-		return nil, logAndReturnError("json_marshal", err, errContext)
+		return nil, logAndReturnError("dendrite_json_marshal", err, errContext)
 	}
 	
-	// Make HTTP request to Matrix server
+	// Make HTTP request to Dendrite server (uses Synapse-compatible endpoint)
 	url := fmt.Sprintf("%s/_synapse/admin/v1/register", getMatrixServerURL())
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestJSON))
 	if err != nil {
-		return nil, logAndReturnError("http_request", err, errContext)
+		return nil, logAndReturnError("dendrite_http_request", err, errContext)
 	}
 	defer resp.Body.Close()
 	
 	// Read response
 	var responseBody bytes.Buffer
 	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
-		return nil, logAndReturnError("response_read", err, errContext)
+		return nil, logAndReturnError("dendrite_response_read", err, errContext)
 	}
 	
 	// Check status code
 	if resp.StatusCode != http.StatusOK {
-		return nil, logAndReturnError("registration_failed", 
-			fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+		return nil, logAndReturnError("dendrite_registration_failed", 
+			fmt.Errorf("Dendrite registration failed with status %d: %s", resp.StatusCode, responseBody.String()), 
 			errContext)
 	}
 	
 	// Parse response
 	var registrationResponse SharedSecretRegistrationResponse
 	if err := json.Unmarshal(responseBody.Bytes(), &registrationResponse); err != nil {
-		return nil, logAndReturnError("response_parse", err, errContext)
+		return nil, logAndReturnError("dendrite_response_parse", err, errContext)
 	}
 	
-	slog.Info("Successfully registered Matrix user via shared secret",
+	slog.Info("Successfully registered Matrix user via Dendrite shared secret",
 		"username", username,
 		"user_id", registrationResponse.UserID,
 		"device_id", registrationResponse.DeviceID)
 	
 	return &registrationResponse, nil
+}
+
+// registerUserWithSynapseSharedSecret creates a Matrix user using Synapse's shared secret registration
+func registerUserWithSynapseSharedSecret(username, password string, admin bool) (*SharedSecretRegistrationResponse, error) {
+	errContext := map[string]interface{}{
+		"username": username,
+		"admin":    admin,
+		"server_type": "synapse",
+	}
+	
+	// Synapse supports both client-generated and server-generated nonces
+	// Try client-generated nonce first for better performance
+	nonce, err := generateNonce()
+	if err != nil {
+		// Fallback to server-generated nonce
+		nonce, err = getServerNonce()
+		if err != nil {
+			return nil, logAndReturnError("synapse_nonce_fetch", err, errContext)
+		}
+	}
+	errContext["nonce"] = nonce
+	
+	// Generate HMAC signature (Synapse uses same HMAC format as Dendrite)
+	mac, err := generateSharedSecretMAC(Config.MOVIE_CLUB.Matrix.RegistrationSecret, nonce, username, password, admin)
+	if err != nil {
+		return nil, logAndReturnError("synapse_mac_generation", err, errContext)
+	}
+	
+	// Prepare request
+	request := SharedSecretRegistrationRequest{
+		Nonce:    nonce,
+		Username: username,
+		Password: password,
+		Admin:    admin,
+		Mac:      mac,
+	}
+	
+	// Convert to JSON
+	requestJSON, err := json.Marshal(request)
+	if err != nil {
+		return nil, logAndReturnError("synapse_json_marshal", err, errContext)
+	}
+	
+	// Make HTTP request to Synapse server
+	url := fmt.Sprintf("%s/_synapse/admin/v1/register", getMatrixServerURL())
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return nil, logAndReturnError("synapse_http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	// Read response
+	var responseBody bytes.Buffer
+	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
+		return nil, logAndReturnError("synapse_response_read", err, errContext)
+	}
+	
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return nil, logAndReturnError("synapse_registration_failed", 
+			fmt.Errorf("Synapse registration failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+			errContext)
+	}
+	
+	// Parse response
+	var registrationResponse SharedSecretRegistrationResponse
+	if err := json.Unmarshal(responseBody.Bytes(), &registrationResponse); err != nil {
+		return nil, logAndReturnError("synapse_response_parse", err, errContext)
+	}
+	
+	slog.Info("Successfully registered Matrix user via Synapse shared secret",
+		"username", username,
+		"user_id", registrationResponse.UserID,
+		"device_id", registrationResponse.DeviceID)
+	
+	return &registrationResponse, nil
+}
+
+// Matrix admin API abstraction layer
+
+// MatrixAdminAPI defines the interface for Matrix admin operations
+type MatrixAdminAPI interface {
+	ResetUserPassword(matrixUserID, newPassword string) error
+	RevokeUserTokens(matrixUserID string) error
+	DeactivateUser(matrixUserID string) error
+	GetServerInfo() (*MatrixServerInfo, error)
+	GetServerType() MatrixServerType
+}
+
+// DendriteAdminAPI implements admin operations for Dendrite servers
+type DendriteAdminAPI struct{}
+
+// SynapseAdminAPI implements admin operations for Synapse servers
+type SynapseAdminAPI struct{}
+
+// GetMatrixAdminAPI returns the appropriate admin API for the current server type
+func GetMatrixAdminAPI() MatrixAdminAPI {
+	serverType := GetEffectiveServerType()
+	switch serverType {
+	case MatrixServerTypeSynapse:
+		return &SynapseAdminAPI{}
+	case MatrixServerTypeDendrite:
+		return &DendriteAdminAPI{}
+	default:
+		// Default to Dendrite for backward compatibility
+		return &DendriteAdminAPI{}
+	}
+}
+
+// DendriteAdminAPI implementation
+
+func (d *DendriteAdminAPI) GetServerType() MatrixServerType {
+	return MatrixServerTypeDendrite
+}
+
+func (d *DendriteAdminAPI) GetServerInfo() (*MatrixServerInfo, error) {
+	return &MatrixServerInfo{
+		ServerType: MatrixServerTypeDendrite,
+		ServerName: Config.MOVIE_CLUB.Matrix.ServerName,
+		Version:    "unknown",
+		Capabilities: []string{"shared_secret_registration"},
+	}, nil
+}
+
+func (d *DendriteAdminAPI) ResetUserPassword(matrixUserID, newPassword string) error {
+	// Dendrite doesn't have a direct password reset API
+	// This is typically handled through shared secret registration
+	return fmt.Errorf("password reset not supported directly on Dendrite - use account recreation")
+}
+
+func (d *DendriteAdminAPI) RevokeUserTokens(matrixUserID string) error {
+	// Dendrite doesn't have a token revocation API
+	// Tokens are typically revoked through user deactivation
+	return fmt.Errorf("token revocation not supported directly on Dendrite")
+}
+
+func (d *DendriteAdminAPI) DeactivateUser(matrixUserID string) error {
+	// Dendrite doesn't have a user deactivation API
+	// Users are typically soft-deleted in the application layer
+	return fmt.Errorf("user deactivation not supported directly on Dendrite")
+}
+
+// SynapseAdminAPI implementation
+
+func (s *SynapseAdminAPI) GetServerType() MatrixServerType {
+	return MatrixServerTypeSynapse
+}
+
+func (s *SynapseAdminAPI) GetServerInfo() (*MatrixServerInfo, error) {
+	// Try to get server version from Synapse admin API
+	url := fmt.Sprintf("%s/_synapse/admin/v1/server_version", getMatrixServerURL())
+	
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create server info request: %w", err)
+	}
+	
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server info: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return &MatrixServerInfo{
+			ServerType: MatrixServerTypeSynapse,
+			ServerName: Config.MOVIE_CLUB.Matrix.ServerName,
+			Version:    "unknown",
+			Capabilities: []string{"shared_secret_registration", "admin_api"},
+		}, nil
+	}
+	
+	var serverInfo struct {
+		ServerVersion string `json:"server_version"`
+		PythonVersion string `json:"python_version"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&serverInfo); err != nil {
+		return nil, fmt.Errorf("failed to parse server info: %w", err)
+	}
+	
+	return &MatrixServerInfo{
+		ServerType: MatrixServerTypeSynapse,
+		ServerName: Config.MOVIE_CLUB.Matrix.ServerName,
+		Version:    serverInfo.ServerVersion,
+		Capabilities: []string{"shared_secret_registration", "admin_api", "user_management"},
+	}, nil
+}
+
+func (s *SynapseAdminAPI) ResetUserPassword(matrixUserID, newPassword string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+		"server_type": "synapse",
+	}
+	
+	// Use Synapse admin API to reset password
+	url := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", getMatrixServerURL(), matrixUserID)
+	
+	// Build request body
+	requestBody := map[string]interface{}{
+		"password": newPassword,
+		"logout_devices": false,
+	}
+	
+	requestJSON, err := json.Marshal(requestBody)
+	if err != nil {
+		return logAndReturnError("synapse_password_reset_json_marshal", err, errContext)
+	}
+	
+	// Create HTTP request
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return logAndReturnError("synapse_password_reset_request_creation", err, errContext)
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	// Make request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return logAndReturnError("synapse_password_reset_http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	// Check response
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		slog.Info("Successfully reset Matrix user password using Synapse admin API", 
+			"matrix_user_id", matrixUserID)
+		return nil
+	} else {
+		var responseBody bytes.Buffer
+		responseBody.ReadFrom(resp.Body)
+		return logAndReturnError("synapse_password_reset_failed", 
+			fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+			errContext)
+	}
+}
+
+func (s *SynapseAdminAPI) RevokeUserTokens(matrixUserID string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+		"server_type": "synapse",
+	}
+	
+	// Use Synapse admin API to revoke user tokens
+	url := fmt.Sprintf("%s/_synapse/admin/v1/users/%s/devices", getMatrixServerURL(), matrixUserID)
+	
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return logAndReturnError("synapse_token_revocation_request_creation", err, errContext)
+	}
+	
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return logAndReturnError("synapse_token_revocation_http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode == http.StatusOK {
+		slog.Info("Successfully revoked Matrix user tokens using Synapse admin API", 
+			"matrix_user_id", matrixUserID)
+		return nil
+	} else {
+		return logAndReturnError("synapse_token_revocation_failed", 
+			fmt.Errorf("token revocation failed with status %d", resp.StatusCode), 
+			errContext)
+	}
+}
+
+func (s *SynapseAdminAPI) DeactivateUser(matrixUserID string) error {
+	errContext := map[string]interface{}{
+		"matrix_user_id": matrixUserID,
+		"server_type": "synapse",
+	}
+	
+	// Use Synapse admin API to deactivate user
+	url := fmt.Sprintf("%s/_synapse/admin/v2/users/%s", getMatrixServerURL(), matrixUserID)
+	
+	// Build request body
+	requestBody := map[string]interface{}{
+		"deactivated": true,
+	}
+	
+	requestJSON, err := json.Marshal(requestBody)
+	if err != nil {
+		return logAndReturnError("synapse_deactivation_json_marshal", err, errContext)
+	}
+	
+	// Create HTTP request
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return logAndReturnError("synapse_deactivation_request_creation", err, errContext)
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
+	
+	// Make request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return logAndReturnError("synapse_deactivation_http_request", err, errContext)
+	}
+	defer resp.Body.Close()
+	
+	// Check response
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		slog.Info("Successfully deactivated Matrix user using Synapse admin API", 
+			"matrix_user_id", matrixUserID)
+		return nil
+	} else {
+		var responseBody bytes.Buffer
+		responseBody.ReadFrom(resp.Body)
+		return logAndReturnError("synapse_deactivation_failed", 
+			fmt.Errorf("user deactivation failed with status %d: %s", resp.StatusCode, responseBody.String()), 
+			errContext)
+	}
 }
 
 // ReactivateMatrixAccount creates a new Matrix account for reactivation since Dendrite doesn't support true reactivation
@@ -1573,67 +2065,6 @@ func ReactivateMatrixAccount(matrixUserID, newPassword string) (*SharedSecretReg
 
 
 // resetMatrixUserPassword uses standard Matrix client API to change password
-func resetMatrixUserPassword(matrixUserID, newPassword string) error {
-	errContext := map[string]interface{}{
-		"matrix_user_id": matrixUserID,
-	}
-	
-	// Use standard Matrix client API to change password
-	// This works by using admin privileges with client API
-	url := fmt.Sprintf("%s/_matrix/client/r0/account/password", getMatrixServerURL())
-	
-	// Build request body using Matrix client API format
-	requestBody := map[string]interface{}{
-		"new_password": newPassword,
-		// Use admin auth instead of user auth
-		"auth": map[string]interface{}{
-			"type": "m.login.password",
-			"user": matrixUserID,
-		},
-	}
-	
-	requestJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return logAndReturnError("json_marshal", err, errContext)
-	}
-	
-	// Create HTTP request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return logAndReturnError("request_creation", err, errContext)
-	}
-	
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
-	
-	// Make request
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return logAndReturnError("http_request", err, errContext)
-	}
-	defer resp.Body.Close()
-	
-	// Read response
-	var responseBody bytes.Buffer
-	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
-		return logAndReturnError("response_read", err, errContext)
-	}
-	
-	// Check response
-	if resp.StatusCode == http.StatusOK {
-		slog.Info("Successfully reset Matrix user password using client API", "matrix_user_id", matrixUserID)
-		return nil
-	} else {
-		// Log the error but don't fail - the main issue might be that the account is deactivated
-		slog.Warn("Password reset via client API failed", 
-			"matrix_user_id", matrixUserID,
-			"status", resp.StatusCode,
-			"response", responseBody.String())
-		return fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String())
-	}
-}
-
 // resetMatrixUserPasswordSynapse fallback using Synapse admin API
 func resetMatrixUserPasswordSynapse(matrixUserID, newPassword string) error {
 	errContext := map[string]interface{}{
@@ -1684,9 +2115,20 @@ func resetMatrixUserPasswordSynapse(matrixUserID, newPassword string) error {
 		return nil
 	} else {
 		return logAndReturnError("password_reset_failed", 
-			fmt.Errorf("password reset failed with both Dendrite and Synapse APIs. Status %d: %s", resp.StatusCode, responseBody.String()), 
+			fmt.Errorf("password reset failed with status %d: %s", resp.StatusCode, responseBody.String()), 
 			errContext)
 	}
+}
+
+// resetMatrixUserPassword resets a Matrix user password using the appropriate admin API
+func resetMatrixUserPassword(matrixUserID, newPassword string) error {
+	adminAPI := GetMatrixAdminAPI()
+	
+	slog.Debug("Attempting Matrix user password reset", 
+		"matrix_user_id", matrixUserID, 
+		"server_type", adminAPI.GetServerType())
+	
+	return adminAPI.ResetUserPassword(matrixUserID, newPassword)
 }
 
 // ExportMatrixCredentials exports Matrix credentials for auto-generated users
@@ -1798,35 +2240,13 @@ type MatrixCredentialExport struct {
 
 // revokeUserTokens attempts to revoke all access tokens for a Matrix user
 func revokeUserTokens(matrixUserID string) error {
-	// Try to use Matrix admin API to revoke user tokens
-	// This is a fallback when full user deactivation is not available
+	adminAPI := GetMatrixAdminAPI()
 	
-	// First try Synapse-style token revocation
-	url := fmt.Sprintf("%s/_synapse/admin/v1/whois/%s", getMatrixServerURL(), matrixUserID)
+	slog.Debug("Attempting Matrix user token revocation", 
+		"matrix_user_id", matrixUserID, 
+		"server_type", adminAPI.GetServerType())
 	
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create token revocation request: %w", err)
-	}
-	
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", Config.MOVIE_CLUB.Matrix.AdminToken))
-	
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to query user info: %w", err)
-	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode == http.StatusNotFound {
-		// API not available on this server
-		return fmt.Errorf("token revocation API not available on this Matrix server")
-	}
-	
-	// For now, just log that we attempted token revocation
-	// Implementing full token revocation would require more complex API calls
-	slog.Debug("Attempted token revocation for Matrix user", "matrix_user_id", matrixUserID)
-	return nil
+	return adminAPI.RevokeUserTokens(matrixUserID)
 }
 
 // DeactivateMatrixUser deactivates a Matrix user using the standard Matrix client API
