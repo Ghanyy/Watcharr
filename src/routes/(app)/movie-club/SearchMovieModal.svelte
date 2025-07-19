@@ -5,6 +5,7 @@
 	import Icon from "@/lib/Icon.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
+	import { checkPreviousWinner } from "@/lib/util/api";
 	import axios from "axios";
 
 	const dispatch = createEventDispatcher<{
@@ -18,6 +19,7 @@
 	let reason = "";
 	let searching = false;
 	let searchTimeout: NodeJS.Timeout;
+	let previousWinners = new Set<number>(); // Track which movies are previous winners
 
 	onMount(() => {
 		// Focus search input
@@ -47,6 +49,9 @@
 				tmdbId: movie.id, // Ensure tmdbId is set from TMDB's id field
 				type: "movie" as const,
 			}));
+
+			// Check which movies are previous winners
+			await checkForPreviousWinners(searchResults);
 		} catch (err) {
 			console.error("Search failed:", err);
 			searchResults = [];
@@ -62,7 +67,22 @@
 		}, 300);
 	}
 
+	async function checkForPreviousWinners(movies: Content[]) {
+		const checks = movies.map(async (movie) => {
+			const isPreviousWinner = await checkPreviousWinner(movie.tmdbId);
+			if (isPreviousWinner) {
+				previousWinners.add(movie.tmdbId);
+			}
+		});
+		await Promise.all(checks);
+		previousWinners = previousWinners; // Trigger reactivity
+	}
+
 	function selectMovie(movie: Content) {
+		// Prevent selection of previous winners
+		if (previousWinners.has(movie.tmdbId)) {
+			return;
+		}
 		selectedMovie = movie;
 		reason = "";
 	}
@@ -118,10 +138,12 @@
 			{:else if searchResults.length > 0}
 				<div class="search-results">
 					{#each searchResults as movie}
+						{@const isPreviousWinner = previousWinners.has(movie.tmdbId)}
 						<div
 							class="movie-result"
+							class:ineligible={isPreviousWinner}
 							role="button"
-							tabindex="0"
+							tabindex={isPreviousWinner ? -1 : 0}
 							on:click={() => selectMovie(movie)}
 							on:keydown={(e) => {
 								if (e.key === "Enter" || e.key === " ") {
@@ -139,7 +161,15 @@
 								/>
 							</div>
 							<div class="movie-info">
-								<h4>{movie.title}</h4>
+								<div class="movie-title-row">
+									<h4>{movie.title}</h4>
+									{#if isPreviousWinner}
+										<span class="previous-winner-badge">
+											<Icon icon="trophy" />
+											Previous Winner
+										</span>
+									{/if}
+								</div>
 								<p class="release-year">
 									{movie.release_date
 										? new Date(movie.release_date).getFullYear()
@@ -147,6 +177,11 @@
 								</p>
 								{#if movie.overview}
 									<p class="overview">{movie.overview.substring(0, 150)}...</p>
+								{/if}
+								{#if isPreviousWinner}
+									<p class="ineligible-message">
+										This movie has already won in a previous cycle
+									</p>
 								{/if}
 							</div>
 							<Icon icon="chevron" />
@@ -441,7 +476,7 @@
 			margin-bottom: 0;
 		}
 
-		&:hover {
+		&:hover:not(.ineligible) {
 			background: var(--background);
 			transform: translateY(-2px);
 			box-shadow: var(--shadow-lg);
@@ -454,6 +489,28 @@
 				opacity: 0.02;
 				border-radius: inherit;
 				pointer-events: none;
+			}
+		}
+
+		&.ineligible {
+			opacity: 0.6;
+			cursor: not-allowed;
+			filter: grayscale(0.3);
+			border-color: var(--border);
+
+			&::after {
+				content: "";
+				position: absolute;
+				inset: 0;
+				background: repeating-linear-gradient(
+					45deg,
+					transparent,
+					transparent 10px,
+					rgba(255, 0, 0, 0.1) 10px,
+					rgba(255, 0, 0, 0.1) 20px
+				);
+				pointer-events: none;
+				border-radius: inherit;
 			}
 		}
 
@@ -520,6 +577,14 @@
 			position: relative;
 			z-index: 1;
 
+			.movie-title-row {
+				display: flex;
+				align-items: flex-start;
+				gap: var(--space-sm);
+				flex-wrap: wrap;
+				margin-bottom: var(--space-xs);
+			}
+
 			h4 {
 				margin: 0;
 				font-size: 1rem;
@@ -528,6 +593,38 @@
 				font-weight: 600;
 				word-wrap: break-word;
 				transition: color 0.2s ease;
+				flex: 1;
+				min-width: 0;
+			}
+
+			.previous-winner-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 2px;
+				padding: 2px var(--space-xs);
+				background: linear-gradient(135deg, #fbbf24, #f59e0b);
+				color: white;
+				font-size: 0.7rem;
+				font-weight: 600;
+				border-radius: var(--radius-sm);
+				white-space: nowrap;
+				flex-shrink: 0;
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+				text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+
+				:global(svg) {
+					font-size: 0.7rem;
+					color: white;
+				}
+			}
+
+			.ineligible-message {
+				margin: var(--space-xs) 0 0 0;
+				color: var(--danger, #dc3545);
+				font-size: 0.75rem;
+				font-weight: 500;
+				font-style: italic;
+				line-height: 1.3;
 			}
 
 			.release-year {
@@ -563,7 +660,7 @@
 			z-index: 1;
 		}
 
-		&:hover :global(svg) {
+		&:hover:not(.ineligible) :global(svg) {
 			color: var(--primary);
 			transform: rotate(-90deg) scale(1.1);
 		}

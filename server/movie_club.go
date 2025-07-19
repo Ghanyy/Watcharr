@@ -214,6 +214,15 @@ func (c *MovieClubCycle) GetNextPhase() MovieClubPhase {
 
 // Database helper functions
 
+// IsPreviousWinner checks if a content ID has already won in any previous cycle that advanced to watch phase
+func IsPreviousWinner(db *gorm.DB, contentID int) bool {
+	var count int64
+	db.Model(&MovieClubCycle{}).
+		Where("winner_content_id = ? AND phase = ?", contentID, PHASE_WATCHING).
+		Count(&count)
+	return count > 0
+}
+
 // GetActiveMovieClubCycles returns all currently active movie club cycles with proper sorting
 func GetActiveMovieClubCycles(db *gorm.DB) ([]MovieClubCycle, error) {
 	slog.Debug("GetActiveMovieClubCycles: Looking for active cycles")
@@ -531,6 +540,25 @@ func (b *BaseRouter) getMovieClubSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, Config.MOVIE_CLUB)
 }
 
+// checkPreviousWinner checks if a content ID is a previous winner
+func (b *BaseRouter) checkPreviousWinner(c *gin.Context) {
+	// Check if movie club is enabled
+	if !Config.MOVIE_CLUB.Enabled {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Movie club is not enabled"})
+		return
+	}
+	
+	contentIDStr := c.Param("contentId")
+	contentID, err := strconv.Atoi(contentIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid content ID"})
+		return
+	}
+	
+	isPreviousWinner := IsPreviousWinner(b.db, contentID)
+	c.JSON(http.StatusOK, gin.H{"isPreviousWinner": isPreviousWinner})
+}
+
 // addMovieClubActivity creates an activity record for movie club actions
 func addMovieClubActivity(db *gorm.DB, userID uint, activityType ActivityType, data string) error {
 	// Create a dummy watched entry with ID 0 for movie club activities
@@ -579,6 +607,9 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	
 	// Settings endpoint (public for all users)
 	movieClub.GET("/settings", b.getMovieClubSettings)
+	
+	// Check if content is a previous winner
+	movieClub.GET("/previous-winners/:contentId", b.checkPreviousWinner)
 	
 	// Admin endpoints
 	movieClub.POST("/cycle", AdminRequired(), b.createMovieClubCycle)
@@ -888,6 +919,12 @@ func (b *BaseRouter) nominateMovie(c *gin.Context) {
 	if err != nil {
 		slog.Error("Failed to get or create content", "error", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to process content"})
+		return
+	}
+	
+	// Check if this movie has already won in a previous cycle that advanced to watch phase
+	if IsPreviousWinner(b.db, req.ContentID) {
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: "This movie has already won in a previous cycle"})
 		return
 	}
 	

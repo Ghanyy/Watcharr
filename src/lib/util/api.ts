@@ -414,6 +414,21 @@ export async function getActiveMovieClubCycles(): Promise<
 }
 
 /**
+ * Check if a movie is a previous winner
+ */
+export async function checkPreviousWinner(contentId: number): Promise<boolean> {
+	try {
+		const response = await axios.get(
+			`/movie-club/previous-winners/${contentId}`,
+		);
+		return response.data.isPreviousWinner;
+	} catch (err: any) {
+		console.error("checkPreviousWinner failed!", err);
+		return false;
+	}
+}
+
+/**
  * Nominate a movie for the current cycle
  */
 export async function nominateMovie(
