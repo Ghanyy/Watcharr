@@ -1464,16 +1464,29 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 			cycle.WinnerContentID = &results[0].ContentID
 		}
 		
-		// Create Matrix room for the watching phase if Matrix is enabled
+		// Create Matrix space and rooms for the watching phase if Matrix is enabled
 		if Config.MOVIE_CLUB.Matrix.Enabled && cycle.WinnerContentID != nil {
 			// Load winner content information
 			if err := db.Preload("WinnerContent").First(cycle, cycle.ID).Error; err != nil {
-				slog.Warn("Failed to load winner content for Matrix room creation", "error", err, "cycle_id", cycle.ID)
+				slog.Warn("Failed to load winner content for Matrix space creation", "error", err, "cycle_id", cycle.ID)
 			} else {
-				// Create Matrix room asynchronously to avoid blocking cycle transition
+				// Create Matrix space and rooms asynchronously to avoid blocking cycle transition
 				go func(cycleData *MovieClubCycle) {
-					if _, err := CreateCycleRoom(db, cycleData); err != nil {
-						slog.Error("Failed to create Matrix room for cycle", "error", err, "cycle_id", cycleData.ID)
+					// Create cycle space
+					spaceID, err := CreateCycleSpace(db, cycleData)
+					if err != nil {
+						slog.Error("Failed to create Matrix space for cycle", "error", err, "cycle_id", cycleData.ID)
+						return
+					}
+
+					// Add cycle space to Movie Club space hierarchy
+					if err := SetupSpaceHierarchy(db, spaceID); err != nil {
+						slog.Error("Failed to setup space hierarchy for cycle", "error", err, "cycle_id", cycleData.ID, "space_id", spaceID)
+					}
+
+					// Create General and Spoilers rooms in the cycle space
+					if err := CreateCycleRooms(db, cycleData, spaceID); err != nil {
+						slog.Error("Failed to create cycle rooms", "error", err, "cycle_id", cycleData.ID, "space_id", spaceID)
 					}
 				}(cycle)
 			}

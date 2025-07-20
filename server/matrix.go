@@ -73,14 +73,37 @@ type MatrixUserV2 struct {
 	LastSeenAt    time.Time `json:"lastSeenAt"`    // Last activity timestamp
 }
 
+// Matrix room types for better organization
+type MatrixRoomType string
+
+const (
+	MatrixRoomTypeNews     MatrixRoomType = "news"     // Global news room
+	MatrixRoomTypeGeneral  MatrixRoomType = "general"  // Cycle general discussion
+	MatrixRoomTypeSpoilers MatrixRoomType = "spoilers" // Cycle spoilers discussion
+)
+
+// Matrix space types for hierarchy management
+type MatrixSpaceType string
+
+const (
+	MatrixSpaceTypeMovieClub MatrixSpaceType = "movie_club" // Main Movie Club space
+	MatrixSpaceTypeCycle     MatrixSpaceType = "cycle"      // Individual cycle space
+)
+
 // MatrixRoom stores Matrix rooms for movie club cycles
 type MatrixRoom struct {
 	GormModel
-	CycleID   uint               `json:"cycleId" gorm:"index"`
-	RoomID    string             `json:"roomId" gorm:"unique"`    // !room_id:server.name
-	RoomAlias string             `json:"roomAlias"`               // #cycle-1-movie-name:server.name
-	Cycle     MovieClubCycle     `json:"cycle,omitempty" gorm:"foreignKey:CycleID"`
-	Members   []MatrixRoomMember `json:"members,omitempty" gorm:"foreignKey:RoomID"`
+	RoomID      string         `json:"roomId" gorm:"unique"`
+	RoomAlias   string         `json:"roomAlias"`
+	RoomName    string         `json:"roomName"`      // Explicit room name
+	RoomType    MatrixRoomType `json:"roomType"`      // Room type classification
+	SpaceID     *string        `json:"spaceId" gorm:"index"` // Parent space
+	CycleID     *uint          `json:"cycleId" gorm:"index"` // Optional for News room
+	
+	// Relationships  
+	Space       *MatrixSpace        `json:"space,omitempty" gorm:"foreignKey:SpaceID"`
+	Cycle       *MovieClubCycle     `json:"cycle,omitempty" gorm:"foreignKey:CycleID"`
+	Members     []MatrixRoomMember  `json:"members,omitempty" gorm:"foreignKey:RoomID"`
 }
 
 // MatrixRoomMember tracks room memberships
@@ -96,8 +119,15 @@ type MatrixRoomMember struct {
 // MatrixSpace stores the Movie Club space information
 type MatrixSpace struct {
 	GormModel
-	SpaceID   string `json:"spaceId" gorm:"unique"` // !space_id:server.name
-	SpaceName string `json:"spaceName"`
+	SpaceID       string          `json:"spaceId" gorm:"unique"`
+	SpaceName     string          `json:"spaceName"`
+	SpaceType     MatrixSpaceType `json:"spaceType"`        // Type classification
+	CycleID       *uint           `json:"cycleId" gorm:"index"` // Optional cycle association
+	ParentSpaceID *string         `json:"parentSpaceId"`    // Hierarchy support
+	
+	// Relationships
+	Cycle         *MovieClubCycle `json:"cycle,omitempty" gorm:"foreignKey:CycleID"`
+	Rooms         []MatrixRoom    `json:"rooms,omitempty" gorm:"foreignKey:SpaceID"`
 }
 
 // Matrix token encryption utilities
