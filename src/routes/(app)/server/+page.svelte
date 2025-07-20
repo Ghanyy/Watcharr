@@ -570,9 +570,18 @@
 									value={serverConfig.MOVIE_CLUB.matrix.enabled}
 									toggled={(on) => {
 										matrixEnabledDisabled = true;
-										updateMatrixConfig("enabled", on, () => {
-											matrixEnabledDisabled = false;
-										});
+										// If disabling Matrix, also disable Application Service
+										if (!on && serverConfig.MOVIE_CLUB.matrix.appService.enabled) {
+											updateMatrixAppServiceConfig("enabled", false, () => {
+												updateMatrixConfig("enabled", on, () => {
+													matrixEnabledDisabled = false;
+												});
+											});
+										} else {
+											updateMatrixConfig("enabled", on, () => {
+												matrixEnabledDisabled = false;
+											});
+										}
 									}}
 								/>
 							</Setting>
@@ -718,11 +727,12 @@
 									desc="Enable Application Service for virtual Matrix users. Recommended for most installations."
 								>
 									<Checkbox
-										bind:checked={serverConfig.MOVIE_CLUB.matrix.appService.enabled}
-										onchange={(checked) => {
+										name="APP_SERVICE_ENABLED"
+										value={serverConfig.MOVIE_CLUB.matrix.appService.enabled}
+										toggled={(on) => {
 											updateMatrixAppServiceConfig(
 												"enabled",
-												checked,
+												on,
 												() => {},
 											);
 										}}
