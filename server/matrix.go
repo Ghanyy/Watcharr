@@ -2386,6 +2386,11 @@ func GenerateASRegistrationFile(asSettings *AppServiceSettings, matrixSettings *
 					Exclusive: true,
 					Regex:     userNamespace,
 				},
+				// Include the bot user (sender_localpart) in the namespace
+				{
+					Exclusive: true,
+					Regex:     fmt.Sprintf("@%s:%s", asSettings.SenderLocalpart, serverName),
+				},
 			},
 			Aliases: []ASNamespaceRule{
 				{
