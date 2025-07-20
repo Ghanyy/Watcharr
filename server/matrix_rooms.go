@@ -1207,10 +1207,10 @@ func InviteUsersToSpaceRooms(db *gorm.DB, cycleID uint, rooms []*MatrixRoom) err
 		for _, room := range rooms {
 			roomID := id.RoomID(room.RoomID)
 
-			// Check if user is already a member
+			// Check if user is already a member in our database
 			var existingMembership MatrixRoomMember
 			if err := db.Where("room_id = ? AND user_id = ?", room.ID, user.ID).First(&existingMembership).Error; err == nil {
-				slog.Debug("User already member of room", "user_id", user.ID, "room_id", room.RoomID, "room_type", room.RoomType)
+				slog.Debug("User already member of room (database record exists)", "user_id", user.ID, "room_id", room.RoomID, "room_type", room.RoomType)
 				userSuccessCount++
 				continue
 			}
@@ -1221,12 +1221,21 @@ func InviteUsersToSpaceRooms(db *gorm.DB, cycleID uint, rooms []*MatrixRoom) err
 			})
 
 			if err != nil {
-				slog.Warn("Failed to invite user to cycle room",
-					"matrix_user_id", matrixUser.MatrixUserID,
-					"room_id", roomID,
-					"room_type", room.RoomType,
-					"error", err)
-				continue
+				// Check if user is already in the room (this is actually success)
+				if strings.Contains(err.Error(), "already in the room") || strings.Contains(err.Error(), "M_FORBIDDEN") {
+					slog.Info("User already in room (Matrix server confirms)",
+						"matrix_user_id", matrixUser.MatrixUserID,
+						"room_id", roomID,
+						"room_type", room.RoomType)
+					// This counts as success - record the membership
+				} else {
+					slog.Warn("Failed to invite user to cycle room",
+						"matrix_user_id", matrixUser.MatrixUserID,
+						"room_id", roomID,
+						"room_type", room.RoomType,
+						"error", err)
+					continue
+				}
 			}
 
 			// Record membership in database
@@ -1676,10 +1685,6 @@ func SetRoomAvatar(db *gorm.DB, room *MatrixRoom, content *Content) error {
 
 // verifyMediaUpload verifies that an uploaded media file is accessible
 func verifyMediaUpload(mediaURI string) error {
-	if matrixClient == nil {
-		return errors.New("matrix client not initialized")
-	}
-
 	// Parse the MXC URI to get server and media ID
 	if !strings.HasPrefix(mediaURI, "mxc://") {
 		return fmt.Errorf("invalid MXC URI: %s", mediaURI)
@@ -1695,13 +1700,22 @@ func verifyMediaUpload(mediaURI string) error {
 	serverName := serverAndMedia[0]
 	mediaID := serverAndMedia[1]
 
-	// Try to download the media to verify it exists and is accessible
-	_, err := matrixClient.DownloadMedia(context.Background(), id.ContentURI(mediaURI))
+	// Build HTTP URL for media download
+	downloadURL := fmt.Sprintf("%s/_matrix/media/v3/download/%s/%s", 
+		Config.MOVIE_CLUB.Matrix.ServerURL, serverName, mediaID)
+
+	// Make HTTP request to verify media accessibility
+	resp, err := http.Head(downloadURL)
 	if err != nil {
-		return fmt.Errorf("media verification failed for %s/%s: %w", serverName, mediaID, err)
+		return fmt.Errorf("media verification HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("media verification failed: HTTP %d for %s/%s", resp.StatusCode, serverName, mediaID)
 	}
 
-	slog.Debug("Media upload verified successfully", "media_uri", mediaURI)
+	slog.Debug("Media upload verified successfully", "media_uri", mediaURI, "status_code", resp.StatusCode)
 	return nil
 }
 
