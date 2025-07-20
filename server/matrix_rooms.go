@@ -487,21 +487,22 @@ func GetActiveWatchingCyclesWithoutRooms(db *gorm.DB) ([]MovieClubCycle, error) 
 	now := time.Now()
 
 	// Find cycles that are:
-	// 1. In watching phase (watching_start_date <= now < watching_end_date)
-	// 2. Have a winner content (WinnerContentID is not null)
+	// 1. In watching phase (phase = 'watching' AND phase_start_date <= now < phase_end_date)
+	// 2. Have a winner content (winner_content_id IS NOT NULL)
 	// 3. Don't already have a Matrix room
 	err := db.Raw(`
 		SELECT mcc.* FROM movie_club_cycles mcc
-		WHERE mcc.watching_start_date <= ?
-		AND mcc.watching_end_date > ?
+		WHERE mcc.phase = ?
+		AND mcc.phase_start_date <= ?
+		AND mcc.phase_end_date > ?
 		AND mcc.winner_content_id IS NOT NULL
 		AND mcc.id NOT IN (
 			SELECT DISTINCT mr.cycle_id 
 			FROM matrix_rooms mr 
 			WHERE mr.cycle_id = mcc.id
 		)
-		ORDER BY mcc.watching_start_date ASC
-	`, now, now).Scan(&cycles).Error
+		ORDER BY mcc.phase_start_date ASC
+	`, PHASE_WATCHING, now, now).Scan(&cycles).Error
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active watching cycles without rooms: %w", err)
@@ -551,7 +552,7 @@ func CreateRoomsForExistingCycles(db *gorm.DB) (*RetroactiveRoomCreationResult, 
 	slog.Info("Creating Matrix rooms for existing watching cycles", 
 		"cycle_count", len(cycles))
 
-	// Create rooms for each cycle
+	// Create spaces and rooms for each cycle using the new space-based architecture
 	for _, cycle := range cycles {
 		var movieTitle string
 		if cycle.WinnerContent != nil {
@@ -560,16 +561,17 @@ func CreateRoomsForExistingCycles(db *gorm.DB) (*RetroactiveRoomCreationResult, 
 			movieTitle = fmt.Sprintf("Cycle %d", cycle.ID)
 		}
 		
-		slog.Info("Creating Matrix room for existing cycle", 
+		slog.Info("Creating Matrix space and rooms for existing cycle", 
 			"cycle_id", cycle.ID,
 			"cycle_name", cycle.Name,
 			"movie_title", movieTitle)
 
-		room, err := CreateCycleRoom(db, &cycle)
+		// Create cycle space
+		cycleSpace, err := CreateCycleSpace(db, &cycle)
 		if err != nil {
-			errorMsg := fmt.Sprintf("Failed to create room for cycle %d (%s): %v", 
+			errorMsg := fmt.Sprintf("Failed to create space for cycle %d (%s): %v", 
 				cycle.ID, cycle.Name, err)
-			slog.Error("Retroactive room creation failed", 
+			slog.Error("Retroactive space creation failed", 
 				"cycle_id", cycle.ID,
 				"cycle_name", cycle.Name,
 				"error", err)
@@ -579,14 +581,43 @@ func CreateRoomsForExistingCycles(db *gorm.DB) (*RetroactiveRoomCreationResult, 
 			continue
 		}
 
-		result.CreatedRooms++
-		result.CreatedRoomIDs = append(result.CreatedRoomIDs, room.RoomID)
+		// Ensure Movie Club space exists and add cycle space to hierarchy
+		movieClubSpace, err := EnsureMovieClubSpace(db)
+		if err != nil {
+			slog.Error("Failed to ensure Movie Club space", "error", err, "cycle_id", cycle.ID)
+		} else {
+			if err := SetupSpaceHierarchy(db, movieClubSpace, cycleSpace); err != nil {
+				slog.Error("Failed to setup space hierarchy for cycle", "error", err, "cycle_id", cycle.ID, "space_id", cycleSpace.SpaceID)
+			}
+		}
+
+		// Create General and Spoilers rooms in the cycle space
+		if err := CreateCycleRooms(db, cycleSpace, &cycle); err != nil {
+			errorMsg := fmt.Sprintf("Failed to create rooms for cycle %d (%s): %v", 
+				cycle.ID, cycle.Name, err)
+			slog.Error("Failed to create cycle rooms", "error", err, "cycle_id", cycle.ID, "space_id", cycleSpace.SpaceID)
+			
+			result.FailedRooms++
+			result.Errors = append(result.Errors, errorMsg)
+			continue
+		}
+
+		// Count both General and Spoilers rooms as created
+		result.CreatedRooms += 2 // General + Spoilers
 		
-		slog.Info("Successfully created Matrix room for existing cycle",
+		// Get the created rooms to add their IDs to result
+		var createdRooms []MatrixRoom
+		if err := db.Where("space_id = ?", cycleSpace.SpaceID).Find(&createdRooms).Error; err == nil {
+			for _, room := range createdRooms {
+				result.CreatedRoomIDs = append(result.CreatedRoomIDs, room.RoomID)
+			}
+		}
+		
+		slog.Info("Successfully created Matrix space and rooms for existing cycle",
 			"cycle_id", cycle.ID,
 			"cycle_name", cycle.Name,
-			"room_id", room.RoomID,
-			"room_alias", room.RoomAlias)
+			"space_id", cycleSpace.SpaceID,
+			"movie_title", movieTitle)
 	}
 
 	slog.Info("Retroactive room creation completed",
