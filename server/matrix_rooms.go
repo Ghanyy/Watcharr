@@ -1547,6 +1547,11 @@ func getOrUploadPosterMedia(content *Content) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to download poster: %w", err)
 	}
+	
+	slog.Debug("Downloaded poster from TMDB", 
+		"url", posterURL,
+		"size_bytes", len(posterData),
+		"content_type", contentType)
 
 	// Upload with retry logic for rate limiting
 	uploadResp, err := uploadWithRetry(posterData, contentType, fmt.Sprintf("poster_%s.jpg", strings.ReplaceAll(content.PosterPath, "/", "_")))
@@ -1558,10 +1563,15 @@ func getOrUploadPosterMedia(content *Content) (string, error) {
 	
 	// Verify the upload was successful by testing access
 	if err := verifyMediaUpload(uploadResp.ContentURI.String()); err != nil {
-		slog.Warn("Media upload succeeded but verification failed", 
+		slog.Error("Media upload reported success but verification failed - upload is broken", 
 			"media_uri", mediaURI, 
 			"error", err,
-			"note", "This might indicate server media configuration issues")
+			"poster_url", posterURL,
+			"size_bytes", len(posterData),
+			"content_type", contentType,
+			"note", "The Matrix SDK returned success but media doesn't exist on server")
+		// Don't cache broken uploads
+		return "", fmt.Errorf("media upload verification failed: %w", err)
 	}
 	
 	// Cache the result
@@ -1581,13 +1591,21 @@ func uploadWithRetry(data []byte, contentType, fileName string) (*mautrix.RespMe
 	baseDelay := time.Second
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Create a fresh reader for each attempt (critical fix)
+		reader := bytes.NewReader(data)
+		
 		uploadResp, err := matrixClient.UploadMedia(context.Background(), mautrix.ReqUploadMedia{
-			Content:     bytes.NewReader(data),
+			Content:     reader,
 			ContentType: contentType,
 			FileName:    fileName,
 		})
 
 		if err == nil {
+			slog.Debug("Media upload successful", 
+				"attempt", attempt+1,
+				"size_bytes", len(data),
+				"content_type", contentType,
+				"media_uri", uploadResp.ContentURI.String())
 			return uploadResp, nil
 		}
 
@@ -1606,6 +1624,11 @@ func uploadWithRetry(data []byte, contentType, fileName string) (*mautrix.RespMe
 		}
 
 		// For non-rate-limit errors or max retries exceeded, return the error
+		slog.Error("Media upload failed", 
+			"attempt", attempt+1,
+			"error", err,
+			"size_bytes", len(data),
+			"content_type", contentType)
 		return nil, err
 	}
 
