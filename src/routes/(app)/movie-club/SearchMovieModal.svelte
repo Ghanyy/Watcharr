@@ -29,6 +29,20 @@
 		if (searchInput) {
 			searchInput.focus();
 		}
+
+		// Add escape key listener for closing modal
+		const handleKeydown = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				dispatch("close");
+			}
+		};
+
+		document.addEventListener("keydown", handleKeydown);
+
+		// Cleanup function
+		return () => {
+			document.removeEventListener("keydown", handleKeydown);
+		};
 	});
 
 	async function searchMovies(query: string) {
@@ -128,7 +142,28 @@
 					bind:value={searchQuery}
 					on:input={handleSearchInput}
 				/>
+				{#if searchQuery.trim()}
+					<button 
+						class="clear-search-btn" 
+						title="Clear search" 
+						on:click={() => {
+							searchQuery = "";
+							searchResults = [];
+						}}
+					>
+						<Icon icon="close" />
+					</button>
+				{/if}
 			</div>
+			
+			{#if searchQuery.trim() || searchResults.length > 0}
+				<div class="search-actions">
+					<button class="close-search-btn" on:click={() => dispatch("close")}>
+						<Icon icon="close" />
+						Close Search
+					</button>
+				</div>
+			{/if}
 
 			{#if searching}
 				<div class="searching">
@@ -387,7 +422,7 @@
 
 		input {
 			width: 100%;
-			padding: var(--space-md) var(--space-md) var(--space-md) 2.75rem;
+			padding: var(--space-md) 3.5rem var(--space-md) 2.75rem;
 			border: 2px solid var(--border);
 			border-radius: var(--radius-lg);
 			font-size: 1rem;
@@ -413,6 +448,83 @@
 
 			&:hover:not(:focus) {
 				box-shadow: var(--shadow-md);
+			}
+		}
+
+		.clear-search-btn {
+			position: absolute;
+			right: var(--space-sm);
+			top: 50%;
+			transform: translateY(-50%);
+			width: 28px;
+			height: 28px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			background: none;
+			border: none;
+			cursor: pointer;
+			color: var(--text-muted);
+			border-radius: var(--radius-sm);
+			transition: all 0.2s ease;
+			z-index: 2;
+
+			&:hover {
+				color: var(--text);
+				background: var(--background-secondary, rgba(0, 0, 0, 0.05));
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow: 0 0 0 2px var(--primary);
+			}
+
+			:global(svg) {
+				position: static;
+				transform: none;
+				font-size: 0.9rem;
+			}
+		}
+	}
+
+	.search-actions {
+		display: flex;
+		justify-content: center;
+		padding: var(--space-sm) 0;
+
+		.close-search-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--space-xs);
+			padding: var(--space-xs) var(--space-md);
+			background: var(--background);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-md);
+			color: var(--text-muted);
+			font-family: inherit;
+			font-size: 0.85rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
+
+			&:hover {
+				color: var(--text);
+				background: var(--background-secondary, rgba(0, 0, 0, 0.02));
+				border-color: var(--text-muted);
+				transform: translateY(-1px);
+				box-shadow: var(--shadow-md);
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--primary);
+			}
+
+			:global(svg) {
+				font-size: 0.8rem;
 			}
 		}
 	}
@@ -1011,8 +1123,25 @@
 			}
 
 			input {
-				padding: var(--space-sm) var(--space-sm) var(--space-sm) 2.5rem;
+				padding: var(--space-sm) 3rem var(--space-sm) 2.5rem;
 				font-size: 0.95rem;
+			}
+
+			.clear-search-btn {
+				width: 24px;
+				height: 24px;
+				right: 6px;
+
+				:global(svg) {
+					font-size: 0.8rem;
+				}
+			}
+		}
+
+		.search-actions {
+			.close-search-btn {
+				font-size: 0.8rem;
+				padding: 6px var(--space-sm);
 			}
 		}
 
