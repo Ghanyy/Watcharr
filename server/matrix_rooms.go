@@ -643,11 +643,9 @@ type RetroactiveRoomCreationResult struct {
 
 // Utility functions
 
-// generateRoomAlias creates a Matrix room alias for a cycle
+// generateRoomAlias creates a Matrix room alias for a cycle (legacy function)
 func generateRoomAlias(cycle *MovieClubCycle) string {
 	// Format: movieclub-YYYY-MM-DD-normalized-title
-	dateStr := cycle.VotingEndDate.Format("2006-01-02")
-	
 	var title string
 	if cycle.WinnerContent != nil {
 		title = cycle.WinnerContent.Title
@@ -657,7 +655,7 @@ func generateRoomAlias(cycle *MovieClubCycle) string {
 	}
 	
 	normalizedTitle := normalizeTitle(title)
-	return fmt.Sprintf("movieclub-%s-%s", dateStr, normalizedTitle)
+	return generateUniqueRoomAlias(cycle, normalizedTitle, "general")
 }
 
 // normalizeTitle normalizes a movie title for use in Matrix room alias
@@ -712,15 +710,16 @@ func EnsureNewsRoom(db *gorm.DB) (*MatrixRoom, error) {
 		return nil, fmt.Errorf("failed to ensure Movie Club space: %w", err)
 	}
 
-	// Create News room
+	// Create News room with unique alias
 	roomName := "News"
+	newsAlias := generateUniqueNewsRoomAlias()
 	createReq := &mautrix.ReqCreateRoom{
 		Name:          roomName,
 		Topic:         "Movie Club news and announcements",
 		Preset:        "private_chat",
 		Visibility:    "private",
 		IsDirect:      false,
-		RoomAliasName: "movieclub-news",
+		RoomAliasName: newsAlias,
 	}
 
 	resp, err := matrixClient.CreateRoom(context.Background(), createReq)
@@ -731,7 +730,7 @@ func EnsureNewsRoom(db *gorm.DB) (*MatrixRoom, error) {
 	// Store room in database
 	newsRoom := &MatrixRoom{
 		RoomID:    resp.RoomID.String(),
-		RoomAlias: fmt.Sprintf("#movieclub-news:%s", Config.MOVIE_CLUB.Matrix.ServerName),
+		RoomAlias: fmt.Sprintf("#%s:%s", newsAlias, Config.MOVIE_CLUB.Matrix.ServerName),
 		RoomName:  roomName,
 		RoomType:  MatrixRoomTypeNews,
 		SpaceID:   &movieClubSpace.SpaceID,
@@ -1074,7 +1073,14 @@ func createRoomInSpace(db *gorm.DB, space *MatrixSpace, cycle *MovieClubCycle, r
 		return nil, errors.New("matrix client not initialized")
 	}
 
-	// Generate room alias
+	// Check if room already exists for this cycle and room type
+	var existingRoom MatrixRoom
+	if err := db.Where("cycle_id = ? AND room_type = ?", cycle.ID, roomType).First(&existingRoom).Error; err == nil {
+		slog.Debug("Room already exists for cycle and type", "cycle_id", cycle.ID, "room_type", roomType, "room_id", existingRoom.RoomID)
+		return &existingRoom, nil
+	}
+
+	// Generate room alias with conflict resolution
 	var movieTitle string
 	if cycle.WinnerContent != nil {
 		movieTitle = cycle.WinnerContent.Title
@@ -1083,10 +1089,7 @@ func createRoomInSpace(db *gorm.DB, space *MatrixSpace, cycle *MovieClubCycle, r
 	}
 
 	normalizedTitle := normalizeTitle(movieTitle)
-	roomAlias := fmt.Sprintf("movieclub-%s-%s-%s", 
-		cycle.VotingEndDate.Format("2006-01-02"), 
-		normalizedTitle, 
-		string(roomType))
+	roomAlias := generateUniqueRoomAlias(cycle, normalizedTitle, string(roomType))
 
 	// Create room
 	createReq := &mautrix.ReqCreateRoom{
@@ -1358,4 +1361,75 @@ type MatrixRoomMigrationResult struct {
 	FailedRooms    int      `json:"failedRooms"`
 	CreatedSpaces  int      `json:"createdSpaces"`
 	Errors         []string `json:"errors"`
+}
+
+// generateUniqueRoomAlias generates a unique room alias with conflict resolution
+func generateUniqueRoomAlias(cycle *MovieClubCycle, normalizedTitle, roomType string) string {
+	baseAlias := fmt.Sprintf("movieclub-%s-%s-%s", 
+		cycle.VotingEndDate.Format("2006-01-02"), 
+		normalizedTitle, 
+		roomType)
+
+	// Try the base alias first
+	if !isRoomAliasInUse(baseAlias) {
+		return baseAlias
+	}
+
+	// If base alias is taken, try with cycle ID suffix
+	aliasWithCycleID := fmt.Sprintf("%s-c%d", baseAlias, cycle.ID)
+	if !isRoomAliasInUse(aliasWithCycleID) {
+		return aliasWithCycleID
+	}
+
+	// If still conflicts, add timestamp suffix
+	timestamp := time.Now().Unix()
+	finalAlias := fmt.Sprintf("%s-c%d-%d", baseAlias, cycle.ID, timestamp)
+	
+	slog.Warn("Room alias conflict resolved with timestamp", 
+		"cycle_id", cycle.ID,
+		"original_alias", baseAlias,
+		"final_alias", finalAlias)
+	
+	return finalAlias
+}
+
+// generateUniqueNewsRoomAlias generates a unique alias for the News room
+func generateUniqueNewsRoomAlias() string {
+	baseAlias := "movieclub-news"
+	
+	// Try the base alias first
+	if !isRoomAliasInUse(baseAlias) {
+		return baseAlias
+	}
+
+	// If base alias is taken, add timestamp suffix
+	timestamp := time.Now().Unix()
+	finalAlias := fmt.Sprintf("%s-%d", baseAlias, timestamp)
+	
+	slog.Warn("News room alias conflict resolved with timestamp", 
+		"original_alias", baseAlias,
+		"final_alias", finalAlias)
+	
+	return finalAlias
+}
+
+// isRoomAliasInUse checks if a room alias is already in use on the Matrix server
+func isRoomAliasInUse(alias string) bool {
+	if matrixClient == nil {
+		// If client not available, assume conflict and let Matrix server handle it
+		return false
+	}
+
+	fullAlias := fmt.Sprintf("#%s:%s", alias, Config.MOVIE_CLUB.Matrix.ServerName)
+	
+	// Try to resolve the alias - if it succeeds, the alias is in use
+	_, err := matrixClient.ResolveAlias(context.Background(), id.RoomAlias(fullAlias))
+	if err != nil {
+		// If resolution fails, the alias is likely available
+		// (could be network error, but we'll assume it's available)
+		return false
+	}
+	
+	// If resolution succeeds, the alias is in use
+	return true
 }
