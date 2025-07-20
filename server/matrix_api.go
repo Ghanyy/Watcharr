@@ -652,6 +652,17 @@ func (b *BaseRouter) linkCustomMatrixAccount(c *gin.Context) {
 		return
 	}
 
+	// Check if user already has Matrix account (check both old and new models)
+	var existingMatrixUser MatrixUser
+	var existingMatrixUserV2 MatrixUserV2
+	hasLegacyAccount := b.db.Where("user_id = ?", userID).First(&existingMatrixUser).Error == nil
+	hasNewAccount := b.db.Where("user_id = ?", userID).First(&existingMatrixUserV2).Error == nil
+	
+	if hasLegacyAccount || hasNewAccount {
+		c.JSON(http.StatusConflict, ErrorResponse{Error: "User already has a Matrix account"})
+		return
+	}
+
 	// Link custom Matrix user
 	if err := LinkCustomMatrixUser(b.db, userID, req.MatrixUserID, req.AccessToken); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Failed to link Matrix account: " + err.Error()})
