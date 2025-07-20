@@ -805,7 +805,7 @@
 		background: var(--background);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
-		color: var(--text);
+		color: var(--text-muted);
 		font-family: inherit;
 		font-size: 0.9rem;
 		font-weight: 500;
@@ -815,8 +815,9 @@
 		box-shadow: var(--shadow-sm);
 
 		&:hover {
-			background: var(--background);
-			color: var(--primary);
+			color: var(--text);
+			background: var(--background-secondary, rgba(0, 0, 0, 0.02));
+			border-color: var(--text-muted);
 			transform: translateX(-2px);
 			box-shadow: var(--shadow-md);
 		}
@@ -1044,10 +1045,13 @@
 		.cancel-btn {
 			background: var(--background);
 			border: 1px solid var(--border);
-			color: var(--text);
+			color: var(--text-muted);
+			font-size: 0.9rem;
+			font-weight: 500;
 
 			&:hover {
-				background: var(--background);
+				color: var(--text);
+				background: var(--background-secondary, rgba(0, 0, 0, 0.02));
 				border-color: var(--text-muted);
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
@@ -1057,7 +1061,7 @@
 				outline: none;
 				box-shadow:
 					var(--shadow-md),
-					0 0 0 2px var(--text-muted);
+					0 0 0 2px var(--primary);
 			}
 		}
 

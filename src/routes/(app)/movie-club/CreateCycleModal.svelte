@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
+	import { onMount } from "svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import { notify } from "@/lib/util/notify";
 	import axios from "axios";
@@ -12,6 +13,22 @@
 	let name = "Movie Club Cycle";
 	let description = "Choose movies together!";
 	let submitting = false;
+
+	onMount(() => {
+		// Add escape key listener for closing modal
+		const handleKeydown = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && !submitting) {
+				dispatch("close");
+			}
+		};
+
+		document.addEventListener("keydown", handleKeydown);
+
+		// Cleanup function
+		return () => {
+			document.removeEventListener("keydown", handleKeydown);
+		};
+	});
 
 	async function createCycle() {
 		if (submitting || !name.trim()) return;
@@ -342,9 +359,13 @@
 		.cancel-btn {
 			background: var(--background);
 			border: 1px solid var(--border);
-			color: var(--text);
+			color: var(--text-muted);
+			font-size: 0.95rem;
+			font-weight: 500;
 
 			&:hover:not(:disabled) {
+				color: var(--text);
+				background: var(--background-secondary, rgba(0, 0, 0, 0.02));
 				border-color: var(--text-muted);
 				transform: translateY(-1px);
 				box-shadow: var(--shadow-md);
@@ -354,7 +375,7 @@
 				outline: none;
 				box-shadow:
 					var(--shadow-md),
-					0 0 0 2px var(--text-muted);
+					0 0 0 2px var(--primary);
 			}
 		}
 

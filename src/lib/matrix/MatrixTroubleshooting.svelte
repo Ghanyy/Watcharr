@@ -338,7 +338,7 @@
 		</div>
 
 		<div class="modal-footer">
-			<button onclick={onClose} class="primary">Close</button>
+			<button onclick={onClose} class="close-action">Close</button>
 		</div>
 	</div>
 </div>
@@ -605,6 +605,30 @@
 
 			&:hover {
 				background: var(--accent-color-dark);
+			}
+		}
+
+		button.close-action {
+			background: var(--bg-color);
+			border: 1px solid var(--border-color);
+			color: var(--text-muted, #666);
+			padding: 10px 20px;
+			border-radius: 6px;
+			font-size: 0.9rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+
+			&:hover {
+				color: var(--text-color);
+				background: var(--bg-secondary, rgba(0, 0, 0, 0.02));
+				border-color: var(--text-muted, #666);
+				transform: translateY(-1px);
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow: 0 0 0 2px var(--accent-color);
 			}
 		}
 	}
