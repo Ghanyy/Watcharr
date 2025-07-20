@@ -848,6 +848,7 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix.GET("/validate", AuthRequired(b.db), AdminRequired(), b.validateMatrixSetup)
 	matrix.POST("/create-rooms-for-existing-cycles", AuthRequired(b.db), AdminRequired(), b.createRoomsForExistingCycles)
 	matrix.POST("/migrate-users-to-v2", AuthRequired(b.db), AdminRequired(), b.migrateMatrixUsersToV2)
+	matrix.GET("/registration-file", AuthRequired(b.db), AdminRequired(), b.generateRegistrationFile)
 	
 	// User routes
 	matrix.GET("/info", AuthRequired(b.db), b.getUserMatrixInfo)
@@ -856,4 +857,27 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix.DELETE("/unlink-account", AuthRequired(b.db), b.unlinkUserMatrixAccount)
 	matrix.POST("/export-credentials", AuthRequired(b.db), b.exportUserMatrixCredentials)
 	matrix.GET("/rooms", AuthRequired(b.db), b.getUserMatrixRooms)
+}
+
+// generateRegistrationFile generates and returns the Matrix Application Service registration file
+func (b *BaseRouter) generateRegistrationFile(c *gin.Context) {
+	if !Config.MOVIE_CLUB.Matrix.Enabled {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Matrix integration is not enabled"})
+		return
+	}
+
+	settings := Config.MOVIE_CLUB.Matrix
+	asSettings := settings.AppService
+
+	// Generate registration file content
+	registrationFile, err := GenerateASRegistrationFile(&asSettings, &settings)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to generate registration file: " + err.Error()})
+		return
+	}
+
+	// Set headers for file download
+	c.Header("Content-Disposition", "attachment; filename=watcharr-registration.yaml")
+	c.Header("Content-Type", "application/x-yaml")
+	c.String(http.StatusOK, registrationFile)
 }

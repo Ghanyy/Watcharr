@@ -242,6 +242,45 @@
 			createRoomsLoading = false;
 		}
 	}
+
+	async function downloadRegistrationFile() {
+		if (!serverConfig?.MOVIE_CLUB?.matrix) return;
+
+		try {
+			const response = await axios.get("/matrix/registration-file", {
+				responseType: "blob",
+			});
+
+			if (response.status === 200) {
+				// Create download link
+				const blob = new Blob([response.data], { type: "application/x-yaml" });
+				const url = window.URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = "watcharr-registration.yaml";
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+
+				notify({
+					type: "success",
+					text: "Registration file downloaded successfully",
+				});
+			}
+		} catch (error: any) {
+			console.error("Registration file download failed:", error);
+			let errorMessage = "Failed to download registration file";
+
+			if (error.response?.status === 400) {
+				errorMessage = "Matrix integration is not enabled";
+			} else if (error.response?.data?.error) {
+				errorMessage = error.response.data.error;
+			}
+
+			notify({ type: "error", text: errorMessage });
+		}
+	}
 </script>
 
 <div class="content">
@@ -686,6 +725,12 @@
 										onClick={() => {
 											matrixValidationModalOpen = true;
 										}}
+									/>
+
+									<SettingButton
+										title="Download Registration File"
+										desc="Generate and download the Application Service registration file for your Matrix server"
+										onClick={() => downloadRegistrationFile()}
 									/>
 
 									<SettingButton

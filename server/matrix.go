@@ -24,6 +24,7 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
 	"gorm.io/gorm"
+	"gopkg.in/yaml.v3"
 )
 
 // Matrix database models
@@ -2420,5 +2421,182 @@ func completeMatrixDeactivationUIA(matrixUserID, session, password, accessToken 
 		"response", responseBody.String())
 	
 	return nil // Don't fail the unlink operation
+}
+
+// Matrix Application Service Registration File Generation
+
+// ASRegistrationFile represents the YAML structure for Matrix AS registration
+type ASRegistrationFile struct {
+	ID              string                    `yaml:"id"`
+	URL             string                    `yaml:"url"`
+	AppServiceToken string                    `yaml:"as_token"`
+	HomeServerToken string                    `yaml:"hs_token"`
+	SenderLocalpart string                    `yaml:"sender_localpart"`
+	Namespaces      ASRegistrationNamespaces  `yaml:"namespaces"`
+	RateLimited     bool                      `yaml:"rate_limited"`
+}
+
+// ASRegistrationNamespaces represents the namespaces section of AS registration
+type ASRegistrationNamespaces struct {
+	Users   []ASNamespaceRule `yaml:"users"`
+	Aliases []ASNamespaceRule `yaml:"aliases"`
+}
+
+// ASNamespaceRule represents a single namespace rule
+type ASNamespaceRule struct {
+	Exclusive bool   `yaml:"exclusive"`
+	Regex     string `yaml:"regex"`
+}
+
+// generateSecureToken creates a cryptographically secure random token
+func generateSecureToken() (string, error) {
+	bytes := make([]byte, 32) // 256-bit token
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("failed to generate secure token: %w", err)
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// getWatcharrURL attempts to determine the Watcharr server URL
+func getWatcharrURL() string {
+	// Try to determine from Matrix server URL (common in same-host deployments)
+	if Config.MOVIE_CLUB.Matrix.ServerURL != "" {
+		serverURL := Config.MOVIE_CLUB.Matrix.ServerURL
+		// If Matrix is on same host, try common Watcharr ports
+		if strings.Contains(serverURL, ":8008") {
+			return strings.Replace(serverURL, ":8008", ":8080", 1)
+		}
+		if strings.Contains(serverURL, ":8448") {
+			return strings.Replace(serverURL, ":8448", ":8080", 1)
+		}
+		// Remove port and add :8080
+		if colonIndex := strings.LastIndex(serverURL, ":"); colonIndex != -1 {
+			baseURL := serverURL[:colonIndex]
+			return baseURL + ":8080"
+		}
+	}
+	
+	// Default fallback
+	return "http://watcharr:8080"
+}
+
+// ensureASTokensGenerated ensures AS tokens are generated if missing
+func ensureASTokensGenerated(asSettings *AppServiceSettings) error {
+	changed := false
+	
+	if asSettings.AppServiceToken == "" {
+		token, err := generateSecureToken()
+		if err != nil {
+			return fmt.Errorf("failed to generate AS token: %w", err)
+		}
+		asSettings.AppServiceToken = token
+		changed = true
+		slog.Info("Auto-generated Application Service token")
+	}
+	
+	if asSettings.HomeServerToken == "" {
+		token, err := generateSecureToken()
+		if err != nil {
+			return fmt.Errorf("failed to generate HS token: %w", err)
+		}
+		asSettings.HomeServerToken = token
+		changed = true
+		slog.Info("Auto-generated HomeServer token")
+	}
+	
+	// Set default values for other fields if not configured
+	if asSettings.ID == "" {
+		asSettings.ID = "watcharr-movieclub"
+		changed = true
+	}
+	
+	if asSettings.SenderLocalpart == "" {
+		asSettings.SenderLocalpart = "watcharr-bot"
+		changed = true
+	}
+	
+	if changed {
+		// Save updated configuration to file
+		if err := writeConfig(); err != nil {
+			slog.Warn("Failed to save auto-generated AS tokens to config file", "error", err)
+		}
+	}
+	
+	return nil
+}
+
+// GenerateASRegistrationFile creates the Matrix Application Service registration YAML file
+func GenerateASRegistrationFile(asSettings *AppServiceSettings, matrixSettings *MatrixSettings) (string, error) {
+	if !asSettings.Enabled {
+		return "", errors.New("Application Service is not enabled")
+	}
+	
+	// Ensure tokens are generated
+	if err := ensureASTokensGenerated(asSettings); err != nil {
+		return "", fmt.Errorf("failed to ensure AS tokens: %w", err)
+	}
+	
+	// Determine Watcharr URL
+	watcharrURL := getWatcharrURL()
+	
+	// Generate namespaces based on server name
+	serverName := matrixSettings.ServerName
+	if serverName == "" {
+		return "", errors.New("Matrix server name is required for namespace generation")
+	}
+	
+	// Auto-generate namespaces if not provided
+	userNamespace := asSettings.UserNamespace
+	if userNamespace == "" {
+		userNamespace = fmt.Sprintf("@watcharr_.*:%s", serverName)
+	}
+	
+	aliasNamespace := asSettings.AliasNamespace
+	if aliasNamespace == "" {
+		aliasNamespace = fmt.Sprintf("#watcharr_.*:%s", serverName)
+	}
+	
+	// Create registration file structure
+	regFile := ASRegistrationFile{
+		ID:              asSettings.ID,
+		URL:             watcharrURL,
+		AppServiceToken: asSettings.AppServiceToken,
+		HomeServerToken: asSettings.HomeServerToken,
+		SenderLocalpart: asSettings.SenderLocalpart,
+		Namespaces: ASRegistrationNamespaces{
+			Users: []ASNamespaceRule{
+				{
+					Exclusive: true,
+					Regex:     userNamespace,
+				},
+			},
+			Aliases: []ASNamespaceRule{
+				{
+					Exclusive: true,
+					Regex:     aliasNamespace,
+				},
+			},
+		},
+		RateLimited: asSettings.RateLimited,
+	}
+	
+	// Convert to YAML
+	yamlBytes, err := yaml.Marshal(&regFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal registration file to YAML: %w", err)
+	}
+	
+	// Add header comment
+	header := `# Matrix Application Service Registration File for Watcharr
+# Generated automatically by Watcharr
+# Place this file in your Matrix server's Application Service configuration directory
+# and reference it in your Matrix server configuration file.
+#
+# For Dendrite: Add to app_service_api.config_files in dendrite.yaml
+# For Synapse: Add to app_service_config_files in homeserver.yaml
+
+`
+	
+	return header + string(yamlBytes), nil
 }
 
