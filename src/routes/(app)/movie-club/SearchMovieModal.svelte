@@ -156,14 +156,12 @@
 				{/if}
 			</div>
 			
-			{#if searchQuery.trim() || searchResults.length > 0}
-				<div class="search-actions">
-					<button class="close-search-btn" on:click={() => dispatch("close")}>
-						<Icon icon="close" />
-						Close Search
-					</button>
-				</div>
-			{/if}
+			<div class="search-actions">
+				<button class="close-search-btn" on:click={() => dispatch("close")}>
+					<Icon icon="close" />
+					Close Search
+				</button>
+			</div>
 
 			{#if searching}
 				<div class="searching">
