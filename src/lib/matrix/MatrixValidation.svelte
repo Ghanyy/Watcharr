@@ -455,13 +455,24 @@
 			color: white;
 			border: none;
 			padding: 8px 16px;
-			border-radius: 6px;
+			border-radius: var(--radius-md);
 			cursor: pointer;
 			font-size: 0.9em;
+			font-weight: 500;
 			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
 
 			&:hover {
 				background: var(--error-color-dark, #dc2626);
+				transform: translateY(-1px);
+				box-shadow: var(--shadow-md);
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--error-color, #ef4444);
 			}
 		}
 	}
@@ -498,44 +509,68 @@
 			}
 
 			&.secondary {
-				background: transparent;
+				background: var(--background);
 				color: var(--accent-color);
 				border: 1px solid var(--accent-color);
+				box-shadow: var(--shadow-sm);
 
 				&:hover {
 					background: var(--accent-color);
 					color: white;
-				}
-			}
-
-			&.help {
-				background: transparent;
-				color: var(--warning-color, #f59e0b);
-				border: 1px solid var(--warning-color, #f59e0b);
-
-				&:hover {
-					background: var(--warning-color, #f59e0b);
-					color: white;
-				}
-			}
-
-			&.close-action {
-				background: var(--bg-color);
-				border: 1px solid var(--border-color);
-				color: var(--text-muted, #666);
-				font-size: 0.9rem;
-				font-weight: 500;
-
-				&:hover {
-					color: var(--text-color);
-					background: var(--bg-secondary, rgba(0, 0, 0, 0.02));
-					border-color: var(--text-muted, #666);
 					transform: translateY(-1px);
+					box-shadow: var(--shadow-md);
 				}
 
 				&:focus {
 					outline: none;
-					box-shadow: 0 0 0 2px var(--accent-color);
+					box-shadow:
+						var(--shadow-md),
+						0 0 0 2px var(--accent-color);
+				}
+			}
+
+			&.help {
+				background: var(--background);
+				color: var(--warning-color, #f59e0b);
+				border: 1px solid var(--warning-color, #f59e0b);
+				box-shadow: var(--shadow-sm);
+
+				&:hover {
+					background: var(--warning-color, #f59e0b);
+					color: white;
+					transform: translateY(-1px);
+					box-shadow: var(--shadow-md);
+				}
+
+				&:focus {
+					outline: none;
+					box-shadow:
+						var(--shadow-md),
+						0 0 0 2px var(--warning-color, #f59e0b);
+				}
+			}
+
+			&.close-action {
+				background: var(--background);
+				border: 1px solid var(--border);
+				color: var(--text-muted);
+				font-size: 0.9rem;
+				font-weight: 500;
+				box-shadow: var(--shadow-sm);
+
+				&:hover {
+					color: var(--text);
+					background: var(--background-secondary, rgba(0, 0, 0, 0.02));
+					border-color: var(--text-muted);
+					transform: translateY(-1px);
+					box-shadow: var(--shadow-md);
+				}
+
+				&:focus {
+					outline: none;
+					box-shadow:
+						var(--shadow-md),
+						0 0 0 2px var(--accent-color);
 				}
 			}
 

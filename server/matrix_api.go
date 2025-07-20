@@ -106,10 +106,11 @@ func (b *BaseRouter) validateMatrixSetup(c *gin.Context) {
 		validation.Results = append(validation.Results, validateRoomCreation(settings)...)
 	}
 
-	// 5. Shared secret registration test
-	if settings.ServerURL != "" && settings.RegistrationSecret != "" {
-		validation.Results = append(validation.Results, validateSharedSecretRegistration(settings)...)
-	}
+	// 5. Application Service validation
+	validation.Results = append(validation.Results, validateApplicationService(settings)...)
+
+	// Note: Shared secret registration removed for simplicity
+	// Matrix integration uses Application Service for virtual users and manual linking for real accounts
 
 	// Determine overall status
 	hasError := false
@@ -225,22 +226,8 @@ func validateMatrixConfig(settings MatrixSettings) []MatrixValidationResult {
 		})
 	}
 
-	// Check Registration Secret
-	if settings.RegistrationSecret == "" {
-		results = append(results, MatrixValidationResult{
-			Check:   "Registration Secret",
-			Status:  "warning",
-			Message: "Shared secret registration is not configured",
-			Details: "Without a registration secret, Matrix users must be created manually. Configure the shared secret for automatic user creation.",
-		})
-	} else {
-		results = append(results, MatrixValidationResult{
-			Check:   "Registration Secret",
-			Status:  "success",
-			Message: "Registration secret is configured",
-			Details: "Shared secret registration is available for automatic user creation",
-		})
-	}
+	// Note: Registration Secret removed - Matrix integration now uses Application Service for virtual users
+	// and manual account linking for personal accounts
 
 	return results
 }
@@ -378,50 +365,159 @@ func validateRoomCreation(settings MatrixSettings) []MatrixValidationResult {
 	return results
 }
 
-// validateSharedSecretRegistration validates shared secret registration capabilities
-func validateSharedSecretRegistration(settings MatrixSettings) []MatrixValidationResult {
+// validateApplicationService validates the Application Service configuration
+func validateApplicationService(settings MatrixSettings) []MatrixValidationResult {
 	var results []MatrixValidationResult
 
-	// Generate test username for validation
-	testUsername := fmt.Sprintf("watcharr_test_%d", time.Now().Unix())
-	testPassword := "test_password_123"
-
-	// Test shared secret registration
-	registrationResponse, err := RegisterUserWithSharedSecret(testUsername, testPassword, false)
-	if err != nil {
+	// Check if Application Service is enabled
+	if !settings.AppService.Enabled {
 		results = append(results, MatrixValidationResult{
-			Check:   "Shared Secret Registration",
-			Status:  "error",
-			Message: "Shared secret registration test failed",
-			Details: err.Error(),
+			Check:   "Application Service",
+			Status:  "warning",
+			Message: "Application Service is not enabled",
+			Details: "AS provides virtual Matrix users. Without AS, only manual account linking is available.",
 		})
 		return results
 	}
 
-	// If registration succeeded, validation passed
-	if registrationResponse != nil {
-		// Note: Test user will remain on Matrix server (cleanup would require database access)
-		slog.Info("Shared secret registration validation successful - test user created",
-			"test_user_id", registrationResponse.UserID,
-			"note", "Test user will remain on Matrix server")
-
+	// Check AS ID
+	if settings.AppService.ID == "" {
 		results = append(results, MatrixValidationResult{
-			Check:   "Shared Secret Registration",
-			Status:  "success",
-			Message: "Shared secret registration is working",
-			Details: fmt.Sprintf("Successfully created test user: %s (test user remains on server)", registrationResponse.UserID),
+			Check:   "AS ID",
+			Status:  "error",
+			Message: "Application Service ID is not configured",
+			Details: "AS ID is required for Application Service registration",
 		})
 	} else {
 		results = append(results, MatrixValidationResult{
-			Check:   "Shared Secret Registration",
-			Status:  "error",
-			Message: "Registration succeeded but returned no data",
-			Details: "This indicates an unexpected response format from the Matrix server",
+			Check:   "AS ID",
+			Status:  "success",
+			Message: "Application Service ID is configured",
+			Details: settings.AppService.ID,
 		})
+	}
+
+	// Check AS Token
+	if settings.AppService.AppServiceToken == "" {
+		results = append(results, MatrixValidationResult{
+			Check:   "AS Token",
+			Status:  "error",
+			Message: "Application Service token is not configured",
+			Details: "AS token is required for AS-to-homeserver communication",
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "AS Token",
+			Status:  "success",
+			Message: "Application Service token is configured",
+			Details: "Token provided (hidden for security)",
+		})
+	}
+
+	// Check Homeserver Token
+	if settings.AppService.HomeServerToken == "" {
+		results = append(results, MatrixValidationResult{
+			Check:   "Homeserver Token",
+			Status:  "error",
+			Message: "Homeserver token is not configured",
+			Details: "HS token is required for homeserver-to-AS communication",
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "Homeserver Token",
+			Status:  "success",
+			Message: "Homeserver token is configured",
+			Details: "Token provided (hidden for security)",
+		})
+	}
+
+	// Check User Namespace
+	if settings.AppService.UserNamespace == "" {
+		results = append(results, MatrixValidationResult{
+			Check:   "User Namespace",
+			Status:  "error",
+			Message: "User namespace is not configured",
+			Details: "User namespace pattern is required (e.g., @watcharr_*:domain.com)",
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "User Namespace",
+			Status:  "success",
+			Message: "User namespace is configured",
+			Details: settings.AppService.UserNamespace,
+		})
+	}
+
+	// Check Alias Namespace
+	if settings.AppService.AliasNamespace == "" {
+		results = append(results, MatrixValidationResult{
+			Check:   "Alias Namespace",
+			Status:  "error",
+			Message: "Alias namespace is not configured",
+			Details: "Alias namespace pattern is required (e.g., #watcharr_*:domain.com)",
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "Alias Namespace",
+			Status:  "success",
+			Message: "Alias namespace is configured",
+			Details: settings.AppService.AliasNamespace,
+		})
+	}
+
+	// Check Sender Localpart
+	if settings.AppService.SenderLocalpart == "" {
+		results = append(results, MatrixValidationResult{
+			Check:   "Sender Localpart",
+			Status:  "error",
+			Message: "Sender localpart is not configured",
+			Details: "Sender localpart is required for AS bot user (e.g., watcharr-bot)",
+		})
+	} else {
+		results = append(results, MatrixValidationResult{
+			Check:   "Sender Localpart",
+			Status:  "success",
+			Message: "Sender localpart is configured",
+			Details: settings.AppService.SenderLocalpart,
+		})
+	}
+
+	// Validate AS configuration consistency if all basic fields are present
+	if settings.AppService.ID != "" && settings.AppService.AppServiceToken != "" && 
+	   settings.AppService.HomeServerToken != "" && settings.AppService.UserNamespace != "" {
+		
+		// Try to validate the AS configuration
+		if appServiceManager != nil {
+			err := appServiceManager.ValidateConfig()
+			if err != nil {
+				results = append(results, MatrixValidationResult{
+					Check:   "AS Configuration",
+					Status:  "error",
+					Message: "Application Service configuration is invalid",
+					Details: err.Error(),
+				})
+			} else {
+				results = append(results, MatrixValidationResult{
+					Check:   "AS Configuration",
+					Status:  "success",
+					Message: "Application Service configuration is valid",
+					Details: "All AS settings are properly configured and validated",
+				})
+			}
+		} else {
+			results = append(results, MatrixValidationResult{
+				Check:   "AS Configuration",
+				Status:  "warning",
+				Message: "Application Service not initialized",
+				Details: "AS manager not initialized - restart server to enable AS features",
+			})
+		}
 	}
 
 	return results
 }
+
+// Note: validateSharedSecretRegistration removed - feature deprecated for simplicity
 
 // getUserMatrixInfo gets Matrix information for a user
 func (b *BaseRouter) getUserMatrixInfo(c *gin.Context) {

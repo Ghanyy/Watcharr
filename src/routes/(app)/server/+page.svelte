@@ -64,7 +64,7 @@
 	let matrixAdminTokenDisabled = $state(false);
 	let matrixAdminUserIdDisabled = $state(false);
 	let matrixSpaceNameDisabled = $state(false);
-	let matrixRegistrationSecretDisabled = $state(false);
+	// Note: Registration secret removed - Matrix integration simplified to use Application Service
 	let matrixTestLoading = $state(false);
 	let matrixValidationModalOpen = $state(false);
 	let createRoomsLoading = $state(false);
@@ -686,29 +686,8 @@
 									/>
 								</Setting>
 
-								<Setting
-									title="Registration Shared Secret"
-									desc="Shared secret for user registration (optional). Leave blank to use admin token for user creation."
-								>
-									<input
-										type="password"
-										placeholder="Enter registration secret (optional)"
-										bind:value={
-											serverConfig.MOVIE_CLUB.matrix.registrationSecret
-										}
-										onblur={() => {
-											matrixRegistrationSecretDisabled = true;
-											updateMatrixConfig(
-												"registrationSecret",
-												serverConfig.MOVIE_CLUB.matrix.registrationSecret,
-												() => {
-													matrixRegistrationSecretDisabled = false;
-												},
-											);
-										}}
-										disabled={matrixRegistrationSecretDisabled}
-									/>
-								</Setting>
+								<!-- Registration Secret removed for simplicity - Matrix integration now uses
+								     Application Service for virtual users and manual linking for real accounts -->
 
 								<div
 									style="display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch;"

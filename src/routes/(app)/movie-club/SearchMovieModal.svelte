@@ -91,7 +91,8 @@
 			const result = await checkPreviousWinner(movie.tmdbId);
 			if (result) {
 				isSelectedMovieExcluded = true;
-				exclusionMessage = "This movie has already won in a previous cycle or is currently the winner of an active cycle.";
+				exclusionMessage =
+					"This movie has already won in a previous cycle or is currently the winner of an active cycle.";
 			}
 		} catch (err) {
 			console.error("Failed to check movie exclusion:", err);
@@ -143,9 +144,9 @@
 					on:input={handleSearchInput}
 				/>
 				{#if searchQuery.trim()}
-					<button 
-						class="clear-search-btn" 
-						title="Clear search" 
+					<button
+						class="clear-search-btn"
+						title="Clear search"
 						on:click={() => {
 							searchQuery = "";
 							searchResults = [];
@@ -155,7 +156,7 @@
 					</button>
 				{/if}
 			</div>
-			
+
 			<div class="search-actions">
 				<button class="close-search-btn" on:click={() => dispatch("close")}>
 					<Icon icon="close" />
@@ -280,8 +281,8 @@
 				<button class="cancel-btn" on:click={() => dispatch("close")}>
 					Cancel
 				</button>
-				<button 
-					class="submit-btn" 
+				<button
+					class="submit-btn"
 					on:click={submitNomination}
 					disabled={isSelectedMovieExcluded || checkingExclusion}
 				>
@@ -1323,7 +1324,7 @@
 		opacity: 0.5;
 		cursor: not-allowed;
 		background: var(--text-muted);
-		
+
 		&:hover {
 			background: var(--text-muted);
 			transform: none;

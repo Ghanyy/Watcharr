@@ -55,7 +55,7 @@
 					issue: "Admin permissions insufficient",
 					symptoms: [
 						"Room creation fails",
-						"User creation fails",
+						"Application Service validation fails",
 						"'Admin permissions' check fails",
 					],
 					solutions: [
@@ -63,7 +63,7 @@
 						"Check admin user has server admin privileges",
 						"Review Matrix server configuration for admin settings",
 						"For Dendrite: Use dendrite-admin-tool create-account <username>",
-						"For Synapse: Use registration_shared_secret or admin API",
+						"For Synapse: Create admin user via admin API or homeserver.yaml",
 					],
 					links: [
 						{
@@ -135,6 +135,76 @@
 						"Match servername to Matrix server configuration",
 						"Create admin user if it doesn't exist",
 						"Verify case sensitivity in usernames",
+					],
+				},
+			],
+		},
+		{
+			title: "Application Service Issues",
+			problems: [
+				{
+					issue: "Application Service configuration errors",
+					symptoms: [
+						"AS validation checks fail",
+						"'Application Service configuration is invalid' error",
+						"Virtual users cannot be created",
+						"AS Token or Homeserver Token errors",
+					],
+					solutions: [
+						"Verify all AS fields are configured: ID, AS Token, HS Token, User/Alias Namespaces, Sender Localpart",
+						"Check AS tokens match between Watcharr config and registration file",
+						"Ensure namespace patterns include wildcard (*) and proper server name",
+						"Verify registration file is loaded by Matrix server (check dendrite.yaml or homeserver.yaml)",
+						"Restart Matrix server after updating AS registration file",
+						"Check Matrix server logs for AS registration errors",
+					],
+					links: [
+						{
+							text: "Matrix Application Service API",
+							url: "https://spec.matrix.org/v1.12/application-service-api/",
+						},
+					],
+				},
+				{
+					issue: "AS registration file problems",
+					symptoms: [
+						"Matrix server fails to load AS registration",
+						"AS validation shows 'not initialized' warning",
+						"Namespace conflicts in server logs",
+					],
+					solutions: [
+						"Download AS registration file from Watcharr admin settings",
+						"Place registration file in Matrix server config directory",
+						"Add registration file path to Matrix server config (app_service_api.config_files)",
+						"Verify file permissions allow Matrix server to read the file",
+						"Check registration file format matches AS configuration",
+						"Ensure no conflicts with existing AS namespaces",
+					],
+					links: [
+						{
+							text: "Dendrite AS Configuration",
+							url: "https://matrix-org.github.io/dendrite/administration/appservices",
+						},
+						{
+							text: "Synapse AS Configuration",
+							url: "https://matrix-org.github.io/synapse/latest/application_services.html",
+						},
+					],
+				},
+				{
+					issue: "Virtual user creation fails",
+					symptoms: [
+						"Matrix user creation returns errors",
+						"Users cannot access Movie Club features",
+						"AS managed users show as placeholder only",
+					],
+					solutions: [
+						"Verify Application Service is properly registered with Matrix server",
+						"Check AS user namespace allows the requested username pattern",
+						"Ensure AS is running and accessible from Matrix server",
+						"Review Watcharr server logs for AS communication errors",
+						"Test AS endpoints are responding (/_matrix/app/v1/...)",
+						"Restart both Watcharr and Matrix server if AS registration changed",
 					],
 				},
 			],
@@ -609,26 +679,30 @@
 		}
 
 		button.close-action {
-			background: var(--bg-color);
-			border: 1px solid var(--border-color);
-			color: var(--text-muted, #666);
+			background: var(--background);
+			border: 1px solid var(--border);
+			color: var(--text-muted);
 			padding: 10px 20px;
-			border-radius: 6px;
+			border-radius: var(--radius-md);
 			font-size: 0.9rem;
 			font-weight: 500;
 			cursor: pointer;
 			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
 
 			&:hover {
-				color: var(--text-color);
-				background: var(--bg-secondary, rgba(0, 0, 0, 0.02));
-				border-color: var(--text-muted, #666);
+				color: var(--text);
+				background: var(--background-secondary, rgba(0, 0, 0, 0.02));
+				border-color: var(--text-muted);
 				transform: translateY(-1px);
+				box-shadow: var(--shadow-md);
 			}
 
 			&:focus {
 				outline: none;
-				box-shadow: 0 0 0 2px var(--accent-color);
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px var(--accent-color);
 			}
 		}
 	}

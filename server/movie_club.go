@@ -94,7 +94,6 @@ type MatrixSettings struct {
 	ServerName         string            `json:"serverName"`         // Matrix server name (e.g., "example.com")
 	SpaceName          string            `json:"spaceName"`          // Default: "Movie Club"
 	AdminUserID        string            `json:"adminUserId"`        // Watcharr admin user ID (e.g., "@watcharr:example.com")
-	RegistrationSecret string            `json:"registrationSecret"` // Shared secret for user registration (optional)
 	
 	// Application Service Configuration
 	AppService AppServiceSettings `json:"appService"` // Application Service settings
