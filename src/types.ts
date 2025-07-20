@@ -1359,6 +1359,17 @@ export interface MovieClubSettings {
 
 export type MatrixServerType = "auto" | "synapse" | "dendrite";
 
+export interface AppServiceSettings {
+	enabled: boolean;
+	id: string;
+	appServiceToken: string;
+	homeServerToken: string;
+	senderLocalpart: string;
+	userNamespace: string;
+	aliasNamespace: string;
+	rateLimited: boolean;
+}
+
 export interface MatrixSettings {
 	enabled: boolean;
 	serverUrl: string;
@@ -1367,7 +1378,7 @@ export interface MatrixSettings {
 	serverName: string;
 	spaceName: string;
 	adminUserId: string;
-	registrationSecret: string;
+	appService: AppServiceSettings;
 }
 
 export type MatrixAccountType = "appservice" | "personal" | "legacy";

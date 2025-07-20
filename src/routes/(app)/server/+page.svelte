@@ -12,6 +12,7 @@
 		MovieClubSettings,
 		MatrixSettings,
 		MatrixServerType,
+		AppServiceSettings,
 	} from "@/types";
 	import axios from "axios";
 	import SonarrModal from "./modals/SonarrModal.svelte";
@@ -154,6 +155,31 @@
 			[field]: value,
 		};
 
+		const updatedMovieClubSettings = {
+			...serverConfig.MOVIE_CLUB,
+			matrix: updatedMatrixSettings,
+		};
+
+		updateServerConfig("MOVIE_CLUB", updatedMovieClubSettings, done);
+	}
+	
+	function updateMatrixAppServiceConfig<K extends keyof AppServiceSettings>(
+		field: K,
+		value: AppServiceSettings[K],
+		done?: () => void,
+	) {
+		if (!serverConfig) return;
+		
+		const updatedAppServiceSettings = {
+			...serverConfig.MOVIE_CLUB.matrix.appService,
+			[field]: value,
+		};
+		
+		const updatedMatrixSettings = {
+			...serverConfig.MOVIE_CLUB.matrix,
+			appService: updatedAppServiceSettings,
+		};
+		
 		const updatedMovieClubSettings = {
 			...serverConfig.MOVIE_CLUB,
 			matrix: updatedMatrixSettings,
@@ -685,6 +711,133 @@
 										disabled={matrixSpaceNameDisabled}
 									/>
 								</Setting>
+
+								<!-- Application Service Configuration -->
+								<Setting
+									title="Enable Application Service"
+									desc="Enable Application Service for virtual Matrix users. Recommended for most installations."
+								>
+									<Checkbox
+										bind:checked={serverConfig.MOVIE_CLUB.matrix.appService.enabled}
+										onchange={(checked) => {
+											updateMatrixAppServiceConfig(
+												"enabled",
+												checked,
+												() => {},
+											);
+										}}
+									/>
+								</Setting>
+
+								{#if serverConfig.MOVIE_CLUB.matrix.appService.enabled}
+									<Setting
+										title="Application Service ID"
+										desc="Unique identifier for the Application Service (e.g., watcharr-movieclub)"
+									>
+										<input
+											type="text"
+											placeholder="Enter AS ID"
+											bind:value={serverConfig.MOVIE_CLUB.matrix.appService.id}
+											onblur={() => {
+												updateMatrixAppServiceConfig(
+													"id",
+													serverConfig.MOVIE_CLUB.matrix.appService.id,
+													() => {},
+												);
+											}}
+										/>
+									</Setting>
+
+									<Setting
+										title="AS Token"
+										desc="Authentication token for Application Service to homeserver communication"
+									>
+										<input
+											type="password"
+											placeholder="AS Token (auto-generated if empty)"
+											bind:value={serverConfig.MOVIE_CLUB.matrix.appService.appServiceToken}
+											onblur={() => {
+												updateMatrixAppServiceConfig(
+													"appServiceToken",
+													serverConfig.MOVIE_CLUB.matrix.appService.appServiceToken,
+													() => {},
+												);
+											}}
+										/>
+									</Setting>
+
+									<Setting
+										title="Homeserver Token"
+										desc="Authentication token for homeserver to Application Service communication"
+									>
+										<input
+											type="password"
+											placeholder="HS Token (auto-generated if empty)"
+											bind:value={serverConfig.MOVIE_CLUB.matrix.appService.homeServerToken}
+											onblur={() => {
+												updateMatrixAppServiceConfig(
+													"homeServerToken",
+													serverConfig.MOVIE_CLUB.matrix.appService.homeServerToken,
+													() => {},
+												);
+											}}
+										/>
+									</Setting>
+
+									<Setting
+										title="Sender Localpart"
+										desc="Bot user localpart for AS communications (e.g., watcharr-bot)"
+									>
+										<input
+											type="text"
+											placeholder="Enter sender localpart"
+											bind:value={serverConfig.MOVIE_CLUB.matrix.appService.senderLocalpart}
+											onblur={() => {
+												updateMatrixAppServiceConfig(
+													"senderLocalpart",
+													serverConfig.MOVIE_CLUB.matrix.appService.senderLocalpart,
+													() => {},
+												);
+											}}
+										/>
+									</Setting>
+
+									<Setting
+										title="User Namespace"
+										desc="Namespace pattern for AS-managed users (e.g., @watcharr_*:yourdomain.com)"
+									>
+										<input
+											type="text"
+											placeholder="@watcharr_*:yourdomain.com"
+											bind:value={serverConfig.MOVIE_CLUB.matrix.appService.userNamespace}
+											onblur={() => {
+												updateMatrixAppServiceConfig(
+													"userNamespace",
+													serverConfig.MOVIE_CLUB.matrix.appService.userNamespace,
+													() => {},
+												);
+											}}
+										/>
+									</Setting>
+
+									<Setting
+										title="Alias Namespace"
+										desc="Namespace pattern for AS-managed room aliases (e.g., #watcharr_*:yourdomain.com)"
+									>
+										<input
+											type="text"
+											placeholder="#watcharr_*:yourdomain.com"
+											bind:value={serverConfig.MOVIE_CLUB.matrix.appService.aliasNamespace}
+											onblur={() => {
+												updateMatrixAppServiceConfig(
+													"aliasNamespace",
+													serverConfig.MOVIE_CLUB.matrix.appService.aliasNamespace,
+													() => {},
+												);
+											}}
+										/>
+									</Setting>
+								{/if}
 
 								<!-- Registration Secret removed for simplicity - Matrix integration now uses
 								     Application Service for virtual users and manual linking for real accounts -->

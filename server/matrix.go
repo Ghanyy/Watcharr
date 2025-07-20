@@ -2334,8 +2334,18 @@ func ensureASTokensGenerated(asSettings *AppServiceSettings) error {
 
 // GenerateASRegistrationFile creates the Matrix Application Service registration YAML file
 func GenerateASRegistrationFile(asSettings *AppServiceSettings, matrixSettings *MatrixSettings) (string, error) {
-	if !asSettings.Enabled {
-		return "", errors.New("Application Service is not enabled")
+	// Note: Allow generating registration file even if AS is not enabled yet
+	// This helps users set up their Matrix server before enabling the AS in Watcharr
+	
+	// Basic validation - ensure essential fields are present
+	if asSettings.ID == "" {
+		return "", errors.New("Application Service ID is required")
+	}
+	if asSettings.SenderLocalpart == "" {
+		return "", errors.New("Sender Localpart is required")
+	}
+	if asSettings.UserNamespace == "" {
+		return "", errors.New("User Namespace is required")
 	}
 	
 	// Ensure tokens are generated
