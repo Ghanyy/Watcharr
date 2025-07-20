@@ -76,9 +76,12 @@ func CreateCycleRoom(db *gorm.DB, cycle *MovieClubCycle) (*MatrixRoom, error) {
 
 	// Store room in database
 	matrixRoom := &MatrixRoom{
-		CycleID:   cycle.ID,
+		CycleID:   &cycle.ID,
 		RoomID:    resp.RoomID.String(),
 		RoomAlias: fmt.Sprintf("#%s:%s", alias, Config.MOVIE_CLUB.Matrix.ServerName),
+		RoomName:  fmt.Sprintf("Movie Club - %s", cycle.WinnerContent.Title),
+		RoomType:  MatrixRoomTypeGeneral, // Legacy single room becomes General
+		SpaceID:   nil, // Legacy rooms don't have spaces initially
 	}
 
 	if err := db.Create(matrixRoom).Error; err != nil {
@@ -1196,7 +1199,7 @@ func InviteUsersToSpaceRooms(db *gorm.DB, cycleID uint, rooms []*MatrixRoom) err
 }
 
 // MigrateExistingRoomsToSpaces migrates existing Matrix rooms to the new space-based structure
-func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
+func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixRoomMigrationResult, error) {
 	if !Config.MOVIE_CLUB.Matrix.Enabled {
 		return nil, errors.New("matrix integration is not enabled")
 	}
@@ -1205,7 +1208,7 @@ func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
 		return nil, errors.New("matrix client not initialized")
 	}
 
-	result := &MatrixMigrationResult{
+	result := &MatrixRoomMigrationResult{
 		TotalRooms:     0,
 		MigratedRooms:  0,
 		FailedRooms:    0,
@@ -1247,7 +1250,7 @@ func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
 		}
 
 		// Create cycle space for this room's cycle
-		spaceID, err := CreateCycleSpace(db, &room.Cycle)
+		cycleSpace, err := CreateCycleSpace(db, room.Cycle)
 		if err != nil {
 			errorMsg := fmt.Sprintf("Failed to create cycle space for room %s: %v", room.RoomID, err)
 			slog.Error(errorMsg)
@@ -1258,13 +1261,13 @@ func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
 		result.CreatedSpaces++
 
 		// Add cycle space to Movie Club space hierarchy
-		if err := SetupSpaceHierarchy(db, movieClubSpace, &MatrixSpace{SpaceID: spaceID}); err != nil {
+		if err := SetupSpaceHierarchy(db, movieClubSpace, cycleSpace); err != nil {
 			slog.Warn("Failed to setup space hierarchy for migrated cycle", 
-				"error", err, "cycle_id", room.CycleID, "space_id", spaceID)
+				"error", err, "cycle_id", room.CycleID, "space_id", cycleSpace.SpaceID)
 		}
 
 		// Update the existing room to be a "General" room in the new space
-		room.SpaceID = &spaceID
+		room.SpaceID = &cycleSpace.SpaceID
 		room.RoomType = MatrixRoomTypeGeneral
 
 		if err := db.Save(&room).Error; err != nil {
@@ -1276,13 +1279,13 @@ func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
 		}
 
 		// Add the existing room to the cycle space
-		if err := AddRoomToSpace(db, &room, &MatrixSpace{SpaceID: spaceID}); err != nil {
+		if err := AddRoomToSpace(db, &room, cycleSpace); err != nil {
 			slog.Warn("Failed to add migrated room to space", 
-				"error", err, "room_id", room.RoomID, "space_id", spaceID)
+				"error", err, "room_id", room.RoomID, "space_id", cycleSpace.SpaceID)
 		}
 
 		// Create a Spoilers room for the cycle
-		spoilersRoom, err := createRoomInSpace(db, &MatrixSpace{SpaceID: spaceID}, &room.Cycle, 
+		spoilersRoom, err := createRoomInSpace(db, cycleSpace, room.Cycle, 
 			MatrixRoomTypeSpoilers, "Spoilers", "Spoiler discussions for this movie")
 		if err != nil {
 			slog.Warn("Failed to create Spoilers room during migration", 
@@ -1298,7 +1301,7 @@ func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
 		slog.Info("Successfully migrated room to space structure",
 			"room_id", room.RoomID,
 			"cycle_id", room.CycleID,
-			"space_id", spaceID)
+			"space_id", cycleSpace.SpaceID)
 	}
 
 	slog.Info("Matrix room migration completed",
@@ -1310,8 +1313,8 @@ func MigrateExistingRoomsToSpaces(db *gorm.DB) (*MatrixMigrationResult, error) {
 	return result, nil
 }
 
-// MatrixMigrationResult represents the result of migrating existing rooms to spaces
-type MatrixMigrationResult struct {
+// MatrixRoomMigrationResult represents the result of migrating existing rooms to spaces
+type MatrixRoomMigrationResult struct {
 	TotalRooms     int      `json:"totalRooms"`
 	MigratedRooms  int      `json:"migratedRooms"`
 	FailedRooms    int      `json:"failedRooms"`

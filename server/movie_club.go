@@ -1473,20 +1473,25 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 				// Create Matrix space and rooms asynchronously to avoid blocking cycle transition
 				go func(cycleData *MovieClubCycle) {
 					// Create cycle space
-					spaceID, err := CreateCycleSpace(db, cycleData)
+					cycleSpace, err := CreateCycleSpace(db, cycleData)
 					if err != nil {
 						slog.Error("Failed to create Matrix space for cycle", "error", err, "cycle_id", cycleData.ID)
 						return
 					}
 
-					// Add cycle space to Movie Club space hierarchy
-					if err := SetupSpaceHierarchy(db, spaceID); err != nil {
-						slog.Error("Failed to setup space hierarchy for cycle", "error", err, "cycle_id", cycleData.ID, "space_id", spaceID)
+					// Ensure Movie Club space exists and add cycle space to hierarchy
+					movieClubSpace, err := EnsureMovieClubSpace(db)
+					if err != nil {
+						slog.Error("Failed to ensure Movie Club space", "error", err, "cycle_id", cycleData.ID)
+					} else {
+						if err := SetupSpaceHierarchy(db, movieClubSpace, cycleSpace); err != nil {
+							slog.Error("Failed to setup space hierarchy for cycle", "error", err, "cycle_id", cycleData.ID, "space_id", cycleSpace.SpaceID)
+						}
 					}
 
 					// Create General and Spoilers rooms in the cycle space
-					if err := CreateCycleRooms(db, cycleData, spaceID); err != nil {
-						slog.Error("Failed to create cycle rooms", "error", err, "cycle_id", cycleData.ID, "space_id", spaceID)
+					if err := CreateCycleRooms(db, cycleSpace, cycleData); err != nil {
+						slog.Error("Failed to create cycle rooms", "error", err, "cycle_id", cycleData.ID, "space_id", cycleSpace.SpaceID)
 					}
 				}(cycle)
 			}

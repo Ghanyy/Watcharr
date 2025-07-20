@@ -632,9 +632,13 @@ func (b *BaseRouter) getUserMatrixRooms(c *gin.Context) {
 	var responseRooms []MatrixRoomResponse
 	for _, room := range rooms {
 		roomResponse := MatrixRoomResponse{
-			ID:      room.RoomID,
-			Alias:   room.RoomAlias,
-			CycleID: room.CycleID,
+			ID:    room.RoomID,
+			Alias: room.RoomAlias,
+		}
+		
+		// Set CycleID if present
+		if room.CycleID != nil {
+			roomResponse.CycleID = *room.CycleID
 		}
 
 		// Add cycle and movie information if available
