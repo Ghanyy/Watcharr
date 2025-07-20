@@ -960,6 +960,7 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix.POST("/create-rooms-for-existing-cycles", AuthRequired(b.db), AdminRequired(), b.createRoomsForExistingCycles)
 	matrix.POST("/migrate-users-to-v2", AuthRequired(b.db), AdminRequired(), b.migrateMatrixUsersToV2)
 	matrix.GET("/registration-file", AuthRequired(b.db), AdminRequired(), b.generateRegistrationFile)
+	matrix.POST("/clear-poster-cache", AuthRequired(b.db), AdminRequired(), b.clearPosterCache)
 	
 	// User routes
 	matrix.GET("/info", AuthRequired(b.db), b.getUserMatrixInfo)
@@ -991,4 +992,19 @@ func (b *BaseRouter) generateRegistrationFile(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=watcharr-registration.yaml")
 	c.Header("Content-Type", "application/x-yaml")
 	c.String(http.StatusOK, registrationFile)
+}
+
+// clearPosterCache clears the Matrix poster upload cache
+func (b *BaseRouter) clearPosterCache(c *gin.Context) {
+	if !Config.MOVIE_CLUB.Matrix.Enabled {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Matrix integration is not enabled"})
+		return
+	}
+
+	ClearPosterUploadCache()
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Poster upload cache cleared successfully",
+	})
 }
