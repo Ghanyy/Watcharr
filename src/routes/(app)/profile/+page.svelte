@@ -744,96 +744,108 @@
 							<div style="display: flex; flex-direction: column; gap: 20px;">
 								<!-- Account Type Options -->
 								<div class="matrix-account-options">
-									<div class="account-option recommended">
-										<div class="option-header">
-											<span class="option-icon">🤖</span>
-											<div class="option-info">
-												<span class="option-name"
-													>Application Service Account</span
-												>
-												<span class="option-badge">Recommended</span>
+									{#if config?.MOVIE_CLUB?.matrix?.appService?.enabled}
+										<div class="account-option recommended">
+											<div class="option-header">
+												<span class="option-icon">🤖</span>
+												<div class="option-info">
+													<span class="option-name"
+														>Application Service Account</span
+													>
+													<span class="option-badge">Recommended</span>
+												</div>
 											</div>
+											<p class="option-description">
+												Virtual Matrix user managed automatically by Watcharr.
+												Perfect for users who only need Movie Club features.
+											</p>
+											<div class="option-features">
+												<span class="feature-tag">✓ Automatic Setup</span>
+												<span class="feature-tag">✓ No Credentials Needed</span>
+												<span class="feature-tag">✓ Movie Club Chats</span>
+											</div>
+											<button
+												onclick={createMatrixAccount}
+												disabled={matrixCreateLoading}
+												class="option-button primary"
+											>
+												{#if matrixCreateLoading}
+													<Spinner />
+												{:else}
+													Create Account
+												{/if}
+											</button>
 										</div>
-										<p class="option-description">
-											Virtual Matrix user managed automatically by Watcharr.
-											Perfect for users who only need Movie Club features.
-										</p>
-										<div class="option-features">
-											<span class="feature-tag">✓ Automatic Setup</span>
-											<span class="feature-tag">✓ No Credentials Needed</span>
-											<span class="feature-tag">✓ Movie Club Chats</span>
+									{:else}
+										<div class="account-option disabled">
+											<div class="option-header">
+												<span class="option-icon">🤖</span>
+												<div class="option-info">
+													<span class="option-name"
+														>Application Service Account</span
+													>
+													<span class="option-badge disabled">Not Available</span>
+												</div>
+											</div>
+											<p class="option-description">
+												Application Service is not enabled on this server. Contact your administrator to enable AS features.
+											</p>
+											<div class="option-features">
+												<span class="feature-tag disabled">✗ AS Not Enabled</span>
+												<span class="feature-tag disabled">✗ Contact Admin</span>
+											</div>
+											<button
+												disabled
+												class="option-button primary disabled"
+											>
+												AS Not Available
+											</button>
 										</div>
-										<button
-											onclick={createMatrixAccount}
-											disabled={matrixCreateLoading}
-											class="option-button primary"
-										>
-											{#if matrixCreateLoading}
-												<Spinner />
-											{:else}
-												Create Account
-											{/if}
-										</button>
-									</div>
+									{/if}
 
 									<div class="account-option">
 										<div class="option-header">
 											<span class="option-icon">👤</span>
 											<div class="option-info">
-												<span class="option-name">Personal Matrix Account</span>
+												<span class="option-name">Link Existing Matrix Account</span>
 											</div>
 										</div>
 										<p class="option-description">
-											Real Matrix account that you can access with Element Web
+											Connect your existing Matrix account that you can access with Element Web
 											and other Matrix clients.
 										</p>
 										<div class="option-features">
 											<span class="feature-tag">✓ Element Web Access</span>
 											<span class="feature-tag">✓ Full Matrix Features</span>
-											<span class="feature-tag">✓ Credential Export</span>
+											<span class="feature-tag">✓ Your Existing Account</span>
 										</div>
-										<div class="personal-account-options">
-											<div class="sub-option">
-												<h6>Auto-Generated Personal</h6>
-												<p>
-													Let Watcharr create a real Matrix account with
-													credentials you can export
-												</p>
-												<p class="note">
-													Note: Requires shared secret configuration on Matrix
-													server
-												</p>
-											</div>
-											<div class="sub-option">
-												<h6>Link Existing Account</h6>
-												<p>Connect your existing Matrix account</p>
-												<div class="link-form-inline">
-													<input
-														type="text"
-														placeholder="@username:matrix.server.com"
-														bind:value={customMatrixUserId}
-														disabled={matrixLinkLoading}
-													/>
-													<input
-														type="password"
-														placeholder="Access Token"
-														bind:value={customAccessToken}
-														disabled={matrixLinkLoading}
-													/>
-													<button
-														onclick={linkCustomMatrixAccount}
-														disabled={matrixLinkLoading ||
-															!customMatrixUserId ||
-															!customAccessToken}
-														class="option-button secondary"
-													>
-														{#if matrixLinkLoading}
-															<Spinner />
-														{:else}
-															Link Account
-														{/if}
-													</button>
-												</div>
+										<div class="sub-option">
+											<div class="link-form-inline">
+												<input
+													type="text"
+													placeholder="@username:matrix.server.com"
+													bind:value={customMatrixUserId}
+													disabled={matrixLinkLoading}
+												/>
+												<input
+													type="password"
+													placeholder="Access Token"
+													bind:value={customAccessToken}
+													disabled={matrixLinkLoading}
+												/>
+												<button
+													onclick={linkCustomMatrixAccount}
+													disabled={matrixLinkLoading ||
+														!customMatrixUserId ||
+														!customAccessToken}
+													class="option-button secondary"
+												>
+													{#if matrixLinkLoading}
+														<Spinner />
+													{:else}
+														Link Account
+													{/if}
+												</button>
 											</div>
 										</div>
 									</div>
@@ -1690,7 +1702,14 @@
 				background: var(--bg-secondary, rgba(59, 130, 246, 0.05));
 			}
 
-			&:hover {
+			&.disabled {
+				border-color: var(--border-color);
+				background: var(--bg-secondary, rgba(128, 128, 128, 0.05));
+				opacity: 0.6;
+				cursor: not-allowed;
+			}
+
+			&:hover:not(.disabled) {
 				border-color: var(--accent-color);
 				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 			}
@@ -1726,6 +1745,11 @@
 						font-weight: 600;
 						text-transform: uppercase;
 						letter-spacing: 0.5px;
+
+						&.disabled {
+							background: var(--text-color);
+							opacity: 0.5;
+						}
 					}
 				}
 			}
@@ -1753,6 +1777,13 @@
 					font-size: 0.75em;
 					font-weight: 500;
 					white-space: nowrap;
+
+					&.disabled {
+						background: var(--bg-secondary, rgba(239, 68, 68, 0.1));
+						color: var(--error-color, #ef4444);
+						border: 1px solid var(--error-color, #ef4444);
+						opacity: 0.7;
+					}
 				}
 			}
 
@@ -1789,6 +1820,14 @@
 
 				&:disabled {
 					opacity: 0.6;
+					cursor: not-allowed;
+				}
+
+				&.disabled {
+					background: var(--bg-secondary, #6b7280) !important;
+					color: var(--text-color) !important;
+					border: 1px solid var(--border-color) !important;
+					opacity: 0.5;
 					cursor: not-allowed;
 				}
 			}
