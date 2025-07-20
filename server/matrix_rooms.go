@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -102,6 +105,13 @@ func CreateCycleRoom(db *gorm.DB, cycle *MovieClubCycle) (*MatrixRoom, error) {
 	// Invite eligible users to the room
 	if err := InviteUsersToRoom(db, cycle.ID); err != nil {
 		slog.Warn("Failed to invite users to room", "error", err, "room_id", resp.RoomID)
+	}
+
+	// Set room avatar if movie has poster
+	if cycle.WinnerContent != nil && cycle.WinnerContent.PosterPath != "" {
+		if err := SetRoomAvatar(db, matrixRoom, cycle.WinnerContent); err != nil {
+			slog.Warn("Failed to set room avatar", "error", err, "room_id", resp.RoomID)
+		}
 	}
 
 	return matrixRoom, nil
@@ -1007,7 +1017,7 @@ func CreateCycleSpace(db *gorm.DB, cycle *MovieClubCycle) (*MatrixSpace, error) 
 		movieTitle = fmt.Sprintf("Cycle %d", cycle.ID)
 	}
 	
-	spaceName := fmt.Sprintf("Cycle: %s (%s)",
+	spaceName := fmt.Sprintf("%s (%s)",
 		movieTitle,
 		cycle.VotingEndDate.Format("2006-01-02"))
 
@@ -1045,6 +1055,13 @@ func CreateCycleSpace(db *gorm.DB, cycle *MovieClubCycle) (*MatrixSpace, error) 
 		"space_id", resp.RoomID,
 		"space_name", spaceName,
 		"movie", movieTitle)
+
+	// Set space avatar if movie has poster
+	if cycle.WinnerContent != nil && cycle.WinnerContent.PosterPath != "" {
+		if err := SetSpaceAvatar(db, cycleSpace, cycle.WinnerContent); err != nil {
+			slog.Warn("Failed to set space avatar", "error", err, "space_id", cycleSpace.SpaceID)
+		}
+	}
 
 	return cycleSpace, nil
 }
@@ -1130,6 +1147,13 @@ func createRoomInSpace(db *gorm.DB, space *MatrixSpace, cycle *MovieClubCycle, r
 	// Add room to space
 	if err := AddRoomToSpace(db, matrixRoom, space); err != nil {
 		slog.Warn("Failed to add room to cycle space", "error", err, "room_id", resp.RoomID)
+	}
+
+	// Set room avatar if movie has poster
+	if cycle.WinnerContent != nil && cycle.WinnerContent.PosterPath != "" {
+		if err := SetRoomAvatar(db, matrixRoom, cycle.WinnerContent); err != nil {
+			slog.Warn("Failed to set room avatar", "error", err, "room_id", matrixRoom.RoomID)
+		}
 	}
 
 	return matrixRoom, nil
@@ -1432,4 +1456,257 @@ func isRoomAliasInUse(alias string) bool {
 	
 	// If resolution succeeds, the alias is in use
 	return true
+}
+
+// posterUploadCache caches uploaded poster URLs to avoid duplicate uploads
+var posterUploadCache = make(map[string]string)
+
+// SetSpaceAvatar sets the avatar for a Matrix space using the movie poster
+func SetSpaceAvatar(db *gorm.DB, space *MatrixSpace, content *Content) error {
+	if matrixClient == nil {
+		return errors.New("matrix client not initialized")
+	}
+
+	if content.PosterPath == "" {
+		return errors.New("no poster path available")
+	}
+
+	// Get or upload the poster media
+	mediaURI, err := getOrUploadPosterMedia(content)
+	if err != nil {
+		return fmt.Errorf("failed to get poster media: %w", err)
+	}
+
+	spaceID := id.RoomID(space.SpaceID)
+	
+	// Set the space avatar using the cached/uploaded media with retry logic
+	err = setAvatarWithRetry(spaceID, mediaURI)
+	if err != nil {
+		return fmt.Errorf("failed to set space avatar: %w", err)
+	}
+
+	slog.Info("Set space avatar from movie poster",
+		"space_id", space.SpaceID,
+		"movie", content.Title,
+		"matrix_url", mediaURI)
+
+	return nil
+}
+
+// downloadImage downloads an image from a URL and returns the data and content type
+func downloadImage(url string) ([]byte, string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to fetch image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("failed to fetch image: HTTP %d", resp.StatusCode)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/jpeg" // Default fallback
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read image data: %w", err)
+	}
+
+	return data, contentType, nil
+}
+
+// getOrUploadPosterMedia gets a cached media URI or uploads the poster if not cached
+func getOrUploadPosterMedia(content *Content) (string, error) {
+	if content.PosterPath == "" {
+		return "", errors.New("no poster path available")
+	}
+
+	// Check cache first
+	cacheKey := content.PosterPath
+	if cachedURI, exists := posterUploadCache[cacheKey]; exists {
+		slog.Debug("Using cached poster media", "poster_path", content.PosterPath, "media_uri", cachedURI)
+		return cachedURI, nil
+	}
+
+	// Download and upload if not cached
+	posterURL := fmt.Sprintf("https://image.tmdb.org/t/p/w500%s", content.PosterPath)
+	
+	posterData, contentType, err := downloadImage(posterURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download poster: %w", err)
+	}
+
+	// Upload with retry logic for rate limiting
+	uploadResp, err := uploadWithRetry(posterData, contentType, fmt.Sprintf("poster_%s.jpg", strings.ReplaceAll(content.PosterPath, "/", "_")))
+	if err != nil {
+		return "", fmt.Errorf("failed to upload poster to Matrix: %w", err)
+	}
+
+	mediaURI := uploadResp.ContentURI.String()
+	
+	// Verify the upload was successful by testing access
+	if err := verifyMediaUpload(uploadResp.ContentURI.String()); err != nil {
+		slog.Warn("Media upload succeeded but verification failed", 
+			"media_uri", mediaURI, 
+			"error", err,
+			"note", "This might indicate server media configuration issues")
+	}
+	
+	// Cache the result
+	posterUploadCache[cacheKey] = mediaURI
+	
+	slog.Info("Uploaded and cached poster media",
+		"movie", content.Title,
+		"poster_url", posterURL,
+		"media_uri", mediaURI)
+
+	return mediaURI, nil
+}
+
+// uploadWithRetry uploads media with exponential backoff for rate limiting
+func uploadWithRetry(data []byte, contentType, fileName string) (*mautrix.RespMediaUpload, error) {
+	maxRetries := 3
+	baseDelay := time.Second
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		uploadResp, err := matrixClient.UploadMedia(context.Background(), mautrix.ReqUploadMedia{
+			Content:     bytes.NewReader(data),
+			ContentType: contentType,
+			FileName:    fileName,
+		})
+
+		if err == nil {
+			return uploadResp, nil
+		}
+
+		// Check if it's a rate limit error
+		if strings.Contains(err.Error(), "M_LIMIT_EXCEEDED") || strings.Contains(err.Error(), "429") {
+			if attempt < maxRetries {
+				delay := time.Duration(1<<attempt) * baseDelay // Exponential backoff: 1s, 2s, 4s
+				slog.Warn("Rate limited, retrying upload",
+					"attempt", attempt+1,
+					"max_retries", maxRetries,
+					"delay", delay,
+					"error", err)
+				time.Sleep(delay)
+				continue
+			}
+		}
+
+		// For non-rate-limit errors or max retries exceeded, return the error
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("upload failed after %d retries", maxRetries)
+}
+
+// setAvatarWithRetry sets room/space avatar with exponential backoff for rate limiting
+func setAvatarWithRetry(roomID id.RoomID, mediaURI string) error {
+	maxRetries := 3
+	baseDelay := time.Second
+
+	avatarContent := map[string]interface{}{
+		"url": mediaURI,
+	}
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		_, err := matrixClient.SendStateEvent(context.Background(), roomID, event.StateRoomAvatar, "", avatarContent)
+
+		if err == nil {
+			return nil
+		}
+
+		// Check if it's a rate limit error
+		if strings.Contains(err.Error(), "M_LIMIT_EXCEEDED") || strings.Contains(err.Error(), "429") {
+			if attempt < maxRetries {
+				delay := time.Duration(1<<attempt) * baseDelay // Exponential backoff: 1s, 2s, 4s
+				slog.Warn("Rate limited, retrying avatar setting",
+					"room_id", roomID,
+					"attempt", attempt+1,
+					"max_retries", maxRetries,
+					"delay", delay,
+					"error", err)
+				time.Sleep(delay)
+				continue
+			}
+		}
+
+		// For non-rate-limit errors or max retries exceeded, return the error
+		return err
+	}
+
+	return fmt.Errorf("avatar setting failed after %d retries", maxRetries)
+}
+
+// SetRoomAvatar sets the avatar for a Matrix room using the movie poster
+func SetRoomAvatar(db *gorm.DB, room *MatrixRoom, content *Content) error {
+	if matrixClient == nil {
+		return errors.New("matrix client not initialized")
+	}
+
+	if content.PosterPath == "" {
+		return errors.New("no poster path available")
+	}
+
+	// Get or upload the poster media (uses cache to avoid duplicates)
+	mediaURI, err := getOrUploadPosterMedia(content)
+	if err != nil {
+		return fmt.Errorf("failed to get poster media: %w", err)
+	}
+
+	roomID := id.RoomID(room.RoomID)
+	
+	// Set the room avatar using the cached/uploaded media with retry logic
+	err = setAvatarWithRetry(roomID, mediaURI)
+	if err != nil {
+		return fmt.Errorf("failed to set room avatar: %w", err)
+	}
+
+	slog.Info("Set room avatar from movie poster",
+		"room_id", room.RoomID,
+		"room_type", room.RoomType,
+		"movie", content.Title,
+		"matrix_url", mediaURI)
+
+	return nil
+}
+
+// verifyMediaUpload verifies that an uploaded media file is accessible
+func verifyMediaUpload(mediaURI string) error {
+	if matrixClient == nil {
+		return errors.New("matrix client not initialized")
+	}
+
+	// Parse the MXC URI to get server and media ID
+	if !strings.HasPrefix(mediaURI, "mxc://") {
+		return fmt.Errorf("invalid MXC URI: %s", mediaURI)
+	}
+
+	// Extract server and media ID from mxc://server/mediaId
+	parts := strings.TrimPrefix(mediaURI, "mxc://")
+	serverAndMedia := strings.SplitN(parts, "/", 2)
+	if len(serverAndMedia) != 2 {
+		return fmt.Errorf("invalid MXC URI format: %s", mediaURI)
+	}
+
+	serverName := serverAndMedia[0]
+	mediaID := serverAndMedia[1]
+
+	// Try to download the media to verify it exists and is accessible
+	_, err := matrixClient.DownloadMedia(context.Background(), id.ContentURI(mediaURI))
+	if err != nil {
+		return fmt.Errorf("media verification failed for %s/%s: %w", serverName, mediaID, err)
+	}
+
+	slog.Debug("Media upload verified successfully", "media_uri", mediaURI)
+	return nil
+}
+
+// ClearPosterUploadCache clears the poster upload cache (useful for testing or memory management)
+func ClearPosterUploadCache() {
+	posterUploadCache = make(map[string]string)
+	slog.Info("Cleared poster upload cache")
 }
