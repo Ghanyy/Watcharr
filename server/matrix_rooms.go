@@ -231,9 +231,10 @@ func EnsureMovieClubSpace(db *gorm.DB) (*MatrixSpace, error) {
 		return nil, errors.New("matrix client not initialized")
 	}
 
-	// Check if space already exists
+	// Check if Movie Club space already exists (specifically look for the main space)
 	var existingSpace MatrixSpace
-	if err := db.First(&existingSpace).Error; err == nil {
+	if err := db.Where("space_type = ?", MatrixSpaceTypeMovieClub).First(&existingSpace).Error; err == nil {
+		slog.Debug("Movie Club space already exists", "space_id", existingSpace.SpaceID, "name", existingSpace.SpaceName)
 		return &existingSpace, nil
 	}
 
@@ -261,8 +262,11 @@ func EnsureMovieClubSpace(db *gorm.DB) (*MatrixSpace, error) {
 
 	// Store space in database
 	space := &MatrixSpace{
-		SpaceID:   resp.RoomID.String(),
-		SpaceName: spaceName,
+		SpaceID:       resp.RoomID.String(),
+		SpaceName:     spaceName,
+		SpaceType:     MatrixSpaceTypeMovieClub,
+		CycleID:       nil,           // Main space is not associated with any specific cycle
+		ParentSpaceID: nil,           // Main space has no parent
 	}
 
 	if err := db.Create(space).Error; err != nil {
