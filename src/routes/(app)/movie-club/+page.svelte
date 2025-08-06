@@ -13,6 +13,7 @@
 	import { store } from "@/store.svelte";
 	import CreateCycleModal from "./CreateCycleModal.svelte";
 	import SearchMovieModal from "./SearchMovieModal.svelte";
+	import AdHocMovieModal from "./AdHocMovieModal.svelte";
 	import Modal from "@/lib/Modal.svelte";
 	import axios from "axios";
 	import { notify } from "@/lib/util/notify";
@@ -29,6 +30,7 @@
 	let error: string | null = null;
 	let showCreateModal = false;
 	let showSearchModal = false;
+	let showAdHocModal = false;
 	let currentNominationCycleId = 0;
 	let movieClubDisabled = false;
 	let submitting = false;
@@ -169,6 +171,33 @@
 		}
 	}
 
+	async function finalizeCycle(cycleId: number) {
+		if (!cycleId) return;
+
+		if (
+			!confirm(
+				"Are you sure you want to finalize this ad-hoc session? This will instantly end the session and move it to archives.",
+			)
+		) {
+			return;
+		}
+
+		const nid = notify({
+			text: "Finalizing ad-hoc session...",
+			type: "loading",
+		});
+
+		try {
+			await axios.post(`/movie-club/cycle/${cycleId}/finalize`);
+			notify({ id: nid, text: "Ad-hoc session finalized!", type: "success" });
+			await refreshData(); // Refresh to update the cycles list
+		} catch (err: any) {
+			console.error("Failed to finalize cycle:", err);
+			const message = err.response?.data?.error || "Failed to finalize session";
+			notify({ id: nid, text: message, type: "error" });
+		}
+	}
+
 	async function handleNomination(content: any, reason: string) {
 		if (submitting) return;
 
@@ -260,14 +289,26 @@
 										: "Watching"}
 							</span>
 							{#if isAdmin}
-								<button
-									class="delete-cycle-btn-small"
-									on:click={() => deleteCycle(cycleData.cycle.id)}
-									disabled={loading}
-									title="Remove this cycle"
-								>
-									×
-								</button>
+								<div class="admin-buttons">
+									{#if cycleData.cycle.isAdHoc && cycleData.cycle.canBeFinalized}
+										<button
+											class="finalize-cycle-btn-small"
+											on:click={() => finalizeCycle(cycleData.cycle.id)}
+											disabled={loading}
+											title="Finalize this ad-hoc cycle"
+										>
+											<Icon icon="check" />
+										</button>
+									{/if}
+									<button
+										class="delete-cycle-btn-small"
+										on:click={() => deleteCycle(cycleData.cycle.id)}
+										disabled={loading}
+										title="Remove this cycle"
+									>
+										×
+									</button>
+								</div>
 							{/if}
 						</div>
 					</div>
@@ -294,6 +335,15 @@
 			>
 				<Icon icon="plus" />
 				Start New Cycle
+			</button>
+			<button
+				class="adhoc-movie-btn"
+				on:click={() => (showAdHocModal = true)}
+				disabled={loading}
+				title="Create an instant ad-hoc movie session"
+			>
+				<Icon icon="sparkles" />
+				Ad-hoc Movie
 			</button>
 		</div>
 	{/if}
@@ -334,6 +384,15 @@
 			on:close={() => (showSearchModal = false)}
 		/>
 	</Modal>
+{/if}
+{#if showAdHocModal}
+	<AdHocMovieModal
+		on:cycleCreated={() => {
+			showAdHocModal = false;
+			refreshData();
+		}}
+		on:close={() => (showAdHocModal = false)}
+	/>
 {/if}
 
 <style lang="scss">
@@ -531,6 +590,7 @@
 		margin-top: var(--space-xl);
 		display: flex;
 		justify-content: center;
+		gap: var(--space-md);
 		backdrop-filter: blur(10px);
 		z-index: 10;
 		box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -671,6 +731,12 @@
 			}
 		}
 
+		.admin-buttons {
+			display: flex;
+			align-items: center;
+			gap: var(--space-xs);
+		}
+
 		.delete-cycle-btn-small {
 			display: inline-flex;
 			align-items: center;
@@ -704,6 +770,46 @@
 				box-shadow:
 					var(--shadow-md),
 					0 0 0 2px rgba(220, 53, 69, 0.3);
+			}
+		}
+
+		.finalize-cycle-btn-small {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			background: var(--success, #28a745);
+			color: white;
+			border: none;
+			border-radius: var(--radius-full);
+			cursor: pointer;
+			font-size: 0.875rem;
+			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
+
+			&:hover:not(:disabled) {
+				background: var(--success-dark, #218838);
+				transform: scale(1.1);
+				box-shadow: var(--shadow-md);
+			}
+
+			&:disabled {
+				opacity: 0.6;
+				cursor: not-allowed;
+				transform: none;
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px rgba(40, 167, 69, 0.3);
+			}
+
+			:global(svg) {
+				width: 14px;
+				height: 14px;
 			}
 		}
 	}
@@ -749,6 +855,47 @@
 		}
 	}
 
+	.adhoc-movie-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-sm) var(--space-lg);
+		background: var(--accent, #8b5cf6);
+		color: white;
+		border: none;
+		border-radius: var(--radius-md);
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--shadow-md);
+
+		&:hover:not(:disabled) {
+			background: var(--accent-dark, #7c3aed);
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-lg);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: var(--shadow-sm);
+		}
+
+		&:active:not(:disabled) {
+			transform: translateY(0);
+			box-shadow: var(--shadow-md);
+		}
+
+		&:focus {
+			outline: none;
+			box-shadow:
+				var(--shadow-lg),
+				0 0 0 3px rgba(139, 92, 246, 0.2);
+		}
+	}
+
 	@media (max-width: 768px) {
 		.movie-club-page {
 			padding: var(--space-lg) var(--space-sm);
@@ -762,7 +909,8 @@
 			padding: var(--space-sm) var(--space-md);
 		}
 
-		.start-new-cycle-btn {
+		.start-new-cycle-btn,
+		.adhoc-movie-btn {
 			font-size: 0.9rem;
 			padding: var(--space-sm) var(--space-md);
 		}
@@ -805,10 +953,16 @@
 				padding: var(--space-xs) var(--space-sm);
 			}
 
-			.delete-cycle-btn-small {
+			.delete-cycle-btn-small,
+			.finalize-cycle-btn-small {
 				width: 24px;
 				height: 24px;
 				font-size: 0.9rem;
+			}
+
+			.finalize-cycle-btn-small :global(svg) {
+				width: 12px;
+				height: 12px;
 			}
 		}
 	}

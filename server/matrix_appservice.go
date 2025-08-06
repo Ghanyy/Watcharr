@@ -365,6 +365,13 @@ func (asm *AppServiceManager) CreateUser(watcharrUserID uint, username string) (
 	localpart := fmt.Sprintf("watcharr_%d_%s", watcharrUserID, sanitizedUsername)
 	matrixUserID := fmt.Sprintf("@%s:%s", localpart, serverName)
 
+	// Debug logging for user ID generation
+	slog.Info("AS CreateUser debug",
+		"user_namespace", asm.config.UserNamespace,
+		"extracted_server_name", serverName,
+		"localpart", localpart,
+		"generated_matrix_user_id", matrixUserID)
+
 	// Check if user already exists
 	var existingUser MatrixUserV2
 	if err := asm.db.Where("user_id = ? AND account_type = ?", watcharrUserID, AccountTypeAppService).First(&existingUser).Error; err == nil {

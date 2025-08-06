@@ -1316,6 +1316,10 @@ export interface MovieClubCycle extends dbModel {
 	winnerContentId?: number;
 	winnerContent?: Content;
 	active: boolean;
+	// Ad-hoc cycle fields
+	isAdHoc: boolean;
+	adHocDurationHours: number;
+	canBeFinalized: boolean;
 	nominations?: MovieClubNominationGroup[];
 	votes?: MovieClubVote[];
 }

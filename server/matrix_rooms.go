@@ -505,12 +505,14 @@ func GetActiveWatchingCyclesWithoutRooms(db *gorm.DB) ([]MovieClubCycle, error) 
 	// 1. In watching phase (phase = 'watching' AND phase_start_date <= now < phase_end_date)
 	// 2. Have a winner content (winner_content_id IS NOT NULL)
 	// 3. Don't already have a Matrix room
+	// 4. Are NOT ad-hoc cycles (ad-hoc cycles don't get Matrix rooms)
 	err := db.Raw(`
 		SELECT mcc.* FROM movie_club_cycles mcc
 		WHERE mcc.phase = ?
 		AND mcc.phase_start_date <= ?
 		AND mcc.phase_end_date > ?
 		AND mcc.winner_content_id IS NOT NULL
+		AND (mcc.is_ad_hoc IS NULL OR mcc.is_ad_hoc = false)
 		AND mcc.id NOT IN (
 			SELECT DISTINCT mr.cycle_id 
 			FROM matrix_rooms mr 

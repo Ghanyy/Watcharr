@@ -784,20 +784,23 @@
 													<span class="option-name"
 														>Application Service Account</span
 													>
-													<span class="option-badge disabled">Not Available</span>
+													<span class="option-badge disabled"
+														>Not Available</span
+													>
 												</div>
 											</div>
 											<p class="option-description">
-												Application Service is not enabled on this server. Contact your administrator to enable AS features.
+												Application Service is not enabled on this server.
+												Contact your administrator to enable AS features.
 											</p>
 											<div class="option-features">
-												<span class="feature-tag disabled">✗ AS Not Enabled</span>
-												<span class="feature-tag disabled">✗ Contact Admin</span>
+												<span class="feature-tag disabled"
+													>✗ AS Not Enabled</span
+												>
+												<span class="feature-tag disabled">✗ Contact Admin</span
+												>
 											</div>
-											<button
-												disabled
-												class="option-button primary disabled"
-											>
+											<button disabled class="option-button primary disabled">
 												AS Not Available
 											</button>
 										</div>
@@ -807,12 +810,14 @@
 										<div class="option-header">
 											<span class="option-icon">👤</span>
 											<div class="option-info">
-												<span class="option-name">Link Existing Matrix Account</span>
+												<span class="option-name"
+													>Link Existing Matrix Account</span
+												>
 											</div>
 										</div>
 										<p class="option-description">
-											Connect your existing Matrix account that you can access with Element Web
-											and other Matrix clients.
+											Connect your existing Matrix account that you can access
+											with Element Web and other Matrix clients.
 										</p>
 										<div class="option-features">
 											<span class="feature-tag">✓ Element Web Access</span>

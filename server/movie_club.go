@@ -37,6 +37,10 @@ type MovieClubCycle struct {
 	WinnerContentID   *int            `json:"winnerContentId,omitempty"`
 	WinnerContent     *Content        `json:"winnerContent,omitempty" gorm:"foreignKey:WinnerContentID;references:ID"`
 	Active            bool            `json:"active"`
+	// Ad-hoc cycle fields
+	IsAdHoc           bool            `json:"isAdHoc" gorm:"default:false"`
+	AdHocDurationHours int           `json:"adHocDurationHours" gorm:"default:24"`
+	CanBeFinalized    bool            `json:"canBeFinalized" gorm:"default:false"`
 	Nominations       []MovieClubNominationGroup `json:"nominations,omitempty" gorm:"-"`
 	AllNominations    []MovieClubNomination `json:"-" gorm:"foreignKey:CycleID"`
 	Votes             []MovieClubVote `json:"votes,omitempty" gorm:"foreignKey:CycleID"`
@@ -103,8 +107,8 @@ type MatrixSettings struct {
 type AppServiceSettings struct {
 	Enabled          bool   `json:"enabled"`          // Enable Application Service mode
 	ID               string `json:"id"`               // AS identifier (e.g., "watcharr")
-	AppServiceToken  string `json:"asToken"`          // AS -> HS authentication token
-	HomeServerToken  string `json:"hsToken"`          // HS -> AS authentication token
+	AppServiceToken  string `json:"appServiceToken"`  // AS -> HS authentication token
+	HomeServerToken  string `json:"homeServerToken"`  // HS -> AS authentication token
 	SenderLocalpart  string `json:"senderLocalpart"`  // AS bot user localpart (e.g., "watcharr-bot")
 	UserNamespace    string `json:"userNamespace"`    // User namespace (e.g., "@watcharr_*:server.name")
 	AliasNamespace   string `json:"aliasNamespace"`   // Alias namespace (e.g., "#watcharr_*:server.name")
@@ -645,9 +649,11 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	
 	// Admin endpoints
 	movieClub.POST("/cycle", AdminRequired(), b.createMovieClubCycle)
+	movieClub.POST("/adhoc-cycle", AdminRequired(), b.createAdHocMovieClubCycle)
 	movieClub.PUT("/cycle/:id", AdminRequired(), b.updateMovieClubCycle)
 	movieClub.DELETE("/cycle/:id", AdminRequired(), b.deleteMovieClubCycle)
 	movieClub.POST("/cycle/:id/transition", AdminRequired(), b.transitionCyclePhase)
+	movieClub.POST("/cycle/:id/finalize", AdminRequired(), b.finalizeAdHocCycle)
 	movieClub.GET("/cycles", AdminRequired(), b.getAllMovieClubCycles)
 }
 
@@ -1320,6 +1326,208 @@ func (b *BaseRouter) createMovieClubCycle(c *gin.Context) {
 	c.JSON(http.StatusCreated, cycle)
 }
 
+// createAdHocMovieClubCycle creates an ad-hoc movie club cycle that starts directly in watching phase
+func (b *BaseRouter) createAdHocMovieClubCycle(c *gin.Context) {
+	type AdHocCycleRequest struct {
+		Name              string `json:"name"`
+		Description       string `json:"description,omitempty"`
+		ContentID         int    `json:"contentId"`
+		AdHocDurationHours int   `json:"adHocDurationHours,omitempty"`
+	}
+
+	var req AdHocCycleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
+		return
+	}
+
+	// Validate required fields
+	if req.ContentID == 0 {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Content ID is required"})
+		return
+	}
+	if req.Name == "" {
+		req.Name = "Ad-hoc Movie Session"
+	}
+	if req.AdHocDurationHours <= 0 {
+		req.AdHocDurationHours = 24 // Default to 24 hours
+	}
+
+	// Check if content exists, if not create it (same as nomination system)
+	content, err := getOrCacheContent(b.db, MOVIE, req.ContentID)
+	if err != nil {
+		slog.Error("Failed to get or create content", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to process content"})
+		return
+	}
+
+	// Use a transaction to ensure consistency
+	tx := b.db.Begin()
+	if tx.Error != nil {
+		slog.Error("Failed to begin transaction", "error", tx.Error)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create ad-hoc cycle"})
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create ad-hoc cycle directly in watching phase
+	now := time.Now()
+	watchingDuration := time.Duration(req.AdHocDurationHours) * time.Hour
+
+	cycle := MovieClubCycle{
+		Name:               req.Name,
+		Description:        req.Description,
+		Phase:              PHASE_WATCHING,
+		PhaseStartDate:     now,
+		PhaseEndDate:       now.Add(watchingDuration),
+		NominationEndDate:  now, // Set to current time since we skip nomination phase
+		VotingEndDate:      now, // Set to current time since we skip voting phase
+		WatchingEndDate:    now.Add(watchingDuration),
+		WinnerContentID:    &content.ID,
+		Active:             true,
+		IsAdHoc:            true,
+		AdHocDurationHours: req.AdHocDurationHours,
+		CanBeFinalized:     true,
+	}
+
+	if err := tx.Create(&cycle).Error; err != nil {
+		tx.Rollback()
+		slog.Error("Failed to create ad-hoc movie club cycle", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create ad-hoc cycle"})
+		return
+	}
+
+	// Get all users to create automatic nominations (makes all users eligible for ratings)
+	users, err := getAllUsers(tx)
+	if err != nil {
+		tx.Rollback()
+		slog.Error("Failed to fetch users for ad-hoc cycle", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create ad-hoc cycle"})
+		return
+	}
+
+	// Create automatic nominations for all users (this makes them eligible for cycle ratings)
+	for _, user := range users {
+		nomination := MovieClubNomination{
+			CycleID:   cycle.ID,
+			UserID:    user.ID,
+			ContentID: content.ID,
+			Reason:    "Auto-generated for ad-hoc session",
+		}
+		if err := tx.Create(&nomination).Error; err != nil {
+			tx.Rollback()
+			slog.Error("Failed to create automatic nomination for ad-hoc cycle", "error", err, "userId", user.ID)
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create ad-hoc cycle"})
+			return
+		}
+	}
+
+	// Note: Ad-hoc cycles do not create Matrix rooms - they are intended for quick, informal sessions
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		slog.Error("Failed to commit ad-hoc cycle transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create ad-hoc cycle"})
+		return
+	}
+
+	slog.Info("Successfully created ad-hoc movie club cycle", 
+		"cycleId", cycle.ID, 
+		"contentId", content.ID,
+		"durationHours", req.AdHocDurationHours,
+		"userCount", len(users))
+
+	// Load the winner content for response
+	if err := b.db.Preload("WinnerContent").First(&cycle, cycle.ID).Error; err != nil {
+		slog.Warn("Failed to load winner content for ad-hoc cycle response", "error", err)
+	}
+
+	c.JSON(http.StatusCreated, cycle)
+}
+
+// finalizeAdHocCycle instantly finalizes an ad-hoc cycle and moves it to archive
+func (b *BaseRouter) finalizeAdHocCycle(c *gin.Context) {
+	cycleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid cycle ID"})
+		return
+	}
+
+	// Get the cycle and verify it exists and is ad-hoc
+	var cycle MovieClubCycle
+	if err := b.db.Where("id = ? AND active = true", cycleID).First(&cycle).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Active cycle not found"})
+		} else {
+			slog.Error("Failed to fetch cycle for finalization", "error", err)
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to finalize cycle"})
+		}
+		return
+	}
+
+	// Verify this is an ad-hoc cycle that can be finalized
+	if !cycle.IsAdHoc {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Only ad-hoc cycles can be manually finalized"})
+		return
+	}
+
+	if !cycle.CanBeFinalized {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "This ad-hoc cycle cannot be finalized"})
+		return
+	}
+
+	// Use a transaction to ensure consistency
+	tx := b.db.Begin()
+	if tx.Error != nil {
+		slog.Error("Failed to begin finalization transaction", "error", tx.Error)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to finalize cycle"})
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Set the cycle as inactive (archived) and update timestamps
+	now := time.Now()
+	updates := map[string]interface{}{
+		"active":            false,
+		"phase_end_date":    now,
+		"watching_end_date": now,
+		"can_be_finalized":  false,
+	}
+
+	if err := tx.Model(&cycle).Where("id = ?", cycleID).Updates(updates).Error; err != nil {
+		tx.Rollback()
+		slog.Error("Failed to finalize ad-hoc cycle", "error", err, "cycleId", cycleID)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to finalize cycle"})
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		slog.Error("Failed to commit finalization transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to finalize cycle"})
+		return
+	}
+
+	slog.Info("Successfully finalized ad-hoc movie club cycle", 
+		"cycleId", cycleID, 
+		"name", cycle.Name)
+
+	// Return the updated cycle
+	if err := b.db.Preload("WinnerContent").First(&cycle, cycleID).Error; err != nil {
+		slog.Warn("Failed to load updated cycle for response", "error", err)
+	}
+
+	c.JSON(http.StatusOK, cycle)
+}
+
 // updateMovieClubCycle updates an existing cycle
 func (b *BaseRouter) updateMovieClubCycle(c *gin.Context) {
 	cycleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
@@ -1446,6 +1654,11 @@ func (b *BaseRouter) getAllMovieClubCycles(c *gin.Context) {
 
 // Helper function to transition cycle phases
 func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
+	// Ad-hoc cycles should not be manually transitioned - they should only be finalized
+	if cycle.IsAdHoc {
+		return errors.New("ad-hoc cycles cannot be transitioned through normal phase progression")
+	}
+
 	now := time.Now()
 	phaseDuration := time.Duration(Config.MOVIE_CLUB.PhaseDurationDays) * 24 * time.Hour
 	

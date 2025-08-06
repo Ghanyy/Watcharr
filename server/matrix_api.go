@@ -512,9 +512,164 @@ func validateApplicationService(settings MatrixSettings) []MatrixValidationResul
 				Details: "AS manager not initialized - restart server to enable AS features",
 			})
 		}
+		
+		// Test AS-HS communication if AS is properly configured and running
+		if appServiceManager != nil && appServiceManager.isRunning {
+			asCommResults := validateASCommunication(settings)
+			results = append(results, asCommResults...)
+		}
 	}
 
 	return results
+}
+
+// validateASCommunication tests Application Service communication with the homeserver
+func validateASCommunication(settings MatrixSettings) []MatrixValidationResult {
+	var results []MatrixValidationResult
+
+	// Test AS ping functionality (homeserver -> application service communication)
+	pingResult := testASPing(settings)
+	results = append(results, pingResult)
+
+	// Test user creation via AS (application service -> homeserver communication)  
+	userResult := testASUserCreation(settings)
+	results = append(results, userResult)
+
+	return results
+}
+
+// testASPing tests if the homeserver can communicate with the AS via ping
+func testASPing(settings MatrixSettings) MatrixValidationResult {
+	// Use the Matrix client instance if available, otherwise create basic HTTP client
+	var pingURL string
+	if matrixClient != nil {
+		// Build proper Matrix URL
+		baseURL := strings.TrimSuffix(settings.ServerURL, "/")
+		pingURL = fmt.Sprintf("%s/_matrix/client/v1/appservice/%s/ping", baseURL, settings.AppService.ID)
+	} else {
+		return MatrixValidationResult{
+			Check:   "AS Ping Test",
+			Status:  "error", 
+			Message: "Matrix client not initialized",
+			Details: "Cannot test AS ping without Matrix client - ensure Matrix connection is working first",
+		}
+	}
+
+	// Create ping request with AS token
+	ctx := context.Background()
+	pingReq, err := http.NewRequestWithContext(ctx, "POST", pingURL, strings.NewReader(`{}`))
+	if err != nil {
+		return MatrixValidationResult{
+			Check:   "AS Ping Test",
+			Status:  "error",
+			Message: "Failed to create ping request",
+			Details: fmt.Sprintf("HTTP request creation error: %v", err),
+		}
+	}
+	
+	pingReq.Header.Set("Authorization", "Bearer " + settings.AppService.AppServiceToken)
+	pingReq.Header.Set("Content-Type", "application/json")
+
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	resp, err := httpClient.Do(pingReq)
+	if err != nil {
+		return MatrixValidationResult{
+			Check:   "AS Ping Test",
+			Status:  "error",
+			Message: "AS ping failed - homeserver cannot reach application service",
+			Details: fmt.Sprintf("Connection error: %v. Check if AS registration file is loaded and Watcharr AS endpoints are accessible.", err),
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return MatrixValidationResult{
+			Check:   "AS Ping Test",
+			Status:  "success",
+			Message: "AS ping successful",
+			Details: "Homeserver can successfully communicate with application service",
+		}
+	} else {
+		return MatrixValidationResult{
+			Check:   "AS Ping Test", 
+			Status:  "error",
+			Message: fmt.Sprintf("AS ping failed with status %d", resp.StatusCode),
+			Details: "Check AS token configuration and registration file. Ensure tokens match between Watcharr and registration file.",
+		}
+	}
+}
+
+// testASUserCreation tests if AS can create users via the homeserver
+func testASUserCreation(settings MatrixSettings) MatrixValidationResult {
+	if appServiceManager == nil {
+		return MatrixValidationResult{
+			Check:   "AS User Creation Test",
+			Status:  "error",
+			Message: "Application Service manager not available", 
+			Details: "Cannot test user creation without AS manager - restart server",
+		}
+	}
+
+	// Create a test user via AS to verify communication
+	testUsername := fmt.Sprintf("test_user_%d", time.Now().Unix())
+	testUserID := uint(999999) // Use high ID that won't conflict
+
+	matrixUser, err := appServiceManager.CreateUser(testUserID, testUsername)
+	if err != nil {
+		return MatrixValidationResult{
+			Check:   "AS User Creation Test",
+			Status:  "error", 
+			Message: "AS user creation failed",
+			Details: fmt.Sprintf("Failed to create test user via AS: %v", err),
+		}
+	}
+
+	// Clean up test user
+	if matrixUser != nil {
+		cleanupErr := appServiceManager.DeleteUser(testUserID)
+		if cleanupErr != nil {
+			// Log cleanup error but don't fail the test
+			fmt.Printf("Failed to cleanup AS test user %s: %v\n", matrixUser.UserID, cleanupErr)
+		}
+	}
+
+	return MatrixValidationResult{
+		Check:   "AS User Creation Test", 
+		Status:  "success",
+		Message: "AS user creation successful",
+		Details: "Application service can successfully create and manage virtual Matrix users",
+	}
+}
+
+// debugMatrixUsers - temporary debugging endpoint to check stored Matrix user IDs
+func (b *BaseRouter) debugMatrixUsers(c *gin.Context) {
+	var users []MatrixUserV2
+	if err := b.db.Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to fetch Matrix users"})
+		return
+	}
+	
+	type DebugUser struct {
+		UserID       uint   `json:"userId"`
+		MatrixUserID string `json:"matrixUserId"`
+		AccountType  string `json:"accountType"`
+		CreatedAt    string `json:"createdAt"`
+	}
+	
+	var debugUsers []DebugUser
+	for _, user := range users {
+		debugUsers = append(debugUsers, DebugUser{
+			UserID:       user.UserID,
+			MatrixUserID: user.MatrixUserID,
+			AccountType:  string(user.AccountType),
+			CreatedAt:    user.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+	
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"matrix_users": debugUsers,
+		"count":        len(debugUsers),
+	})
 }
 
 // Note: validateSharedSecretRegistration removed - feature deprecated for simplicity
@@ -961,6 +1116,7 @@ func (b *BaseRouter) setupMatrixRoutes() {
 	matrix.POST("/migrate-users-to-v2", AuthRequired(b.db), AdminRequired(), b.migrateMatrixUsersToV2)
 	matrix.GET("/registration-file", AuthRequired(b.db), AdminRequired(), b.generateRegistrationFile)
 	matrix.POST("/clear-poster-cache", AuthRequired(b.db), AdminRequired(), b.clearPosterCache)
+	matrix.GET("/debug-users", b.debugMatrixUsers) // Temporary debug endpoint - no auth
 	
 	// User routes
 	matrix.GET("/info", AuthRequired(b.db), b.getUserMatrixInfo)

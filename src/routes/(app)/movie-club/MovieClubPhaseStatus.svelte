@@ -67,9 +67,22 @@
 				<Icon icon={phaseIcon} />
 			</div>
 			<div class="phase-details">
-				<h2>{cycle.name}</h2>
+				<div class="title-row">
+					<h2>{cycle.name}</h2>
+					{#if cycle.isAdHoc}
+						<span class="adhoc-badge">
+							<Icon icon="sparkles" />
+							Ad-hoc
+						</span>
+					{/if}
+				</div>
 				<p class="phase-name">
-					{cycle.phase.charAt(0).toUpperCase() + cycle.phase.slice(1)} Phase
+					{#if cycle.isAdHoc}
+						Ad-hoc Session • {cycle.phase.charAt(0).toUpperCase() +
+							cycle.phase.slice(1)} Phase
+					{:else}
+						{cycle.phase.charAt(0).toUpperCase() + cycle.phase.slice(1)} Phase
+					{/if}
 				</p>
 			</div>
 		</div>
@@ -88,36 +101,55 @@
 		<p class="cycle-description">{cycle.description}</p>
 	{/if}
 
-	<div class="phase-progress">
-		<div class="progress-steps">
-			<div
-				class="step"
-				class:active={cycle.phase === "nomination"}
-				class:completed={["voting", "watching"].includes(cycle.phase)}
-			>
-				<div class="step-icon">
-					<Icon icon="add" />
+	{#if !cycle.isAdHoc}
+		<div class="phase-progress">
+			<div class="progress-steps">
+				<div
+					class="step"
+					class:active={cycle.phase === "nomination"}
+					class:completed={["voting", "watching"].includes(cycle.phase)}
+				>
+					<div class="step-icon">
+						<Icon icon="add" />
+					</div>
+					<span>Nomination</span>
 				</div>
-				<span>Nomination</span>
-			</div>
-			<div
-				class="step"
-				class:active={cycle.phase === "voting"}
-				class:completed={cycle.phase === "watching"}
-			>
-				<div class="step-icon">
-					<Icon icon="check" />
+				<div
+					class="step"
+					class:active={cycle.phase === "voting"}
+					class:completed={cycle.phase === "watching"}
+				>
+					<div class="step-icon">
+						<Icon icon="check" />
+					</div>
+					<span>Voting</span>
 				</div>
-				<span>Voting</span>
-			</div>
-			<div class="step" class:active={cycle.phase === "watching"}>
-				<div class="step-icon">
-					<Icon icon="play" />
+				<div class="step" class:active={cycle.phase === "watching"}>
+					<div class="step-icon">
+						<Icon icon="play" />
+					</div>
+					<span>Watching</span>
 				</div>
-				<span>Watching</span>
 			</div>
 		</div>
-	</div>
+	{:else}
+		<div class="phase-progress adhoc-progress">
+			<div class="progress-steps single-step">
+				<div class="step active adhoc-step">
+					<div class="step-icon">
+						<Icon icon="sparkles" />
+					</div>
+					<span>Instant Watch Session</span>
+				</div>
+			</div>
+			<div class="adhoc-info">
+				<small>
+					<Icon icon="clock" />
+					{cycle.adHocDurationHours}h duration
+				</small>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style lang="scss">
@@ -344,6 +376,80 @@
 			span {
 				color: var(--success);
 				font-weight: 600;
+			}
+		}
+	}
+
+	// Ad-hoc cycle styles
+	.title-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		flex-wrap: wrap;
+	}
+
+	.adhoc-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+		padding: var(--space-xs) var(--space-sm);
+		background: linear-gradient(135deg, #8b5cf6, #a855f7);
+		color: white;
+		border-radius: var(--radius-full);
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+		box-shadow: var(--shadow-sm);
+		animation: shimmer 2s ease-in-out infinite alternate;
+
+		:global(svg) {
+			width: 12px;
+			height: 12px;
+		}
+	}
+
+	@keyframes shimmer {
+		0% {
+			opacity: 0.8;
+		}
+		100% {
+			opacity: 1;
+		}
+	}
+
+	.adhoc-progress {
+		.single-step {
+			justify-content: center;
+		}
+
+		.adhoc-step {
+			background: linear-gradient(135deg, #8b5cf6, #a855f7);
+			color: white;
+			border-color: #7c3aed;
+			box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+
+			.step-icon {
+				background: rgba(255, 255, 255, 0.2);
+			}
+		}
+
+		.adhoc-info {
+			display: flex;
+			justify-content: center;
+			margin-top: var(--space-sm);
+			color: var(--text-muted);
+
+			small {
+				display: flex;
+				align-items: center;
+				gap: var(--space-xs);
+				font-size: 0.8rem;
+			}
+
+			:global(svg) {
+				width: 14px;
+				height: 14px;
 			}
 		}
 	}

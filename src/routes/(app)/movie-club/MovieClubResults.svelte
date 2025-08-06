@@ -27,12 +27,49 @@
 	<div class="section-header">
 		<h3>
 			<Icon icon="play" />
-			Voting Results
+			{#if cycleData.cycle.isAdHoc}
+				Ad-hoc Session
+			{:else}
+				Voting Results
+			{/if}
 		</h3>
-		<p>Here are the results from this cycle's voting!</p>
+		<p>
+			{#if cycleData.cycle.isAdHoc}
+				This movie was directly selected for an ad-hoc session!
+			{:else}
+				Here are the results from this cycle's voting!
+			{/if}
+		</p>
 	</div>
 
-	{#if !hasVotes}
+	{#if cycleData.cycle.isAdHoc && cycleData.cycle.winnerContent}
+		<!-- Ad-hoc Chosen Movie Section -->
+		<div class="chosen-movie-section">
+			<div class="chosen-badge">
+				<Icon icon="sparkles" />
+				<span>Chosen Movie</span>
+			</div>
+
+			<div class="chosen-card">
+				<div class="chosen-poster">
+					<Poster media={cycleData.cycle.winnerContent} showRating={false} />
+				</div>
+				<div class="chosen-info">
+					<h4>{cycleData.cycle.winnerContent.title}</h4>
+					<p class="chosen-year">
+						{cycleData.cycle.winnerContent.release_date
+							? new Date(cycleData.cycle.winnerContent.release_date).getFullYear()
+							: "Unknown"}
+					</p>
+					{#if cycleData.cycle.winnerContent.overview}
+						<p class="chosen-overview">
+							{cycleData.cycle.winnerContent.overview}
+						</p>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{:else if !hasVotes}
 		<div class="no-votes">
 			<Icon icon="check" />
 			<p>No votes were cast this cycle.</p>
@@ -904,6 +941,138 @@
 					border: 1px solid var(--border);
 				}
 			}
+		}
+	}
+
+	.chosen-movie-section {
+		position: relative;
+		margin-bottom: var(--space-xl);
+	}
+
+	.chosen-badge {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-sm);
+		background: linear-gradient(135deg, var(--accent, #8b5cf6), #7c3aed);
+		color: white;
+		padding: var(--space-sm) var(--space-lg);
+		border-radius: 20px;
+		font-weight: 700;
+		font-size: 1.1rem;
+		width: fit-content;
+		margin: 0 auto var(--space-lg) auto;
+		box-shadow: var(--shadow-lg);
+		border: 2px solid var(--accent, #8b5cf6);
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+		transition: all 0.3s ease;
+
+		&:hover {
+			transform: scale(1.05);
+			box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+		}
+
+		:global(svg) {
+			font-size: 1.25rem;
+		}
+	}
+
+	.chosen-card {
+		background: var(--background);
+		border: 2px solid var(--accent, #8b5cf6);
+		border-radius: var(--radius-xl);
+		padding: var(--space-xl);
+		display: flex;
+		gap: var(--space-xl);
+		align-items: center;
+		box-shadow: var(--shadow-lg);
+		position: relative;
+		transition: all 0.3s ease;
+
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(
+				135deg,
+				rgba(139, 92, 246, 0.1),
+				rgba(124, 58, 237, 0.05)
+			);
+			border-radius: inherit;
+			pointer-events: none;
+		}
+
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 12px 32px rgba(139, 92, 246, 0.3);
+		}
+	}
+
+	.chosen-poster {
+		position: relative;
+		width: 200px;
+		height: 300px;
+		flex-shrink: 0;
+		z-index: 1;
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		box-shadow: var(--shadow-lg);
+
+		:global(li) {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		:global(.container) {
+			width: 100% !important;
+			height: 100% !important;
+			min-width: unset !important;
+		}
+
+		// Disable the zoom/scale effect on hover for chosen poster
+		:global(.active .container) {
+			transform: none !important;
+			z-index: 1 !important;
+		}
+	}
+
+	.chosen-info {
+		flex: 1;
+		position: relative;
+		z-index: 1;
+
+		h4 {
+			margin: 0 0 var(--space-sm) 0;
+			font-size: 2rem;
+			color: var(--text);
+			font-weight: 800;
+			line-height: 1.1;
+		}
+
+		.chosen-year {
+			font-size: 1rem;
+			color: var(--text-muted);
+			font-weight: 600;
+			margin-bottom: var(--space-md);
+			background: var(--background-secondary);
+			padding: var(--space-xs) var(--space-sm);
+			border-radius: var(--radius-md);
+			display: inline-block;
+		}
+
+		.chosen-overview {
+			color: var(--text-muted);
+			line-height: 1.5;
+			margin: 0;
+			padding: var(--space-md);
+			background: var(--background-secondary);
+			border-radius: var(--radius-md);
+			border-left: 3px solid var(--accent, #8b5cf6);
+			font-style: italic;
 		}
 	}
 
