@@ -44,7 +44,7 @@
 				if (changedType) {
 					toUpdate["type"] = user.type;
 				}
-				const res = await axios.post(`/server/users/${user.id}`, toUpdate);
+				const res = await axios.post(`/server/admin/users/${user.id}`, toUpdate);
 				if (res.status === 200) {
 					notify({
 						type: "success",
