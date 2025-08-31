@@ -297,7 +297,7 @@
 											disabled={loading}
 											title="Finalize this ad-hoc cycle"
 										>
-											<Icon icon="check" />
+											✓
 										</button>
 									{/if}
 									<button
@@ -784,7 +784,8 @@
 			border: none;
 			border-radius: var(--radius-full);
 			cursor: pointer;
-			font-size: 0.875rem;
+			font-size: 1rem;
+			font-weight: 700;
 			transition: all 0.2s ease;
 			box-shadow: var(--shadow-sm);
 
@@ -805,11 +806,6 @@
 				box-shadow:
 					var(--shadow-md),
 					0 0 0 2px rgba(40, 167, 69, 0.3);
-			}
-
-			:global(svg) {
-				width: 14px;
-				height: 14px;
 			}
 		}
 	}

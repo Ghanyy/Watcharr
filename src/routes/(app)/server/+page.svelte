@@ -125,7 +125,7 @@
 	}
 
 	async function getServerStats() {
-		return (await axios.get("/server/stats")).data as ServerStats;
+		return (await axios.get("/server/admin/stats")).data as ServerStats;
 	}
 
 	function updateMovieClubConfig<K extends keyof MovieClubSettings>(

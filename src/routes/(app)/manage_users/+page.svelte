@@ -18,7 +18,7 @@
 	let editingUser: ManagedUser | undefined;
 
 	async function getUsers() {
-		allUsers = (await axios.get(`/server/users`)).data as ManagedUser[];
+		allUsers = (await axios.get(`/server/admin/users`)).data as ManagedUser[];
 	}
 </script>
 

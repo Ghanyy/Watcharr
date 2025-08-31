@@ -69,6 +69,67 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Cycle Ratings Section for Ad-hoc -->
+		{#if hasCycleRatings}
+			<div class="cycle-ratings-section">
+				{#if shouldShowClubAverage}
+					<div class="club-average-rating">
+						<span class="average-label">Club rate:</span>
+						<span class="average-value"
+							><span class="golden-asterisk">*</span
+							>{clubAverageRating}/10</span
+						>
+					</div>
+				{/if}
+
+				<details class="cycle-ratings-list">
+					<summary class="ratings-header">
+						<Icon icon="star" />
+						<span
+							>Member Ratings ({validRatings.length}{thoughtsOnlyEntries.length >
+							0
+								? ` + ${thoughtsOnlyEntries.length} thoughts`
+								: ""})</span
+						>
+						<Icon icon="chevron" />
+					</summary>
+
+					<div class="ratings-content">
+						{#each cycleRatings as rating}
+							<div class="rating-item">
+								<div class="rating-user">
+									{#if rating.user?.id && rating.user?.username}
+										<a
+											href="/lists/{rating.user.id}/{rating.user.username}"
+											class="username">{rating.user.username}</a
+										>
+									{:else}
+										<span class="username">Unknown User</span>
+									{/if}
+									{#if rating.rating > 0}
+										<span class="rating-score">{rating.rating}/10</span>
+									{:else}
+										<span class="thoughts-only">Thoughts only</span>
+									{/if}
+								</div>
+								{#if rating.thoughts && rating.thoughts.trim()}
+									<details class="thoughts-details">
+										<summary class="thoughts-toggle">
+											<Icon icon="document" />
+											<span>View thoughts</span>
+										</summary>
+										<div class="thoughts-content">
+											<p>{rating.thoughts}</p>
+										</div>
+									</details>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</details>
+			</div>
+		{/if}
 	{:else if !hasVotes}
 		<div class="no-votes">
 			<Icon icon="check" />

@@ -424,13 +424,16 @@
 		}
 
 		.adhoc-step {
-			background: linear-gradient(135deg, #8b5cf6, #a855f7);
-			color: white;
-			border-color: #7c3aed;
-			box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-
 			.step-icon {
-				background: rgba(255, 255, 255, 0.2);
+				background: linear-gradient(135deg, #8b5cf6, #a855f7);
+				border-color: #7c3aed;
+				color: white;
+				box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+			}
+
+			span {
+				color: var(--accent, #8b5cf6);
+				font-weight: 600;
 			}
 		}
 
