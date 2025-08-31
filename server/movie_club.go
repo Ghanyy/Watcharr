@@ -654,6 +654,7 @@ func (b *BaseRouter) addMovieClubRoutes() {
 	movieClub.DELETE("/cycle/:id", AdminRequired(), b.deleteMovieClubCycle)
 	movieClub.POST("/cycle/:id/transition", AdminRequired(), b.transitionCyclePhase)
 	movieClub.POST("/cycle/:id/finalize", AdminRequired(), b.finalizeAdHocCycle)
+	movieClub.POST("/cycle/:id/extend-phase", AdminRequired(), b.extendCyclePhase)
 	movieClub.GET("/cycles", AdminRequired(), b.getAllMovieClubCycles)
 }
 
@@ -1528,6 +1529,24 @@ func (b *BaseRouter) finalizeAdHocCycle(c *gin.Context) {
 	c.JSON(http.StatusOK, cycle)
 }
 
+// extendCyclePhase extends the current phase by 24 hours
+func (b *BaseRouter) extendCyclePhase(c *gin.Context) {
+	cycleId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		slog.Error("extend phase route failed to convert id param to uint", "id", c.Param("id"))
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid cycle id"})
+		return
+	}
+
+	err = extendCyclePhase(b.db, uint(cycleId))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Phase extended successfully"})
+}
+
 // updateMovieClubCycle updates an existing cycle
 func (b *BaseRouter) updateMovieClubCycle(c *gin.Context) {
 	cycleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
@@ -1942,5 +1961,57 @@ func ProcessPotentialCycleRating(db *gorm.DB, userID uint, contentID int, rating
 		}
 	}
 	
+	return nil
+}
+
+// extendCyclePhase extends the current phase and all future phases by 24 hours
+func extendCyclePhase(db *gorm.DB, cycleId uint) error {
+	var cycle MovieClubCycle
+	
+	// Find the cycle
+	if err := db.First(&cycle, cycleId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("cycle not found")
+		}
+		return fmt.Errorf("failed to fetch cycle: %w", err)
+	}
+
+	// Check if cycle is active
+	if !cycle.Active {
+		return errors.New("cannot extend phase of inactive cycle")
+	}
+
+	extension := 24 * time.Hour
+
+	// Extend current phase
+	newPhaseEndDate := cycle.PhaseEndDate.Add(extension)
+	
+	// Extend all future phase dates to maintain sync
+	updates := map[string]interface{}{
+		"phase_end_date": newPhaseEndDate,
+	}
+
+	switch cycle.Phase {
+	case PHASE_NOMINATION:
+		updates["nomination_end_date"] = cycle.NominationEndDate.Add(extension)
+		updates["voting_end_date"] = cycle.VotingEndDate.Add(extension)
+		updates["watching_end_date"] = cycle.WatchingEndDate.Add(extension)
+	case PHASE_VOTING:
+		updates["voting_end_date"] = cycle.VotingEndDate.Add(extension)
+		updates["watching_end_date"] = cycle.WatchingEndDate.Add(extension)
+	case PHASE_WATCHING:
+		updates["watching_end_date"] = cycle.WatchingEndDate.Add(extension)
+	}
+
+	// Update the cycle
+	if err := db.Model(&cycle).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to extend cycle phase: %w", err)
+	}
+
+	slog.Info("Movie club cycle phase extended", 
+		"cycle_id", cycleId, 
+		"phase", cycle.Phase, 
+		"new_end_date", newPhaseEndDate)
+
 	return nil
 }

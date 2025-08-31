@@ -198,6 +198,33 @@
 		}
 	}
 
+	async function extendPhase(cycleId: number) {
+		if (!cycleId) return;
+
+		if (
+			!confirm(
+				"Are you sure you want to extend this phase by 24 hours? This will also postpone all future phases to maintain sync."
+			)
+		) {
+			return;
+		}
+
+		const nid = notify({
+			text: "Extending phase by 24 hours...",
+			type: "loading",
+		});
+
+		try {
+			await axios.post(`/movie-club/cycle/${cycleId}/extend-phase`);
+			notify({ id: nid, text: "Phase extended successfully!", type: "success" });
+			await refreshData(); // Refresh to update phase dates
+		} catch (err: any) {
+			console.error("Failed to extend phase:", err);
+			const message = err.response?.data?.error || "Failed to extend phase";
+			notify({ id: nid, text: message, type: "error" });
+		}
+	}
+
 	async function handleNomination(content: any, reason: string) {
 		if (submitting) return;
 
@@ -290,6 +317,14 @@
 							</span>
 							{#if isAdmin}
 								<div class="admin-buttons">
+									<button
+										class="extend-phase-btn-small"
+										on:click={() => extendPhase(cycleData.cycle.id)}
+										disabled={loading}
+										title="Extend this phase by 24 hours"
+									>
+										+24h
+									</button>
 									{#if cycleData.cycle.isAdHoc && cycleData.cycle.canBeFinalized}
 										<button
 											class="finalize-cycle-btn-small"
@@ -808,6 +843,43 @@
 					0 0 0 2px rgba(40, 167, 69, 0.3);
 			}
 		}
+
+		.extend-phase-btn-small {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			height: 28px;
+			padding: 0 var(--space-sm);
+			background: var(--info, #3b82f6);
+			color: white;
+			border: none;
+			border-radius: var(--radius-md);
+			cursor: pointer;
+			font-size: 0.75rem;
+			font-weight: 600;
+			transition: all 0.2s ease;
+			box-shadow: var(--shadow-sm);
+			white-space: nowrap;
+
+			&:hover:not(:disabled) {
+				background: var(--info-dark, #2563eb);
+				transform: translateY(-1px);
+				box-shadow: var(--shadow-md);
+			}
+
+			&:disabled {
+				opacity: 0.6;
+				cursor: not-allowed;
+				transform: none;
+			}
+
+			&:focus {
+				outline: none;
+				box-shadow:
+					var(--shadow-md),
+					0 0 0 2px rgba(59, 130, 246, 0.3);
+			}
+		}
 	}
 
 	.start-new-cycle-btn {
@@ -954,6 +1026,12 @@
 				width: 24px;
 				height: 24px;
 				font-size: 0.9rem;
+			}
+
+			.extend-phase-btn-small {
+				height: 24px;
+				font-size: 0.7rem;
+				padding: 0 var(--space-xs);
 			}
 
 			.finalize-cycle-btn-small :global(svg) {
