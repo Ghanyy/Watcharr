@@ -1355,7 +1355,10 @@ export interface MovieClubVote extends dbModel {
 export interface MovieClubSettings {
 	nominationsPerUser: number;
 	votesPerUser: number;
-	phaseDurationDays: number;
+	nominationPhaseDays: number;
+	votingPhaseDays: number;
+	watchingPhaseDays: number;
+	phaseDurationDays: number; // Legacy fallback
 	enabled: boolean;
 	communityEnabled: boolean;
 	matrix: MatrixSettings;

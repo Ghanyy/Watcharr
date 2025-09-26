@@ -72,12 +72,15 @@ type MovieClubVote struct {
 
 // MovieClubSettings holds configurable parameters for the movie club system
 type MovieClubSettings struct {
-	NominationsPerUser int           `json:"nominationsPerUser"` // Default: 1
-	VotesPerUser       int           `json:"votesPerUser"`       // Default: 2
-	PhaseDurationDays  int           `json:"phaseDurationDays"`  // Default: 7 (1 week)
-	Enabled            bool          `json:"enabled"`            // Default: false
-	CommunityEnabled   bool          `json:"communityEnabled"`   // Default: false
-	Matrix             MatrixSettings `json:"matrix"`            // Matrix/Dendrite configuration
+	NominationsPerUser  int           `json:"nominationsPerUser"`  // Default: 1
+	VotesPerUser        int           `json:"votesPerUser"`        // Default: 2
+	NominationPhaseDays int           `json:"nominationPhaseDays"` // Default: 7 (1 week)
+	VotingPhaseDays     int           `json:"votingPhaseDays"`     // Default: 7 (1 week)
+	WatchingPhaseDays   int           `json:"watchingPhaseDays"`   // Default: 14 (2 weeks)
+	PhaseDurationDays   int           `json:"phaseDurationDays"`   // Default: 7 (deprecated, legacy fallback)
+	Enabled             bool          `json:"enabled"`             // Default: false
+	CommunityEnabled    bool          `json:"communityEnabled"`    // Default: false
+	Matrix              MatrixSettings `json:"matrix"`             // Matrix/Dendrite configuration
 }
 
 // MatrixSettings holds Matrix/Dendrite server configuration
@@ -1290,14 +1293,16 @@ func (b *BaseRouter) createMovieClubCycle(c *gin.Context) {
 	
 	// Set up new cycle
 	now := time.Now()
-	phaseDuration := time.Duration(Config.MOVIE_CLUB.PhaseDurationDays) * 24 * time.Hour
-	
+	nominationDuration := Config.MOVIE_CLUB.GetNominationPhaseDuration()
+	votingDuration := Config.MOVIE_CLUB.GetVotingPhaseDuration()
+	watchingDuration := Config.MOVIE_CLUB.GetWatchingPhaseDuration()
+
 	cycle.Phase = PHASE_NOMINATION
 	cycle.PhaseStartDate = now
-	cycle.PhaseEndDate = now.Add(phaseDuration)
-	cycle.NominationEndDate = now.Add(phaseDuration)
-	cycle.VotingEndDate = now.Add(2 * phaseDuration)
-	cycle.WatchingEndDate = now.Add(3 * phaseDuration)
+	cycle.PhaseEndDate = now.Add(nominationDuration)
+	cycle.NominationEndDate = now.Add(nominationDuration)
+	cycle.VotingEndDate = cycle.NominationEndDate.Add(votingDuration)
+	cycle.WatchingEndDate = cycle.VotingEndDate.Add(watchingDuration)
 	cycle.Active = true
 	
 	if err := tx.Create(&cycle).Error; err != nil {
@@ -1679,8 +1684,6 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 	}
 
 	now := time.Now()
-	phaseDuration := time.Duration(Config.MOVIE_CLUB.PhaseDurationDays) * 24 * time.Hour
-	
 	nextPhase := cycle.GetNextPhase()
 	
 	// If transitioning from voting to watching, calculate winner
@@ -1732,28 +1735,33 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 	// Update cycle
 	cycle.Phase = nextPhase
 	cycle.PhaseStartDate = now
-	
-	// Use specific phase end date if available, otherwise calculate from duration
+
+	// Use specific phase end date if available, otherwise calculate from phase-specific duration
 	switch nextPhase {
 	case PHASE_NOMINATION:
 		if !cycle.NominationEndDate.IsZero() && cycle.NominationEndDate.After(now) {
 			cycle.PhaseEndDate = cycle.NominationEndDate
 		} else {
+			phaseDuration := Config.MOVIE_CLUB.GetNominationPhaseDuration()
 			cycle.PhaseEndDate = now.Add(phaseDuration)
 		}
 	case PHASE_VOTING:
 		if !cycle.VotingEndDate.IsZero() && cycle.VotingEndDate.After(now) {
 			cycle.PhaseEndDate = cycle.VotingEndDate
 		} else {
+			phaseDuration := Config.MOVIE_CLUB.GetVotingPhaseDuration()
 			cycle.PhaseEndDate = now.Add(phaseDuration)
 		}
 	case PHASE_WATCHING:
 		if !cycle.WatchingEndDate.IsZero() && cycle.WatchingEndDate.After(now) {
 			cycle.PhaseEndDate = cycle.WatchingEndDate
 		} else {
+			phaseDuration := Config.MOVIE_CLUB.GetWatchingPhaseDuration()
 			cycle.PhaseEndDate = now.Add(phaseDuration)
 		}
 	default:
+		// Fallback to nomination phase duration
+		phaseDuration := Config.MOVIE_CLUB.GetNominationPhaseDuration()
 		cycle.PhaseEndDate = now.Add(phaseDuration)
 	}
 	
@@ -1763,11 +1771,14 @@ func TransitionCyclePhase(db *gorm.DB, cycle *MovieClubCycle) error {
 // Initialize default movie club settings
 func InitializeMovieClubSettings() MovieClubSettings {
 	return MovieClubSettings{
-		NominationsPerUser: 1,
-		VotesPerUser:       2,
-		PhaseDurationDays:  7,
-		Enabled:            false,
-		CommunityEnabled:   false,
+		NominationsPerUser:  1,
+		VotesPerUser:        2,
+		NominationPhaseDays: 7,
+		VotingPhaseDays:     7,
+		WatchingPhaseDays:   14,
+		PhaseDurationDays:   7,  // Legacy fallback
+		Enabled:             false,
+		CommunityEnabled:    false,
 		Matrix: MatrixSettings{
 			Enabled:     false,
 			ServerURL:   "",
@@ -1777,6 +1788,44 @@ func InitializeMovieClubSettings() MovieClubSettings {
 			AdminUserID: "",
 		},
 	}
+}
+
+// Helper functions for backward compatibility with legacy PhaseDurationDays
+
+// GetNominationPhaseDuration returns the nomination phase duration, falling back to legacy setting if needed
+func (s *MovieClubSettings) GetNominationPhaseDuration() time.Duration {
+	days := s.NominationPhaseDays
+	if days <= 0 {
+		days = s.PhaseDurationDays
+		if days <= 0 {
+			days = 7 // Default fallback
+		}
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
+// GetVotingPhaseDuration returns the voting phase duration, falling back to legacy setting if needed
+func (s *MovieClubSettings) GetVotingPhaseDuration() time.Duration {
+	days := s.VotingPhaseDays
+	if days <= 0 {
+		days = s.PhaseDurationDays
+		if days <= 0 {
+			days = 7 // Default fallback
+		}
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
+// GetWatchingPhaseDuration returns the watching phase duration, falling back to legacy setting if needed
+func (s *MovieClubSettings) GetWatchingPhaseDuration() time.Duration {
+	days := s.WatchingPhaseDays
+	if days <= 0 {
+		days = s.PhaseDurationDays
+		if days <= 0 {
+			days = 14 // Default fallback (longer for watching phase)
+		}
+	}
+	return time.Duration(days) * 24 * time.Hour
 }
 
 // checkMovieClubTransition is called by the task scheduler to check if cycles need phase transitions

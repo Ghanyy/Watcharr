@@ -56,6 +56,9 @@
 	let movieClubNominationsDisabled = $state(false);
 	let movieClubVotesDisabled = $state(false);
 	let movieClubDurationDisabled = $state(false);
+	let movieClubNominationPhaseDaysDisabled = $state(false);
+	let movieClubVotingPhaseDaysDisabled = $state(false);
+	let movieClubWatchingPhaseDaysDisabled = $state(false);
 
 	// Matrix disabled vars
 	let matrixEnabledDisabled = $state(false);
@@ -947,25 +950,71 @@
 						/>
 					</Setting>
 					<Setting
-						title="Phase Duration (Days)"
-						desc="How long each phase (nomination, voting, watching) lasts in days."
+						title="Nomination Phase Duration (Days)"
+						desc="How long the nomination phase lasts in days (1-30 days)."
 					>
 						<input
 							type="number"
 							min="1"
 							max="30"
-							bind:value={serverConfig.MOVIE_CLUB.phaseDurationDays}
+							bind:value={serverConfig.MOVIE_CLUB.nominationPhaseDays}
 							onblur={() => {
-								movieClubDurationDisabled = true;
+								movieClubNominationPhaseDaysDisabled = true;
 								updateMovieClubConfig(
-									"phaseDurationDays",
-									serverConfig!.MOVIE_CLUB.phaseDurationDays,
+									"nominationPhaseDays",
+									serverConfig!.MOVIE_CLUB.nominationPhaseDays,
 									() => {
-										movieClubDurationDisabled = false;
+										movieClubNominationPhaseDaysDisabled = false;
 									},
 								);
 							}}
-							disabled={movieClubDurationDisabled}
+							disabled={movieClubNominationPhaseDaysDisabled}
+						/>
+					</Setting>
+
+					<Setting
+						title="Voting Phase Duration (Days)"
+						desc="How long the voting phase lasts in days (1-30 days)."
+					>
+						<input
+							type="number"
+							min="1"
+							max="30"
+							bind:value={serverConfig.MOVIE_CLUB.votingPhaseDays}
+							onblur={() => {
+								movieClubVotingPhaseDaysDisabled = true;
+								updateMovieClubConfig(
+									"votingPhaseDays",
+									serverConfig!.MOVIE_CLUB.votingPhaseDays,
+									() => {
+										movieClubVotingPhaseDaysDisabled = false;
+									},
+								);
+							}}
+							disabled={movieClubVotingPhaseDaysDisabled}
+						/>
+					</Setting>
+
+					<Setting
+						title="Watching Phase Duration (Days)"
+						desc="How long the watching phase lasts in days (1-30 days)."
+					>
+						<input
+							type="number"
+							min="1"
+							max="30"
+							bind:value={serverConfig.MOVIE_CLUB.watchingPhaseDays}
+							onblur={() => {
+								movieClubWatchingPhaseDaysDisabled = true;
+								updateMovieClubConfig(
+									"watchingPhaseDays",
+									serverConfig!.MOVIE_CLUB.watchingPhaseDays,
+									() => {
+										movieClubWatchingPhaseDaysDisabled = false;
+									},
+								);
+							}}
+							disabled={movieClubWatchingPhaseDaysDisabled}
 						/>
 					</Setting>
 
