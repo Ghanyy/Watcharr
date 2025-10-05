@@ -20,9 +20,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd server && go run .` - Run Go server directly
 - `cd server && go build` - Build Go binary
 - `cd server && go test ./...` - Run all Go tests
+- `cd server && go test -v -cover ./...` - Run all tests with coverage
 - `cd server && go test -v -run "Matrix" .` - Run Matrix integration tests
 - `cd server && go test -v -run "TestAppService" .` - Run Application Service tests
 - `go mod tidy` - Update dependencies (includes Matrix SDK: maunium.net/go/mautrix v0.21.0)
+
+**Important Backend Dependencies:**
+
+- `maunium.net/go/mautrix v0.21.0` - Matrix SDK for Go (updated from v0.16.0)
+- `gorm.io/gorm` - ORM for database operations
+- `github.com/gin-gonic/gin` - Web framework
+- Note: Matrix SDK v0.21.0 removes deprecated fields (Federate, PowerLevelContentOverride)
 
 ### Docker
 
@@ -53,11 +61,23 @@ Key directories:
 
 **Movie Club TypeScript Types:**
 
+- `MovieClubCycle` - Cycle data with phase information and winner
+- `MovieClubNomination` - Nomination with user, content, and reason
+- `MovieClubVote` - Vote with priority (1st, 2nd, 3rd choice)
 - `MovieClubCycleRating` - Interface for user ratings and thoughts
-- `MovieClubCycleResponse` - Enhanced to include `cycleRatings` array
+- `MovieClubCycleResponse` - Full cycle response with all related data
+- `MovieClubVoteCount` - Vote tallying and weighted scores
 - `MovieClubSettings` - Movie club configuration including Matrix settings
 - `MatrixSettings` - Matrix/Dendrite server configuration interface
+- `AppServiceSettings` - Application Service configuration
 - Type safety across frontend/backend communication
+
+**Important Type Patterns:**
+
+- Cycles can be ad-hoc (`isAdHoc: true`) or regular nomination/voting cycles
+- Phase transitions: `nomination` → `voting` → `watching` (then cycle deactivates)
+- Multiple active cycles supported with priority sorting
+- Cycle ratings only saved for eligible users (who nominated or voted)
 
 ### Backend (Go)
 
@@ -74,11 +94,13 @@ Key files:
 - `server/auth.go` - Authentication logic
 - `server/content.go` - Content management
 - `server/watched.go` - Watch tracking functionality with movie club integration
-- `server/movie_club.go` - Movie club cycles, voting, and rating management
+- `server/movie_club.go` - Movie club cycles, voting, rating management, and ad-hoc sessions
 - `server/matrix.go` - Matrix/Dendrite integration core functionality with hybrid account system
 - `server/matrix_api.go` - Matrix API endpoints and validation
-- `server/matrix_rooms.go` - Matrix room management and user invitations
+- `server/matrix_rooms.go` - Matrix room/space management, user invitations, and hierarchy setup
 - `server/matrix_appservice.go` - Matrix Application Service implementation for virtual users
+- `server/matrix_appservice_test.go` - Application Service test suite (27 tests)
+- `server/matrix_hybrid_test.go` - Hybrid account system test suite (11 tests)
 
 ### Key Features
 
@@ -127,14 +149,18 @@ The Go backend uses GORM with SQLite. Key models are defined inline in the Go fi
 
 ### Matrix Integration Database Models
 
-- **MatrixUser**: Legacy model for existing Matrix account links (auto-generated or custom)
+- **MatrixUser**: Legacy model for existing Matrix account links (auto-generated or custom) - deprecated
 - **MatrixUserV2**: Modern hybrid model supporting both Application Service and personal accounts
   - **Account Types**: `appservice` (virtual users) and `personal` (real Matrix accounts)
   - **AS Fields**: `ASManagedUser`, `CreatedViaAS`, `LastSeenAt` for Application Service users
   - **Legacy Compatibility**: Maintains backward compatibility with existing accounts
 - **MatrixRoom**: Stores Matrix rooms created for movie club cycles
+  - **Fields**: `RoomID`, `RoomAlias`, `RoomName`, `RoomType`, `SpaceID`, `CycleID`
+  - **Room Types**: `news`, `general`, `spoilers`
 - **MatrixRoomMember**: Tracks room memberships and join dates
-- **MatrixSpace**: Stores Movie Club space information for room organization
+- **MatrixSpace**: Stores Matrix spaces for organizational hierarchy
+  - **Fields**: `SpaceID`, `SpaceName`, `SpaceType`, `CycleID`, `ParentSpaceID`
+  - **Space Types**: `movie_club` (main space), `cycle` (per-cycle spaces)
 
 ## External Services
 
@@ -147,33 +173,64 @@ The Go backend uses GORM with SQLite. Key models are defined inline in the Go fi
 
 ## Movie Club Feature Architecture
 
-The movie club feature enables collaborative movie selection through structured cycles with three phases:
+The movie club feature enables collaborative movie selection through structured cycles with three phases, plus ad-hoc movie sessions for spontaneous watching.
 
 ### Backend Implementation (`server/movie_club.go`)
 
-**Core Functions:**
+**Core Cycle Management Functions:**
+
+- `GetActiveMovieClubCycles()` - Returns all active cycles with sorted priority (watching phase first)
+- `GetArchivedMovieClubCycles()` - Returns completed cycles for archive viewing
+- `SortActiveMovieClubCycles()` - Sorts cycles by urgency (watching phase → closest to watching)
+- `TransitionCyclePhase()` - Handles phase transitions and winner calculation
+- `checkMovieClubTransition()` - Scheduled task that auto-transitions cycles when phases end
+- `extendCyclePhase()` - Extends current phase and all future phases by 24 hours
+
+**Cycle Rating Functions:**
 
 - `IsUserEligibleForCycleRating()` - Checks if user participated (nominated or voted) in cycle
 - `GetActiveWatchingCyclesByWinnerContent()` - Finds active cycles for specific movie content
 - `ProcessPotentialCycleRating()` - Handles rating capture with eligibility validation
 - `CreateOrUpdateCycleRating()` - Creates or updates user ratings with proper error handling
+- `GetCycleRatingsForCycle()` - Retrieves all ratings for a specific cycle
+
+**Ad-hoc Cycle Functions:**
+
+- `createAdHocMovieClubCycle()` - Creates instant watching cycles for spontaneous sessions
+- `finalizeAdHocCycle()` - Instantly archives ad-hoc cycles before natural end time
+- Ad-hoc cycles auto-nominate all users to make everyone eligible for ratings
+- No Matrix rooms created for ad-hoc cycles (informal sessions)
 
 **Integration Points:**
 
-- `addWatched()` in `watched.go` - Automatically captures ratings when users rate winning movies
-- `updateWatched()` in `watched.go` - Updates cycle ratings when watch entries are modified
-- `TransitionCyclePhase()` - Creates Matrix rooms when cycles enter watching phase
+- `addWatched()` in `watched.go:220` - Automatically captures ratings when users rate winning movies
+- `updateWatched()` in `watched.go:295` - Updates cycle ratings when watch entries are modified
+- `TransitionCyclePhase()` - Creates Matrix spaces and rooms when cycles enter watching phase
 - Auto-migration system in `watcharr.go` includes `MovieClubCycleRating` model
+
+**Multiple Concurrent Cycles:**
+
+- System supports multiple active cycles simultaneously
+- Cycles sorted by priority: watching phase first, then by time to watching phase
+- Each cycle can have different phase durations
+- Frontend displays all active cycles in Dashboard view
 
 ### Frontend Implementation
 
 **Key Components:**
 
+- `src/routes/(app)/movie-club/+page.svelte` - Main Movie Club dashboard
+- `src/routes/(app)/movie-club/MovieClubDashboard.svelte` - Dashboard component for active cycles
+- `src/routes/(app)/movie-club/MovieClubNominations.svelte` - Nomination interface
+- `src/routes/(app)/movie-club/MovieClubVoting.svelte` - Voting interface with ranked choice
 - `src/routes/(app)/movie-club/MovieClubResults.svelte` - Displays cycle ratings in active cycles
+- `src/routes/(app)/movie-club/MovieClubPhaseStatus.svelte` - Phase countdown and status display
 - `src/routes/(app)/movie-club/archives/+page.svelte` - Shows cycle ratings in completed cycles
 - `src/routes/(app)/movie-club/community/+page.svelte` - Community chat access interface
+- `src/routes/(app)/movie-club/CreateCycleModal.svelte` - Admin cycle creation modal
+- `src/routes/(app)/movie-club/AdHocMovieModal.svelte` - Admin ad-hoc session creation
+- `src/routes/(app)/movie-club/SearchMovieModal.svelte` - Movie search for nominations
 - `src/lib/nav/MovieClubMenu.svelte` - Navigation dropdown with Dashboard/Community options
-- Both rating components share identical cycle ratings UI and styling
 
 **Features:**
 
@@ -182,6 +239,10 @@ The movie club feature enables collaborative movie selection through structured 
 - Collapsible member ratings list with expandable thoughts
 - Responsive design with mobile-optimized spacing
 - Real-time updates during active cycles
+- Multi-cycle dashboard with cycle tabs
+- Phase extension controls (+24h button)
+- Ad-hoc cycle support with instant finalization
+- Previous winner detection and exclusion during nomination
 
 ### Performance Optimizations
 
@@ -323,6 +384,47 @@ The Matrix integration supports two account types through a unified API:
 - Community page with room access and status
 - Responsive design with mobile optimization
 
+### Matrix Space and Room Hierarchy
+
+**Space Architecture:**
+
+The Matrix integration uses a hierarchical space structure for better organization:
+
+1. **Movie Club Space** (Top Level):
+   - Main organizing space for all Movie Club content
+   - Created once via `EnsureMovieClubSpace()`
+   - Contains all cycle spaces and global rooms (News room)
+   - Type: `MatrixSpaceTypeMovieClub`
+
+2. **Cycle Spaces** (Per-Cycle):
+   - Individual space for each movie cycle
+   - Created via `CreateCycleSpace()` when cycle enters watching phase
+   - Contains General and Spoilers rooms for that specific cycle
+   - Nested under Movie Club space via `SetupSpaceHierarchy()`
+   - Type: `MatrixSpaceTypeCycle`
+
+**Room Types:**
+
+- **News Room** (`MatrixRoomTypeNews`): Global announcements across all cycles
+- **General Room** (`MatrixRoomTypeGeneral`): Main discussion for a specific cycle
+- **Spoilers Room** (`MatrixRoomTypeSpoilers`): Spoiler-safe discussion for a specific cycle
+
+**Room Creation Flow:**
+
+1. Cycle transitions to watching phase
+2. System creates cycle space asynchronously (non-blocking)
+3. Cycle space is added to Movie Club space hierarchy
+4. General and Spoilers rooms are created in cycle space
+5. Eligible users (who nominated or voted) are auto-invited
+6. Room avatars set from movie posters if available
+
+**Key Functions:**
+
+- `CreateCycleSpace()` in `matrix_rooms.go:1003` - Creates space for cycle
+- `CreateCycleRooms()` in `matrix_rooms.go` - Creates General + Spoilers rooms
+- `EnsureMovieClubSpace()` in `matrix_rooms.go` - Creates/retrieves main space
+- `SetupSpaceHierarchy()` in `matrix_rooms.go` - Nests cycle space under Movie Club
+
 ### Matrix Setup Validation System
 
 **Validation Categories:**
@@ -332,6 +434,7 @@ The Matrix integration supports two account types through a unified API:
 3. **Permission Validation** - Tests admin privileges and server access capabilities
 4. **Room Creation Testing** - Creates and cleans up test rooms to verify functionality
 5. **Shared Secret Registration Testing** - Tests user creation via shared secret (if configured)
+6. **Application Service Validation** - Tests AS configuration and namespace setup (if enabled)
 
 **Troubleshooting Guide:**
 
@@ -517,11 +620,12 @@ The hybrid system includes comprehensive migration support for existing Matrix u
 
 **Room Lifecycle:**
 
-1. Room created when cycle enters watching phase
-2. Eligible users automatically invited
-3. Room added to Movie Club space for organization
-4. Persistent access throughout and after cycle
-5. Room alias format: `#movieclub-YYYY-MM-DD-normalized-title:server.name`
+1. Cycle space created when cycle enters watching phase
+2. General and Spoilers rooms created within cycle space
+3. Eligible users automatically invited to both rooms
+4. Cycle space added to Movie Club space hierarchy
+5. Persistent access throughout and after cycle
+6. Room alias format: `#movieclub-YYYY-MM-DD-normalized-title-TYPE:server.name`
 
 **Room Features:**
 
@@ -530,8 +634,10 @@ The hybrid system includes comprehensive migration support for existing Matrix u
 - Movie-specific topics and descriptions
 - Hybrid user invitation system supporting both AS virtual users and real Matrix accounts
 - Automatic user invitation based on participation (nomination or voting)
-- Space organization for easy navigation
+- Space organization for hierarchical navigation
 - Account-type-aware invitation handling (AS users receive AS invitations, personal users receive Matrix invitations)
+- Room avatars automatically set from movie posters
+- Separate General and Spoilers rooms per cycle for organized discussion
 
 ## Testing Architecture
 
@@ -541,8 +647,8 @@ The Matrix integration includes comprehensive test coverage for both the Applica
 
 **Test Files:**
 
-- `server/matrix_appservice_test.go` - Application Service functionality tests
-- `server/matrix_hybrid_test.go` - Hybrid account system and migration tests
+- `server/matrix_appservice_test.go` - Application Service functionality tests (27 test cases)
+- `server/matrix_hybrid_test.go` - Hybrid account system and migration tests (11 test cases)
 
 **Application Service Tests (`matrix_appservice_test.go`):**
 
@@ -647,7 +753,17 @@ cd server && go test -v -run "TestGetOrCreateMatrixUserV2\|TestUnlinkMatrixUserV
 
 # Run specific test function
 cd server && go test -v -run "TestAppServiceManager_ValidateConfig" .
+
+# Run all tests with coverage
+cd server && go test -v -cover ./...
 ```
+
+**Test Architecture Notes:**
+
+- In-memory SQLite databases for isolated test environments
+- Comprehensive mock setups for Matrix client and AS manager
+- Test helper functions in each test file for common operations
+- All tests designed to be independent and not interfere with each other
 
 ## Common File Patterns
 

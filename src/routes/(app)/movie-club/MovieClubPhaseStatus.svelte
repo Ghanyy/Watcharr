@@ -463,6 +463,23 @@
 			text-align: center;
 		}
 
+		.phase-icon {
+			display: none; // Hide colored square on mobile
+		}
+
+		.phase-info {
+			justify-content: center; // Center the remaining content
+		}
+
+		.title-row {
+			h2 {
+				display: none; // Hide title on mobile (shown in tabs above)
+			}
+
+			// Keep only the ad-hoc badge visible and centered
+			justify-content: center;
+		}
+
 		.phase-timing {
 			text-align: center;
 		}

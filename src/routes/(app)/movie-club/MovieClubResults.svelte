@@ -1402,5 +1402,43 @@
 				font-size: 0.85rem;
 			}
 		}
+
+		.chosen-movie-section {
+			margin-bottom: var(--space-lg);
+		}
+
+		.chosen-badge {
+			padding: var(--space-xs) var(--space-md);
+			font-size: 1rem;
+			margin-bottom: var(--space-md);
+		}
+
+		.chosen-card {
+			flex-direction: column;
+			text-align: center;
+			padding: var(--space-lg);
+			gap: var(--space-lg);
+		}
+
+		.chosen-poster {
+			align-self: center;
+			width: 160px;
+			height: 240px;
+		}
+
+		.chosen-info {
+			h4 {
+				font-size: 1.5rem;
+			}
+
+			.chosen-year {
+				font-size: 0.9rem;
+			}
+
+			.chosen-overview {
+				padding: var(--space-sm);
+				font-size: 0.9rem;
+			}
+		}
 	}
 </style>
